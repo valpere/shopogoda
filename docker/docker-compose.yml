@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -13,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U weather_user -d weather_bot"]
       interval: 30s
@@ -25,7 +23,7 @@ services:
     image: redis:7-alpine
     container_name: shopogoda-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -42,7 +40,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./deployments/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../deployments/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -60,7 +58,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin123
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./deployments/grafana:/etc/grafana/provisioning
+      - ../deployments/grafana:/etc/grafana/provisioning
     depends_on:
       - prometheus
 

@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -62,15 +64,52 @@ type IntegrationsConfig struct {
 }
 
 func Load() (*Config, error) {
+	// Load .env file if it exists
+	if _, err := os.Stat(".env"); err == nil {
+		if err := godotenv.Load(); err != nil {
+			return nil, fmt.Errorf("error loading .env file: %w", err)
+		}
+	}
+
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./configs")
 
 	// Environment variables
-	viper.SetEnvPrefix("WB") // Weather Bot
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+
+	// Map specific environment variables to config keys
+	viper.BindEnv("bot.token", "TELEGRAM_BOT_TOKEN")
+	viper.BindEnv("bot.debug", "BOT_DEBUG")
+	viper.BindEnv("bot.webhook_url", "BOT_WEBHOOK_URL")
+	viper.BindEnv("bot.webhook_port", "BOT_WEBHOOK_PORT")
+
+	viper.BindEnv("database.host", "DB_HOST")
+	viper.BindEnv("database.port", "DB_PORT")
+	viper.BindEnv("database.user", "DB_USER")
+	viper.BindEnv("database.password", "DB_PASSWORD")
+	viper.BindEnv("database.name", "DB_NAME")
+	viper.BindEnv("database.ssl_mode", "DB_SSL_MODE")
+
+	viper.BindEnv("redis.host", "REDIS_HOST")
+	viper.BindEnv("redis.port", "REDIS_PORT")
+	viper.BindEnv("redis.password", "REDIS_PASSWORD")
+	viper.BindEnv("redis.db", "REDIS_DB")
+
+	viper.BindEnv("weather.openweather_api_key", "OPENWEATHER_API_KEY")
+	viper.BindEnv("weather.airquality_api_key", "AIRQUALITY_API_KEY")
+
+	viper.BindEnv("logging.level", "LOG_LEVEL")
+	viper.BindEnv("logging.format", "LOG_FORMAT")
+
+	viper.BindEnv("metrics.port", "PROMETHEUS_PORT")
+	viper.BindEnv("metrics.jaeger_endpoint", "JAEGER_ENDPOINT")
+
+	viper.BindEnv("integrations.slack_webhook_url", "SLACK_WEBHOOK_URL")
+	viper.BindEnv("integrations.teams_webhook_url", "TEAMS_WEBHOOK_URL")
+	viper.BindEnv("integrations.grafana_url", "GRAFANA_URL")
 
 	// Set defaults
 	setDefaults()

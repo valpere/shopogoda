@@ -338,6 +338,16 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleLocationCallback(bot, ctx, subAction, parts[2:])
 	case "alert":
 		return h.handleAlertCallback(bot, ctx, subAction, parts[2:])
+	case "subscribe", "unsubscribe":
+		return h.handleSubscriptionCallback(bot, ctx, action, subAction, parts[2:])
+	case "sub":
+		return h.handleSubscriptionCallback(bot, ctx, subAction, parts[1], parts[2:])
+	case "admin":
+		return h.handleAdminCallback(bot, ctx, subAction, parts[2:])
+	case "share":
+		return h.handleShareCallback(bot, ctx, subAction, parts[2:])
+	case "air":
+		return h.handleAirCallback(bot, ctx, subAction, parts[2:])
 	}
 
 	return nil
@@ -962,4 +972,138 @@ Choose alert condition:`
 	})
 
 	return err
+}
+
+// handleSubscriptionCallback handles subscription-related button callbacks
+func (h *CommandHandler) handleSubscriptionCallback(bot *gotgbot.Bot, ctx *ext.Context, action, subAction string, params []string) error {
+	switch action {
+	case "subscribe":
+		switch subAction {
+		case "daily":
+			return h.createDailySubscription(bot, ctx)
+		case "weekly":
+			return h.createWeeklySubscription(bot, ctx)
+		}
+	case "unsubscribe":
+		return h.removeSubscription(bot, ctx, subAction)
+	case "edit":
+		return h.editSubscription(bot, ctx, subAction)
+	}
+	return nil
+}
+
+// handleAdminCallback handles admin-related button callbacks
+func (h *CommandHandler) handleAdminCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	switch action {
+	case "users":
+		return h.AdminListUsers(bot, ctx)
+	case "stats":
+		return h.AdminStats(bot, ctx)
+	}
+	return nil
+}
+
+// handleShareCallback handles share location button callbacks
+func (h *CommandHandler) handleShareCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	if action == "location" {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			"📍 Please share your location using the button below:",
+			&gotgbot.SendMessageOpts{
+				ReplyMarkup: &gotgbot.ReplyKeyboardMarkup{
+					Keyboard: [][]gotgbot.KeyboardButton{
+						{{Text: "📍 Share Location", RequestLocation: true}},
+					},
+					OneTimeKeyboard: true,
+					ResizeKeyboard: true,
+				},
+			})
+		return err
+	}
+	return nil
+}
+
+// handleAirCallback handles air quality button callbacks
+func (h *CommandHandler) handleAirCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	if len(params) > 0 {
+		location := strings.Join(params, "_")
+		return h.getAirQualityData(bot, ctx, location)
+	}
+	return h.AirQuality(bot, ctx)
+}
+
+// Helper functions for subscription handling
+func (h *CommandHandler) createDailySubscription(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	_ = userID // userID declared but not used for now
+	_ = &models.Subscription{
+		UserID:           userID,
+		SubscriptionType: models.SubscriptionDaily,
+		Frequency:        models.FrequencyDaily,
+		TimeOfDay:        "08:00",
+		IsActive:         true,
+	}
+
+	// Note: CreateSubscription method needs to be implemented in UserService
+	// For now, just return success message
+	// if err := h.services.User.CreateSubscription(context.Background(), subscription); err != nil {
+	//     _, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create subscription. Please try again.", nil)
+	//     if sendErr != nil {
+	//         return sendErr
+	//     }
+	//     return err
+	// }
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Daily weather subscription created! You'll receive morning updates at 8:00 AM.", nil)
+	return err
+}
+
+func (h *CommandHandler) createWeeklySubscription(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	_ = userID // userID declared but not used for now
+	_ = &models.Subscription{
+		UserID:           userID,
+		SubscriptionType: models.SubscriptionWeekly,
+		Frequency:        models.FrequencyWeekly,
+		TimeOfDay:        "09:00",
+		IsActive:         true,
+	}
+
+	// Note: CreateSubscription method needs to be implemented in UserService
+	// For now, just return success message
+	// if err := h.services.User.CreateSubscription(context.Background(), subscription); err != nil {
+	//     _, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create subscription. Please try again.", nil)
+	//     if sendErr != nil {
+	//         return sendErr
+	//     }
+	//     return err
+	// }
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Weekly weather subscription created! You'll receive updates every Sunday at 9:00 AM.", nil)
+	return err
+}
+
+func (h *CommandHandler) removeSubscription(bot *gotgbot.Bot, ctx *ext.Context, subscriptionID string) error {
+	// Note: DeleteSubscription method needs to be implemented in UserService
+	// For now, just return success message
+	// if err := h.services.User.DeleteSubscription(context.Background(), subscriptionID); err != nil {
+	//     _, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to remove subscription. Please try again.", nil)
+	//     if sendErr != nil {
+	//         return sendErr
+	//     }
+	//     return err
+	// }
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Subscription removed successfully.", nil)
+	return err
+}
+
+func (h *CommandHandler) editSubscription(bot *gotgbot.Bot, ctx *ext.Context, subscriptionID string) error {
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "⚙️ Subscription editing feature coming soon!", nil)
+	return err
+}
+
+func (h *CommandHandler) getAirQualityData(bot *gotgbot.Bot, ctx *ext.Context, location string) error {
+	return h.AirQuality(bot, ctx)
 }

@@ -72,24 +72,24 @@ docker-build: ## Build Docker image
 
 docker-up: ## Start development environment
 	@echo "$(CYAN)Starting development environment...$(NC)"
-	@docker-compose up -d
+	@docker compose -f docker/docker-compose.yml up -d
 	@echo "$(GREEN)Development environment started!$(NC)"
 	@echo "$(GREEN)PostgreSQL: localhost:5432$(NC)"
-	@echo "$(GREEN)Redis: localhost:6379$(NC)"
+	@echo "$(GREEN)Redis: localhost:6380$(NC)"
 	@echo "$(GREEN)Prometheus: http://localhost:9090$(NC)"
 	@echo "$(GREEN)Grafana: http://localhost:3000 (admin/admin123)$(NC)"
 	@echo "$(GREEN)Jaeger: http://localhost:16686$(NC)"
 
 docker-down: ## Stop development environment
 	@echo "$(CYAN)Stopping development environment...$(NC)"
-	@docker-compose down
+	@docker compose -f docker/docker-compose.yml down
 
 docker-logs: ## Show logs from development environment
-	@docker-compose logs -f
+	@docker compose -f docker/docker-compose.yml logs -f
 
 docker-clean: ## Clean Docker containers and images
 	@echo "$(CYAN)Cleaning Docker resources...$(NC)"
-	@docker-compose down -v --remove-orphans
+	@docker compose -f docker/docker-compose.yml down -v --remove-orphans
 	@docker system prune -f
 
 init: ## Initialize project (run this first)
@@ -135,7 +135,7 @@ logs: ## Show application logs
 
 status: ## Show service status
 	@echo "$(CYAN)Service Status:$(NC)"
-	@docker-compose ps
+	@docker compose -f docker/docker-compose.yml ps
 
 # Quick commands
 quick-build: ## Quick build without deps check
@@ -154,8 +154,8 @@ install-tools: ## Install development tools
 db-reset: ## Reset database (WARNING: destroys all data)
 	@echo "$(RED)WARNING: This will destroy all database data!$(NC)"
 	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ]
-	@docker-compose down -v
-	@docker-compose up -d postgres redis
+	@docker compose -f docker/docker-compose.yml down -v
+	@docker compose -f docker/docker-compose.yml up -d postgres redis
 	@sleep 5
 	@$(MAKE) migrate
 	@echo "$(GREEN)Database reset complete$(NC)"
