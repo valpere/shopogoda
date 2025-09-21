@@ -9,7 +9,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/rs/zerolog"
 
-	"github.com/valpere/enterprise-weather-bot/internal/services"
+	"github.com/valpere/shopogoda/internal/services"
 )
 
 type CommandHandler struct {

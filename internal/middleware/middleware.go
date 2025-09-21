@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/time/rate"
 
-	"github.com/valpere/enterprise-weather-bot/internal/services"
-	"github.com/valpere/enterprise-weather-bot/pkg/metrics"
+	"github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/pkg/metrics"
 )
 
 // Logging middleware

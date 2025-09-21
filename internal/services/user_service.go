@@ -10,7 +10,7 @@ import (
     "github.com/redis/go-redis/v9"
     "gorm.io/gorm"
 
-    "github.com/valpere/enterprise-weather-bot/internal/models"
+    "github.com/valpere/shopogoda/internal/models"
 )
 
 type UserService struct {

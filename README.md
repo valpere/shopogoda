@@ -1,18 +1,17 @@
-# ShoPogoda
+# ShoPogoda (Що Погода) - Enterprise Weather Bot
 
-**ShoPogoda** (Що Погода - "What Weather" in Ukrainian) is a production-ready Telegram bot built with Go and gotgbot framework, designed for corporate weather monitoring, environmental compliance, and employee safety alerts. This project demonstrates advanced backend development, enterprise architecture, and DevOps practices suitable for senior-level portfolio showcasing.
+A professional-grade Telegram bot for weather monitoring, environmental alerts, and enterprise integrations.
 
 ## 🌟 Features
 
 ### Core Weather Services
-
 - **Real-time Weather Data**: Current conditions with comprehensive metrics
 - **5-Day Forecasts**: Detailed weather predictions
 - **Air Quality Monitoring**: AQI and pollutant tracking
 - **Location Management**: Multiple saved locations with GPS support
+- **Multi-language Support**: Ukrainian, English, German, French, Spanish
 
 ### Enterprise Features
-
 - **Advanced Alert System**: Custom thresholds and conditions
 - **Slack/Teams Integration**: Automated notifications
 - **Role-Based Access Control**: Admin, moderator, and user roles
@@ -20,7 +19,6 @@
 - **High Availability**: Redis caching and PostgreSQL clustering
 
 ### Technical Excellence
-
 - **Scalable Architecture**: Microservices-ready design
 - **Comprehensive Testing**: Unit, integration, and E2E tests
 - **Production Ready**: Docker containerization and CI/CD
@@ -29,7 +27,7 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Go 1.24+
+- Go 1.21+
 - Docker & Docker Compose
 - Telegram Bot Token (from @BotFather)
 - OpenWeatherMap API Key
@@ -38,8 +36,8 @@
 
 ```bash
 # 1. Clone and initialize
-git clone <repository>
-cd enterprise-weather-bot
+git clone https://github.com/valpere/shopogoda.git
+cd shopogoda
 make init
 
 # 2. Configure environment
@@ -76,14 +74,15 @@ Access the monitoring stack:
 ## 🏗️ Architecture
 
 ```
-├── cmd/bot/              # Application entry point
+shopogoda/
+├── cmd/bot/              # Application entrypoints
 ├── internal/             # Private application code
 │   ├── bot/             # Bot initialization and setup
 │   ├── config/          # Configuration management
 │   ├── database/        # Database connections
 │   ├── handlers/        # Telegram command handlers
 │   ├── middleware/      # Bot middleware (auth, logging)
-│   ├── models/          # Data models
+│   ├── models/          # Data models and structs
 │   └── services/        # Business logic services
 ├── pkg/                 # Public libraries
 │   ├── weather/         # Weather API clients
@@ -107,34 +106,14 @@ make docker-build   # Build Docker image
 make migrate        # Run database migrations
 ```
 
-### Testing
-
-```bash
-# Run all tests
-make test
-
-# Run with coverage
-make test-coverage
-
-# Run specific test
-go test ./internal/services/weather_service_test.go -v
-```
-
 ## 🚀 Deployment
 
 ### Docker Deployment
 
 ```bash
 # Build and run with Docker
-docker build -t weather-bot .
-docker run -p 8080:8080 --env-file .env weather-bot
-```
-
-### Kubernetes Deployment
-
-```bash
-# Deploy to Kubernetes
-kubectl apply -f deployments/k8s/
+docker build -t shopogoda .
+docker run -p 8080:8080 --env-file .env shopogoda
 ```
 
 ### Cloud Deployment
@@ -160,13 +139,12 @@ The bot is ready for deployment on:
 - Secure credential management
 - Audit logging for compliance
 
-## 🤝 Contributing
+## 🇺🇦 Ukrainian Localization
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+- Native Ukrainian language support
+- Local weather patterns and seasonal considerations
+- Integration potential with Ukrainian emergency services
+- Time zone support for Ukrainian regions
 
 ## 📄 License
 
@@ -175,6 +153,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 For enterprise support and custom development:
+- Email: valentyn.solomko@gmail.com
 - LinkedIn: [valentynsolomko](https://linkedin.com/in/valentynsolomko)
 - GitHub: [valpere](https://github.com/valpere)
 

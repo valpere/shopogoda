@@ -8,8 +8,8 @@ import (
 
     "github.com/rs/zerolog"
 
-    "github.com/valpere/enterprise-weather-bot/internal/config"
-    "github.com/valpere/enterprise-weather-bot/internal/models"
+    "github.com/valpere/shopogoda/internal/config"
+    "github.com/valpere/shopogoda/internal/models"
 )
 
 type NotificationService struct {

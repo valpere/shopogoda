@@ -8,7 +8,7 @@ import (
     "github.com/rs/zerolog"
     "gorm.io/gorm"
 
-    "github.com/valpere/enterprise-weather-bot/internal/models"
+    "github.com/valpere/shopogoda/internal/models"
 )
 
 type SchedulerService struct {

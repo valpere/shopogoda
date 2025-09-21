@@ -3,12 +3,14 @@ package main
 import (
     "log"
 
-    "github.com/valpere/enterprise-weather-bot/internal/config"
-    "github.com/valpere/enterprise-weather-bot/internal/database"
-    "github.com/valpere/enterprise-weather-bot/internal/models"
+    "github.com/valpere/shopogoda/internal/config"
+    "github.com/valpere/shopogoda/internal/database"
+    "github.com/valpere/shopogoda/internal/models"
 )
 
 func main() {
+    log.Println("Starting ShoPogoda database migrations...")
+
     // Load configuration
     cfg, err := config.Load()
     if err != nil {
@@ -26,5 +28,6 @@ func main() {
         log.Fatalf("Failed to run migrations: %v", err)
     }
 
-    log.Println("Migrations completed successfully!")
+    log.Println("ShoPogoda migrations completed successfully!")
 }
+

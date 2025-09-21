@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopogoda-config
+  namespace: shopogoda
+data:
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "weather_bot"
+  DB_SSL_MODE: "disable"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  BOT_WEBHOOK_PORT: "8080"
+  PROMETHEUS_PORT: "2112"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"

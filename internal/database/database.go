@@ -1,6 +1,7 @@
 package database
 
 import (
+    "context"
     "fmt"
     "time"
 
@@ -9,8 +10,8 @@ import (
     "gorm.io/gorm"
     "gorm.io/gorm/logger"
 
-    "github.com/valpere/enterprise-weather-bot/internal/config"
-    "github.com/valpere/enterprise-weather-bot/internal/models"
+    "github.com/valpere/shopogoda/internal/config"
+    "github.com/valpere/shopogoda/internal/models"
 )
 
 func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {

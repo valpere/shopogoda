@@ -5,7 +5,7 @@ import (
     "github.com/rs/zerolog"
     "gorm.io/gorm"
 
-    "github.com/valpere/enterprise-weather-bot/internal/config"
+    "github.com/valpere/shopogoda/internal/config"
 )
 
 type Services struct {
