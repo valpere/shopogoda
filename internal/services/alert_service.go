@@ -3,6 +3,7 @@ package services
 import (
     "context"
     "encoding/json"
+    "fmt"
     "time"
 
     "github.com/google/uuid"
@@ -58,7 +59,7 @@ func (s *AlertService) GetUserAlerts(ctx context.Context, userID int64) ([]model
     return alerts, err
 }
 
-func (s *AlertService) CheckAlerts(ctx context.Context, weatherData *WeatherData, locationID uuid.UUID) ([]models.EnvironmentalAlert, error) {
+func (s *AlertService) CheckAlerts(ctx context.Context, weatherData *models.WeatherData, locationID uuid.UUID) ([]models.EnvironmentalAlert, error) {
     // Get active alerts for this location
     var alertConfigs []models.AlertConfig
     err := s.db.WithContext(ctx).
@@ -183,4 +184,36 @@ func (s *AlertService) calculateSeverity(alertType models.AlertType, currentValu
     default:
         return models.SeverityMedium
     }
+}
+
+// DeleteAlert marks an alert as inactive
+func (s *AlertService) DeleteAlert(ctx context.Context, userID int64, alertID uuid.UUID) error {
+    return s.db.WithContext(ctx).
+        Model(&models.AlertConfig{}).
+        Where("id = ? AND user_id = ?", alertID, userID).
+        Update("is_active", false).Error
+}
+
+// UpdateAlert updates an existing alert configuration
+func (s *AlertService) UpdateAlert(ctx context.Context, userID int64, alertID uuid.UUID, updates map[string]interface{}) error {
+    updates["updated_at"] = time.Now()
+
+    return s.db.WithContext(ctx).
+        Model(&models.AlertConfig{}).
+        Where("id = ? AND user_id = ?", alertID, userID).
+        Updates(updates).Error
+}
+
+// GetAlert retrieves a specific alert by ID and user ID
+func (s *AlertService) GetAlert(ctx context.Context, userID int64, alertID uuid.UUID) (*models.AlertConfig, error) {
+    var alert models.AlertConfig
+    err := s.db.WithContext(ctx).
+        Preload("Location").
+        Where("id = ? AND user_id = ?", alertID, userID).
+        First(&alert).Error
+
+    if err != nil {
+        return nil, err
+    }
+    return &alert, nil
 }

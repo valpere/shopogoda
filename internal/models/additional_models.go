@@ -3,6 +3,9 @@ package models
 import (
     "fmt"
     "time"
+
+    "github.com/google/uuid"
+    "gorm.io/gorm"
 )
 
 // Additional model methods and constants

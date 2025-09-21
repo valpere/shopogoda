@@ -4,6 +4,7 @@ import (
     "context"
     "encoding/json"
     "fmt"
+    "strconv"
     "time"
 
     "github.com/PaulSonOfLars/gotgbot/v2"
@@ -19,15 +20,15 @@ type UserService struct {
 }
 
 type SystemStats struct {
-    TotalUsers           int     `json:"total_users"`
-    ActiveUsers          int     `json:"active_users"`
-    NewUsers24h          int     `json:"new_users_24h"`
-    TotalLocations       int     `json:"total_locations"`
-    ActiveMonitoring     int     `json:"active_monitoring"`
-    ActiveSubscriptions  int     `json:"active_subscriptions"`
-    AlertsConfigured     int     `json:"alerts_configured"`
-    MessagesSent24h      int     `json:"messages_sent_24h"`
-    WeatherRequests24h   int     `json:"weather_requests_24h"`
+    TotalUsers           int64   `json:"total_users"`
+    ActiveUsers          int64   `json:"active_users"`
+    NewUsers24h          int64   `json:"new_users_24h"`
+    TotalLocations       int64   `json:"total_locations"`
+    ActiveMonitoring     int64   `json:"active_monitoring"`
+    ActiveSubscriptions  int64   `json:"active_subscriptions"`
+    AlertsConfigured     int64   `json:"alerts_configured"`
+    MessagesSent24h      int64   `json:"messages_sent_24h"`
+    WeatherRequests24h   int64   `json:"weather_requests_24h"`
     CacheHitRate         float64 `json:"cache_hit_rate"`
     AvgResponseTime      int     `json:"avg_response_time"`
     Uptime               float64 `json:"uptime"`
@@ -114,3 +115,72 @@ func (s *UserService) GetSystemStats(ctx context.Context) (*SystemStats, error) 
     s.db.WithContext(ctx).Model(&models.User{}).Where("created_at > ?", yesterday).Count(&stats.NewUsers24h)
 
     // Get location statistics
+    s.db.WithContext(ctx).Model(&models.Location{}).Count(&stats.TotalLocations)
+    s.db.WithContext(ctx).Model(&models.Location{}).Where("is_active = ?", true).Count(&stats.ActiveMonitoring)
+
+    // Get subscription statistics
+    s.db.WithContext(ctx).Model(&models.Subscription{}).Where("is_active = ?", true).Count(&stats.ActiveSubscriptions)
+    s.db.WithContext(ctx).Model(&models.AlertConfig{}).Where("is_active = ?", true).Count(&stats.AlertsConfigured)
+
+    // Cache hit rate and performance metrics would come from monitoring systems
+    stats.CacheHitRate = 85.5 // Placeholder
+    stats.AvgResponseTime = 150 // Placeholder
+    stats.Uptime = 99.9 // Placeholder
+
+    return stats, nil
+}
+
+// GetActiveUsers returns all active users
+func (s *UserService) GetActiveUsers(ctx context.Context) ([]models.User, error) {
+    var users []models.User
+    err := s.db.WithContext(ctx).
+        Where("is_active = ?", true).
+        Find(&users).Error
+    return users, err
+}
+
+type UserStatistics struct {
+    TotalUsers        int64 `json:"total_users"`
+    ActiveUsers       int64 `json:"active_users"`
+    NewUsers24h       int64 `json:"new_users_24h"`
+    AdminCount        int64 `json:"admin_count"`
+    ModeratorCount    int64 `json:"moderator_count"`
+    Messages24h       int64 `json:"messages_24h"`
+    WeatherRequests24h int64 `json:"weather_requests_24h"`
+    LocationsSaved    int64 `json:"locations_saved"`
+    ActiveAlerts      int64 `json:"active_alerts"`
+}
+
+func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, error) {
+    stats := &UserStatistics{}
+
+    // Basic user counts
+    s.db.WithContext(ctx).Model(&models.User{}).Count(&stats.TotalUsers)
+    s.db.WithContext(ctx).Model(&models.User{}).Where("is_active = ?", true).Count(&stats.ActiveUsers)
+
+    yesterday := time.Now().AddDate(0, 0, -1)
+    s.db.WithContext(ctx).Model(&models.User{}).Where("created_at > ?", yesterday).Count(&stats.NewUsers24h)
+
+    // Role counts
+    s.db.WithContext(ctx).Model(&models.User{}).Where("role = ?", models.RoleAdmin).Count(&stats.AdminCount)
+    s.db.WithContext(ctx).Model(&models.User{}).Where("role = ?", models.RoleModerator).Count(&stats.ModeratorCount)
+
+    // Activity counts
+    s.db.WithContext(ctx).Model(&models.Location{}).Where("is_active = ?", true).Count(&stats.LocationsSaved)
+    s.db.WithContext(ctx).Model(&models.AlertConfig{}).Where("is_active = ?", true).Count(&stats.ActiveAlerts)
+
+    // Get Redis stats
+    if val, err := s.redis.Get(ctx, "stats:messages_24h").Result(); err == nil {
+        if count, err := strconv.ParseInt(val, 10, 64); err == nil {
+            stats.Messages24h = count
+        }
+    }
+
+    if val, err := s.redis.Get(ctx, "stats:weather_requests_24h").Result(); err == nil {
+        if count, err := strconv.ParseInt(val, 10, 64); err == nil {
+            stats.WeatherRequests24h = count
+        }
+    }
+
+    return stats, nil
+}
