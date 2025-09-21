@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -11,17 +12,47 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/valpere/shopogoda/internal/services"
-	"github.com/valpere/shopogoda/pkg/metrics"
 )
 
-// Logging middleware
-func Logging(logger zerolog.Logger) ext.Handler {
+// UserRateLimiter manages rate limits per user
+type UserRateLimiter struct {
+	limiters map[int64]*rate.Limiter
+	mu       sync.RWMutex
+	rate     rate.Limit
+	burst    int
+}
+
+func NewUserRateLimiter(r rate.Limit, b int) *UserRateLimiter {
+	return &UserRateLimiter{
+		limiters: make(map[int64]*rate.Limiter),
+		rate:     r,
+		burst:    b,
+	}
+}
+
+func (rl *UserRateLimiter) Allow(userID int64) bool {
+	rl.mu.RLock()
+	limiter, exists := rl.limiters[userID]
+	rl.mu.RUnlock()
+
+	if !exists {
+		rl.mu.Lock()
+		limiter = rate.NewLimiter(rl.rate, rl.burst)
+		rl.limiters[userID] = limiter
+		rl.mu.Unlock()
+	}
+
+	return limiter.Allow()
+}
+
+// Logging creates a logging handler function
+func Logging(logger zerolog.Logger) func(bot *gotgbot.Bot, ctx *ext.Context) error {
 	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
 		start := time.Now()
-		
+
 		user := ctx.EffectiveUser
 		chat := ctx.EffectiveChat
-		
+
 		var command string
 		if ctx.Message != nil && ctx.Message.Text != "" {
 			command = ctx.Message.Text
@@ -34,99 +65,48 @@ func Logging(logger zerolog.Logger) ext.Handler {
 			Str("username", user.Username).
 			Int64("chat_id", chat.Id).
 			Str("command", command).
-			Msg("Processing update")
+			Dur("duration", time.Since(start)).
+			Msg("Request processed")
 
-		// Continue to next handler
-		err := ext.ContinueHandling{}
-		
-		duration := time.Since(start)
-		if err != nil {
-			logger.Error().
-				Err(err).
-				Int64("user_id", user.Id).
-				Str("command", command).
-				Dur("duration", duration).
-				Msg("Handler error")
-		} else {
-			logger.Debug().
-				Int64("user_id", user.Id).
-				Str("command", command).
-				Dur("duration", duration).
-				Msg("Handler completed")
-		}
-
-		return err
+		return nil
 	}
 }
 
-// Metrics middleware
-func Metrics(metrics *metrics.Metrics) ext.Handler {
-	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
-		start := time.Now()
-		
-		var commandType string
-		if ctx.Message != nil {
-			commandType = "message"
-		} else if ctx.CallbackQuery != nil {
-			commandType = "callback"
-		} else {
-			commandType = "other"
-		}
-
-		metrics.IncrementCounter("bot_updates_total", "type", commandType)
-		
-		err := ext.ContinueHandling{}
-		
-		duration := time.Since(start).Seconds()
-		metrics.ObserveHistogram("bot_handler_duration_seconds", duration, "type", commandType)
-		
-		if err != nil {
-			metrics.IncrementCounter("bot_errors_total", "type", commandType)
-		}
-
-		return err
-	}
-}
-
-// User registration middleware
-func UserRegistration(services *services.Services) ext.Handler {
-	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
-		user := ctx.EffectiveUser
-		if user != nil {
-			// Register or update user in background
-			go func() {
-				ctx := context.Background()
-				if err := services.User.RegisterUser(ctx, user); err != nil {
-					// Log error but don't fail the request
-				}
-			}()
-		}
-		
-		return ext.ContinueHandling{}
-	}
-}
-
-// Rate limiting middleware
-func RateLimiting() ext.Handler {
-	// Create rate limiter map for users
-	limiters := make(map[int64]*rate.Limiter)
-	
+// RateLimit creates a rate limiting handler function
+func RateLimit(rateLimiter *UserRateLimiter) func(bot *gotgbot.Bot, ctx *ext.Context) error {
 	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
 		userID := ctx.EffectiveUser.Id
-		
-		// Get or create limiter for user (10 requests per minute)
-		limiter, exists := limiters[userID]
-		if !exists {
-			limiter = rate.NewLimiter(rate.Every(6*time.Second), 10)
-			limiters[userID] = limiter
-		}
-		
-		if !limiter.Allow() {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
-				"⏰ Please slow down! You're sending requests too quickly.", nil)
+
+		if !rateLimiter.Allow(userID) {
+			_, err := ctx.EffectiveMessage.Reply(bot, "Rate limit exceeded. Please try again later.", nil)
 			return err
 		}
-		
-		return ext.ContinueHandling{}
+
+		return nil
+	}
+}
+
+// Auth creates an authentication handler function
+func Auth(userService *services.UserService) func(bot *gotgbot.Bot, ctx *ext.Context) error {
+	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
+		user := ctx.EffectiveUser
+
+		// Register or update user - need to create a proper context
+		bgCtx := context.Background()
+		err := userService.RegisterUser(bgCtx, user)
+		if err != nil {
+			return fmt.Errorf("failed to register user: %w", err)
+		}
+
+		return nil
+	}
+}
+
+// Metrics creates a metrics collection handler function for basic tracking
+func Metrics() func(bot *gotgbot.Bot, ctx *ext.Context) error {
+	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
+		// Basic metrics tracking - would integrate with actual metrics system
+		// For now, just a placeholder that does nothing
+		return nil
 	}
 }

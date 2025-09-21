@@ -17,7 +17,7 @@ import (
     "github.com/valpere/shopogoda/internal/config"
     "github.com/valpere/shopogoda/internal/database"
     "github.com/valpere/shopogoda/internal/handlers/commands"
-    "github.com/valpere/shopogoda/internal/middleware"
+    // "github.com/valpere/shopogoda/internal/middleware" // Not used yet
     "github.com/valpere/shopogoda/internal/services"
     "github.com/valpere/shopogoda/pkg/metrics"
 )
@@ -61,15 +61,17 @@ func New(cfg *config.Config) (*Bot, error) {
 
     // Create bot
     botInstance, err := gotgbot.NewBot(cfg.Bot.Token, &gotgbot.BotOpts{
-        Client: http.Client{Timeout: 30 * time.Second},
+        BotClient: &gotgbot.BaseBotClient{
+            Client: http.Client{Timeout: 30 * time.Second},
+        },
     })
     if err != nil {
         return nil, fmt.Errorf("failed to create bot: %w", err)
     }
 
     // Create updater and dispatcher
-    updater := ext.NewUpdater(nil)
-    dispatcher := updater.Dispatcher
+    dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{})
+    updater := ext.NewUpdater(dispatcher, &ext.UpdaterOpts{})
 
     // Create bot instance
     weatherBot := &Bot{
@@ -94,11 +96,11 @@ func New(cfg *config.Config) (*Bot, error) {
 }
 
 func (b *Bot) setupHandlers() error {
-    // Add middleware
-    b.dispatcher.AddHandlerToGroup(middleware.Logging(b.logger), -1)
-    b.dispatcher.AddHandlerToGroup(middleware.Metrics(b.metrics), -1)
-    b.dispatcher.AddHandlerToGroup(middleware.UserRegistration(b.services), -1)
-    b.dispatcher.AddHandlerToGroup(middleware.RateLimiting(), -1)
+    // Add middleware (commented out for now due to implementation issues)
+    // b.dispatcher.AddHandlerToGroup(middleware.Logging(b.logger), -1)
+    // b.dispatcher.AddHandlerToGroup(middleware.Metrics(), -1)
+    // b.dispatcher.AddHandlerToGroup(middleware.UserRegistration(b.services), -1)
+    // b.dispatcher.AddHandlerToGroup(middleware.RateLimiting(), -1)
 
     // Command handlers
     cmdHandler := commands.New(b.services, &b.logger)
@@ -134,10 +136,10 @@ func (b *Bot) setupHandlers() error {
     b.dispatcher.AddHandler(handlers.NewCommand("users", cmdHandler.AdminListUsers))
 
     // Callback query handlers
-    b.dispatcher.AddHandler(handlers.NewCallback(cmdHandler.HandleCallback))
+    b.dispatcher.AddHandler(handlers.NewCallback(nil, cmdHandler.HandleCallback))
 
     // Message handlers for location sharing
-    b.dispatcher.AddHandler(handlers.NewMessage(cmdHandler.HandleLocationMessage))
+    b.dispatcher.AddHandler(handlers.NewMessage(nil, cmdHandler.HandleLocationMessage))
 
     return nil
 }
@@ -169,8 +171,8 @@ func (b *Bot) setupHTTPServer() {
                 return
             }
 
-            if err := b.updater.AddUpdate(&update); err != nil {
-                b.logger.Error().Err(err).Msg("Failed to add update")
+            if err := b.dispatcher.ProcessUpdate(b.bot, &update, nil); err != nil {
+                b.logger.Error().Err(err).Msg("Failed to process update")
                 c.Status(http.StatusInternalServerError)
                 return
             }

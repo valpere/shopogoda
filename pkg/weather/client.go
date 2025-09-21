@@ -26,6 +26,7 @@ type WeatherData struct {
 	UVIndex        float64 `json:"uv_index"`
 	Description    string  `json:"description"`
 	Icon           string  `json:"icon"`
+	LocationName   string  `json:"location_name"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 

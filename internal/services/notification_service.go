@@ -85,7 +85,7 @@ func (s *NotificationService) SendSlackWeatherUpdate(weather *WeatherData, subsc
                 Fields: []SlackField{
                     {Title: "Temperature", Value: fmt.Sprintf("%.1f°C", weather.Temperature), Short: true},
                     {Title: "Humidity", Value: fmt.Sprintf("%d%%", weather.Humidity), Short: true},
-                    {Title: "Wind", Value: fmt.Sprintf("%.1f km/h %s", weather.WindSpeed, weather.WindDirection), Short: true},
+                    {Title: "Wind", Value: fmt.Sprintf("%.1f km/h %d°", weather.WindSpeed, weather.WindDirection), Short: true},
                     {Title: "Air Quality", Value: fmt.Sprintf("AQI %d", weather.AQI), Short: true},
                 },
             },

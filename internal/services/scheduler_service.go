@@ -90,7 +90,7 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
         }
 
         // Check for triggered alerts
-        alerts, err := s.alert.CheckAlerts(ctx, weather, location.ID)
+        alerts, err := s.alert.CheckAlerts(ctx, weather.ToModelWeatherData(), location.ID)
         if err != nil {
             s.logger.Error().Err(err).Str("location", location.Name).Msg("Failed to check alerts")
             continue

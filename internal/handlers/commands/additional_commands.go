@@ -1,8 +1,8 @@
 package commands
 
 import (
+	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -31,7 +31,7 @@ func (h *CommandHandler) SetDefaultLocation(bot *gotgbot.Bot, ctx *ext.Context) 
 		return err
 	}
 
-	err = h.services.Location.SetDefaultLocation(ctx.Context(), userID, locationID)
+	err = h.services.Location.SetDefaultLocation(context.Background(), userID, locationID)
 	if err != nil {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			"❌ Failed to set default location", nil)
@@ -47,7 +47,7 @@ func (h *CommandHandler) SetDefaultLocation(bot *gotgbot.Bot, ctx *ext.Context) 
 func (h *CommandHandler) Unsubscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 
-	subscriptions, err := h.services.Subscription.GetUserSubscriptions(ctx.Context(), userID)
+	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (h *CommandHandler) Unsubscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 
-	subscriptions, err := h.services.Subscription.GetUserSubscriptions(ctx.Context(), userID)
+	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
 	if err != nil {
 		return err
 	}
@@ -111,18 +111,72 @@ func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) e
 		freqText := h.getFrequencyText(sub.Frequency)
 		
 		text += fmt.Sprintf("%d. **%s**\n", i+1, subTypeText)
-		text += fmt.Sprintf("   📍 Location: %s\n", alert.Location.Name)
-		text += fmt.Sprintf("   🎯 Threshold: %.1f\n", alert.Threshold)
-		if alert.LastTriggered != nil {
-			text += fmt.Sprintf("   🕐 Last Triggered: %s\n", alert.LastTriggered.Format("Jan 2, 15:04"))
-		}
+		text += fmt.Sprintf("   📍 Location: %s\n", sub.Location.Name)
+		text += fmt.Sprintf("   ⏰ Frequency: %s\n", freqText)
+		text += fmt.Sprintf("   🕐 Time: %s\n", sub.TimeOfDay)
 		text += "\n"
 		
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: fmt.Sprintf("⚙️ Edit %s", alertTypeText), 
-			 CallbackData: fmt.Sprintf("alert_edit_%s", alert.ID)},
-			{Text: "🗑️ Remove", 
-			 CallbackData: fmt.Sprintf("alert_remove_%s", alert.ID)},
+			{Text: fmt.Sprintf("⚙️ Edit %s", subTypeText),
+				CallbackData: fmt.Sprintf("sub_edit_%s", sub.ID)},
+			{Text: "🗑️ Remove",
+				CallbackData: fmt.Sprintf("sub_remove_%s", sub.ID)},
+		})
+	}
+
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: "➕ Add New Alert", CallbackData: "alert_create_temperature"},
+	})
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	return err
+}
+
+// ListAlerts command handler
+func (h *CommandHandler) ListAlerts(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	alerts, err := h.services.Alert.GetUserAlerts(context.Background(), userID)
+	if err != nil {
+		return err
+	}
+
+	if len(alerts) == 0 {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			"📋 You have no active alerts.\n\nUse /addalert to create weather alerts!",
+			&gotgbot.SendMessageOpts{
+				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+						{{Text: "⚠️ Create Alert", CallbackData: "alert_create_temperature"}},
+					},
+				},
+			})
+		return err
+	}
+
+	text := "📋 *Your Active Alerts:*\n\n"
+	var keyboard [][]gotgbot.InlineKeyboardButton
+
+	for i, alert := range alerts {
+		alertTypeText := h.getAlertTypeText(alert.AlertType)
+
+		text += fmt.Sprintf("%d. **%s Alert**\n", i+1, alertTypeText)
+		text += fmt.Sprintf("   📍 Location: %s\n", alert.Location.Name)
+		text += fmt.Sprintf("   ⚡ Condition: %s %.1f\n", alert.Condition, alert.Threshold)
+		text += fmt.Sprintf("   🔔 Status: %s\n", h.getAlertStatusText(alert.IsActive))
+		text += "\n"
+
+		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+			{Text: fmt.Sprintf("⚙️ Edit %s", alertTypeText),
+				CallbackData: fmt.Sprintf("alert_edit_%s", alert.ID)},
+			{Text: "🗑️ Remove",
+				CallbackData: fmt.Sprintf("alert_remove_%s", alert.ID)},
 		})
 	}
 
@@ -159,7 +213,7 @@ func (h *CommandHandler) RemoveAlert(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
-	err = h.services.Alert.DeleteAlert(ctx.Context(), userID, alertID)
+	err = h.services.Alert.DeleteAlert(context.Background(), userID, alertID)
 	if err != nil {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			"❌ Failed to remove alert", nil)
@@ -176,7 +230,7 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 	userID := ctx.EffectiveUser.Id
 	
 	// Check admin permissions
-	user, err := h.services.User.GetUser(ctx.Context(), userID)
+	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Insufficient permissions", nil)
 		return err
@@ -192,7 +246,7 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 	message := strings.Join(args[1:], " ")
 	
 	// Get all active users
-	users, err := h.services.User.GetActiveUsers(ctx.Context())
+	users, err := h.services.User.GetActiveUsers(context.Background())
 	if err != nil {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			"❌ Failed to get user list", nil)
@@ -235,14 +289,14 @@ func (h *CommandHandler) AdminListUsers(bot *gotgbot.Bot, ctx *ext.Context) erro
 	userID := ctx.EffectiveUser.Id
 	
 	// Check admin permissions
-	user, err := h.services.User.GetUser(ctx.Context(), userID)
+	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Insufficient permissions", nil)
 		return err
 	}
 
 	// Get user statistics
-	stats, err := h.services.User.GetUserStatistics(ctx.Context())
+	stats, err := h.services.User.GetUserStatistics(context.Background())
 	if err != nil {
 		return err
 	}
@@ -343,4 +397,11 @@ func (h *CommandHandler) getAlertTypeText(alertType models.AlertType) string {
 	default:
 		return "Unknown"
 	}
+}
+
+func (h *CommandHandler) getAlertStatusText(isActive bool) string {
+	if isActive {
+		return "Active"
+	}
+	return "Inactive"
 }

@@ -36,7 +36,7 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
     sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
     // Run migrations
-    if err := models.Migrate(db); err != nil {
+    if err := Migrate(db); err != nil {
         return nil, fmt.Errorf("failed to run migrations: %w", err)
     }
 
@@ -59,4 +59,16 @@ func ConnectRedis(cfg *config.RedisConfig) (*redis.Client, error) {
     }
 
     return rdb, nil
+}
+
+// Migrate runs database migrations
+func Migrate(db *gorm.DB) error {
+    return db.AutoMigrate(
+        &models.User{},
+        &models.Location{},
+        &models.WeatherData{},
+        &models.Subscription{},
+        &models.AlertConfig{},
+        &models.EnvironmentalAlert{},
+    )
 }

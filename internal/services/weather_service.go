@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/valpere/shopogoda/internal/config"
+	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/pkg/weather"
 )
 
@@ -124,6 +125,60 @@ func (s *WeatherService) GeocodeLocation(ctx context.Context, locationName strin
 	return location, nil
 }
 
+// GetCurrentWeatherByCoords gets weather data by coordinates (alias for GetCompleteWeatherData)
+func (s *WeatherService) GetCurrentWeatherByCoords(ctx context.Context, lat, lon float64) (*WeatherData, error) {
+	return s.GetCompleteWeatherData(ctx, lat, lon)
+}
+
+// GetCurrentWeatherByLocation gets weather data by location name
+func (s *WeatherService) GetCurrentWeatherByLocation(ctx context.Context, locationName string) (*WeatherData, error) {
+	// First geocode the location name to get coordinates
+	location, err := s.GeocodeLocation(ctx, locationName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to geocode location: %w", err)
+	}
+
+	// Get weather data using coordinates
+	weatherData, err := s.GetCompleteWeatherData(ctx, location.Latitude, location.Longitude)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the location name
+	weatherData.LocationName = location.Name
+
+	return weatherData, nil
+}
+
+// GetLocationName returns a formatted location name from coordinates (reverse geocoding)
+func (s *WeatherService) GetLocationName(ctx context.Context, lat, lon float64) (string, error) {
+	// This would use reverse geocoding in production
+	// For now, return a simple formatted string
+	return fmt.Sprintf("Location %.4f, %.4f", lat, lon), nil
+}
+
+// ToModelWeatherData converts service WeatherData to models.WeatherData
+func (wd *WeatherData) ToModelWeatherData() *models.WeatherData {
+	return &models.WeatherData{
+		Temperature: wd.Temperature,
+		Humidity:    wd.Humidity,
+		Pressure:    wd.Pressure,
+		WindSpeed:   wd.WindSpeed,
+		WindDegree:  wd.WindDirection,
+		Visibility:  wd.Visibility,
+		UVIndex:     wd.UVIndex,
+		Description: wd.Description,
+		Icon:        wd.Icon,
+		AQI:         wd.AQI,
+		CO:          wd.CO,
+		NO2:         wd.NO2,
+		O3:          wd.O3,
+		PM25:        wd.PM25,
+		PM10:        wd.PM10,
+		Timestamp:   wd.Timestamp,
+	}
+}
+
 // WeatherData represents weather data compatible with models.WeatherData
 type WeatherData struct {
 	Temperature   float64   `json:"temperature"`
@@ -135,6 +190,7 @@ type WeatherData struct {
 	UVIndex       float64   `json:"uv_index"`
 	Description   string    `json:"description"`
 	Icon          string    `json:"icon"`
+	LocationName  string    `json:"location_name"`
 	AQI           int       `json:"aqi"`
 	CO            float64   `json:"co"`
 	NO2           float64   `json:"no2"`
@@ -146,33 +202,41 @@ type WeatherData struct {
 
 // GetCompleteWeatherData gets both weather and air quality data
 func (s *WeatherService) GetCompleteWeatherData(ctx context.Context, lat, lon float64) (*WeatherData, error) {
-	weather, err := s.GetCurrentWeather(ctx, lat, lon)
+	weatherData, err := s.GetCurrentWeather(ctx, lat, lon)
 	if err != nil {
 		return nil, err
 	}
 
 	air, err := s.GetAirQuality(ctx, lat, lon)
 	if err != nil {
-		// If air quality fails, still return weather data
-		air = &weather.AirQualityData{}
+		// If air quality fails, still return weather data with empty air quality
+		air = &weather.AirQualityData{
+			AQI: 0,
+			CO:  0,
+			NO2: 0,
+			O3:  0,
+			PM25: 0,
+			PM10: 0,
+		}
 	}
 
 	return &WeatherData{
-		Temperature:   weather.Temperature,
-		Humidity:      weather.Humidity,
-		Pressure:      weather.Pressure,
-		WindSpeed:     weather.WindSpeed,
-		WindDirection: weather.WindDirection,
-		Visibility:    weather.Visibility,
-		UVIndex:       weather.UVIndex,
-		Description:   weather.Description,
-		Icon:          weather.Icon,
+		Temperature:   weatherData.Temperature,
+		Humidity:      weatherData.Humidity,
+		Pressure:      weatherData.Pressure,
+		WindSpeed:     weatherData.WindSpeed,
+		WindDirection: weatherData.WindDirection,
+		Visibility:    weatherData.Visibility,
+		UVIndex:       weatherData.UVIndex,
+		Description:   weatherData.Description,
+		Icon:          weatherData.Icon,
+		LocationName:  weatherData.LocationName,
 		AQI:           air.AQI,
 		CO:            air.CO,
 		NO2:           air.NO2,
 		O3:            air.O3,
 		PM25:          air.PM25,
 		PM10:          air.PM10,
-		Timestamp:     weather.Timestamp,
+		Timestamp:     weatherData.Timestamp,
 	}, nil
 }
