@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopogoda-service
+  namespace: shopogoda
+  labels:
+    app: shopogoda
+spec:
+  selector:
+    app: shopogoda
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      protocol: TCP
+      port: 2112
+      targetPort: 2112
+  type: ClusterIP

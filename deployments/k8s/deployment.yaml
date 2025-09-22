@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopogoda
+  namespace: shopogoda
+  labels:
+    app: shopogoda
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopogoda
+  template:
+    metadata:
+      labels:
+        app: shopogoda
+    spec:
+      containers:
+      - name: shopogoda
+        image: shopogoda:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 2112
+        envFrom:
+        - configMapRef:
+            name: shopogoda-config
+        - secretRef:
+            name: shopogoda-secrets
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
