@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -102,8 +105,14 @@ func (s *WeatherService) GetAirQuality(ctx context.Context, lat, lon float64) (*
 }
 
 func (s *WeatherService) GeocodeLocation(ctx context.Context, locationName string) (*weather.Location, error) {
+	// Normalize location name for consistent caching
+	normalizedName := strings.ToLower(strings.TrimSpace(locationName))
+	if normalizedName == "" {
+		return nil, fmt.Errorf("location name cannot be empty")
+	}
+
 	// Try cache first
-	cacheKey := fmt.Sprintf("geocode:%s", locationName)
+	cacheKey := fmt.Sprintf("geocode:%s", normalizedName)
 	cached, err := s.redis.Get(ctx, cacheKey).Result()
 	if err == nil {
 		var location weather.Location
@@ -112,92 +121,38 @@ func (s *WeatherService) GeocodeLocation(ctx context.Context, locationName strin
 		}
 	}
 
-	// Try API first if geocoder is available
+	// Try OpenWeatherMap API first if geocoder is available
 	if s.geocoder != nil {
 		location, err := s.geocoder.GeocodeLocation(ctx, locationName)
 		if err == nil {
 			// Cache for 24 hours
-			locationJSON, _ := json.Marshal(location)
-			s.redis.Set(ctx, cacheKey, locationJSON, 24*time.Hour)
+			if err := s.cacheLocation(ctx, cacheKey, location); err != nil {
+				// Log marshaling error but continue without caching
+				// This ensures the user still gets the location even if caching fails
+			}
 			return location, nil
 		}
 	}
 
-	// Fallback to predefined locations
-	switch locationName {
-	case "Kyiv", "Kiev", "Київ":
-		return &weather.Location{
-			Name:      "Kyiv",
-			Latitude:  50.4501,
-			Longitude: 30.5234,
-			Country:   "UA",
-		}, nil
-	case "Lviv", "Львів":
-		return &weather.Location{
-			Name:      "Lviv",
-			Latitude:  49.8397,
-			Longitude: 24.0297,
-			Country:   "UA",
-		}, nil
-	case "Odesa", "Odessa", "Одеса":
-		return &weather.Location{
-			Name:      "Odesa",
-			Latitude:  46.4825,
-			Longitude: 30.7233,
-			Country:   "UA",
-		}, nil
-	case "Kharkiv", "Харків":
-		return &weather.Location{
-			Name:      "Kharkiv",
-			Latitude:  49.9935,
-			Longitude: 36.2304,
-			Country:   "UA",
-		}, nil
-	case "London":
-		return &weather.Location{
-			Name:      "London",
-			Latitude:  51.5074,
-			Longitude: -0.1278,
-			Country:   "GB",
-		}, nil
-	case "New York", "NYC":
-		return &weather.Location{
-			Name:      "New York",
-			Latitude:  40.7128,
-			Longitude: -74.0060,
-			Country:   "US",
-		}, nil
-	case "Paris":
-		return &weather.Location{
-			Name:      "Paris",
-			Latitude:  48.8566,
-			Longitude: 2.3522,
-			Country:   "FR",
-		}, nil
-	case "Tokyo":
-		return &weather.Location{
-			Name:      "Tokyo",
-			Latitude:  35.6762,
-			Longitude: 139.6503,
-			Country:   "JP",
-		}, nil
-	case "Berlin":
-		return &weather.Location{
-			Name:      "Berlin",
-			Latitude:  52.5200,
-			Longitude: 13.4050,
-			Country:   "DE",
-		}, nil
-	case "Moscow", "Москва":
-		return &weather.Location{
-			Name:      "Moscow",
-			Latitude:  55.7558,
-			Longitude: 37.6176,
-			Country:   "RU",
-		}, nil
-	default:
-		return nil, fmt.Errorf("location '%s' not found - please check the spelling or try a major city name", locationName)
+	// Try Nominatim as fallback
+	nominatimLocation, err := s.geocodeWithNominatim(ctx, locationName)
+	if err == nil {
+		// Cache successful Nominatim results for 24 hours
+		s.cacheLocation(ctx, cacheKey, nominatimLocation)
+		return nominatimLocation, nil
 	}
+
+	return nil, fmt.Errorf("location '%s' not found - please check the spelling or try a major city name", locationName)
+}
+
+// cacheLocation is a helper method to cache location data
+func (s *WeatherService) cacheLocation(ctx context.Context, cacheKey string, location *weather.Location) error {
+	locationJSON, err := json.Marshal(location)
+	if err != nil {
+		return fmt.Errorf("failed to marshal location for caching: %w", err)
+	}
+
+	return s.redis.Set(ctx, cacheKey, locationJSON, 24*time.Hour).Err()
 }
 
 // GetCurrentWeatherByCoords gets weather data by coordinates (alias for GetCompleteWeatherData)
@@ -313,5 +268,77 @@ func (s *WeatherService) GetCompleteWeatherData(ctx context.Context, lat, lon fl
 		PM25:          air.PM25,
 		PM10:          air.PM10,
 		Timestamp:     weatherData.Timestamp,
+	}, nil
+}
+
+// geocodeWithNominatim uses OpenStreetMap's Nominatim service as fallback geocoding
+func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName string) (*weather.Location, error) {
+	url := fmt.Sprintf("https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=1",
+		strings.ReplaceAll(locationName, " ", "+"))
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Nominatim request: %w", err)
+	}
+
+	// Set User-Agent as required by Nominatim usage policy
+	req.Header.Set("User-Agent", "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make Nominatim request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Nominatim API request failed with status: %d", resp.StatusCode)
+	}
+
+	var apiResponse []struct {
+		DisplayName string `json:"display_name"`
+		Lat         string `json:"lat"`
+		Lon         string `json:"lon"`
+		Type        string `json:"type"`
+		Class       string `json:"class"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode Nominatim response: %w", err)
+	}
+
+	if len(apiResponse) == 0 {
+		return nil, fmt.Errorf("location not found in Nominatim")
+	}
+
+	result := apiResponse[0]
+
+	// Parse coordinates
+	lat, err := strconv.ParseFloat(result.Lat, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid latitude from Nominatim: %w", err)
+	}
+
+	lon, err := strconv.ParseFloat(result.Lon, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid longitude from Nominatim: %w", err)
+	}
+
+	// Extract city and country from display_name
+	parts := strings.Split(result.DisplayName, ", ")
+	var city, country string
+	if len(parts) > 0 {
+		city = parts[0]
+	}
+	if len(parts) > 1 {
+		country = parts[len(parts)-1]
+	}
+
+	return &weather.Location{
+		Latitude:  lat,
+		Longitude: lon,
+		Name:      city,
+		Country:   country,
+		City:      city,
 	}, nil
 }

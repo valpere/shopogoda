@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -457,8 +458,7 @@ func (h *CommandHandler) HandleLocationMessage(bot *gotgbot.Bot, ctx *ext.Contex
 	weatherText := h.formatWeatherMessage(weatherData)
 
 	// URL encode the location name to handle spaces and special characters
-	encodedName := strings.ReplaceAll(locationName, " ", "%20")
-	encodedName = strings.ReplaceAll(encodedName, "_", "%5F")
+	encodedName := url.QueryEscape(locationName)
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
 		{{Text: "💾 Save Location", CallbackData: fmt.Sprintf("location_save_%.4f_%.4f_%s", lat, lon, encodedName)}},
@@ -1068,8 +1068,11 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 			encodedName := strings.Join(params[2:], "_")
 
 			// URL decode the location name
-			name := strings.ReplaceAll(encodedName, "%20", " ")
-			name = strings.ReplaceAll(name, "%5F", "_")
+			name, decodeErr := url.QueryUnescape(encodedName)
+			if decodeErr != nil {
+				// If decoding fails, use the encoded name as fallback
+				name = encodedName
+			}
 
 			h.logger.Info().Float64("lat", lat).Float64("lon", lon).Str("name", name).Msg("Saving location")
 
