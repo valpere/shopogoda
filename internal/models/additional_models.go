@@ -4,7 +4,6 @@ import (
     "fmt"
     "time"
 
-    "github.com/google/uuid"
     "gorm.io/gorm"
 )
 
@@ -108,8 +107,12 @@ func (u *User) GetDisplayName() string {
     return fmt.Sprintf("User_%d", u.ID)
 }
 
-func (l *Location) GetCoordinatesString() string {
-    return fmt.Sprintf("%.4f, %.4f", l.Latitude, l.Longitude)
+func (u *User) GetCoordinatesString() string {
+    return fmt.Sprintf("%.4f, %.4f", u.Latitude, u.Longitude)
+}
+
+func (u *User) HasLocation() bool {
+    return u.LocationName != ""
 }
 
 func (w *WeatherData) GetTemperatureString() string {
@@ -158,28 +161,10 @@ func (u *User) Validate() error {
     return nil
 }
 
-func (l *Location) Validate() error {
-    if l.UserID <= 0 {
-        return fmt.Errorf("invalid user ID")
-    }
-    if l.Name == "" {
-        return fmt.Errorf("location name is required")
-    }
-    if l.Latitude < -90 || l.Latitude > 90 {
-        return fmt.Errorf("invalid latitude: %f", l.Latitude)
-    }
-    if l.Longitude < -180 || l.Longitude > 180 {
-        return fmt.Errorf("invalid longitude: %f", l.Longitude)
-    }
-    return nil
-}
 
 func (s *Subscription) Validate() error {
     if s.UserID <= 0 {
         return fmt.Errorf("invalid user ID")
-    }
-    if s.LocationID == uuid.Nil {
-        return fmt.Errorf("location ID is required")
     }
     if s.SubscriptionType < 1 || s.SubscriptionType > 4 {
         return fmt.Errorf("invalid subscription type")
@@ -193,9 +178,6 @@ func (s *Subscription) Validate() error {
 func (a *AlertConfig) Validate() error {
     if a.UserID <= 0 {
         return fmt.Errorf("invalid user ID")
-    }
-    if a.LocationID == uuid.Nil {
-        return fmt.Errorf("location ID is required")
     }
     if a.AlertType < 1 || a.AlertType > 9 {
         return fmt.Errorf("invalid alert type")
@@ -211,9 +193,6 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
     return u.Validate()
 }
 
-func (l *Location) BeforeCreate(tx *gorm.DB) error {
-    return l.Validate()
-}
 
 func (s *Subscription) BeforeCreate(tx *gorm.DB) error {
     return s.Validate()

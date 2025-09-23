@@ -10,6 +10,7 @@ import (
     "github.com/PaulSonOfLars/gotgbot/v2"
     "github.com/redis/go-redis/v9"
     "gorm.io/gorm"
+    "gorm.io/gorm/clause"
 
     "github.com/valpere/shopogoda/internal/models"
 )
@@ -20,18 +21,17 @@ type UserService struct {
 }
 
 type SystemStats struct {
-    TotalUsers           int64   `json:"total_users"`
-    ActiveUsers          int64   `json:"active_users"`
-    NewUsers24h          int64   `json:"new_users_24h"`
-    TotalLocations       int64   `json:"total_locations"`
-    ActiveMonitoring     int64   `json:"active_monitoring"`
-    ActiveSubscriptions  int64   `json:"active_subscriptions"`
-    AlertsConfigured     int64   `json:"alerts_configured"`
-    MessagesSent24h      int64   `json:"messages_sent_24h"`
-    WeatherRequests24h   int64   `json:"weather_requests_24h"`
-    CacheHitRate         float64 `json:"cache_hit_rate"`
-    AvgResponseTime      int     `json:"avg_response_time"`
-    Uptime               float64 `json:"uptime"`
+    TotalUsers          int64   `json:"total_users"`
+    ActiveUsers         int64   `json:"active_users"`
+    NewUsers24h         int64   `json:"new_users_24h"`
+    UsersWithLocation   int64   `json:"users_with_location"`
+    ActiveSubscriptions int64   `json:"active_subscriptions"`
+    AlertsConfigured    int64   `json:"alerts_configured"`
+    MessagesSent24h     int64   `json:"messages_sent_24h"`
+    WeatherRequests24h  int64   `json:"weather_requests_24h"`
+    CacheHitRate        float64 `json:"cache_hit_rate"`
+    AvgResponseTime     int     `json:"avg_response_time"`
+    Uptime              float64 `json:"uptime"`
 }
 
 func NewUserService(db *gorm.DB, redis *redis.Client) *UserService {
@@ -51,18 +51,11 @@ func (s *UserService) RegisterUser(ctx context.Context, tgUser *gotgbot.User) er
         IsActive:  true,
     }
 
-    // Use GORM's upsert functionality
-    result := s.db.WithContext(ctx).Clauses().Create(user)
-    if result.Error != nil {
-        // If user exists, update the information
-        result = s.db.WithContext(ctx).Model(user).Where("id = ?", user.ID).Updates(map[string]interface{}{
-            "username":   user.Username,
-            "first_name": user.FirstName,
-            "last_name":  user.LastName,
-            "language":   user.Language,
-            "updated_at": time.Now(),
-        })
-    }
+    // Use GORM's upsert functionality with proper conflict resolution
+    result := s.db.WithContext(ctx).Clauses(clause.OnConflict{
+        Columns:   []clause.Column{{Name: "id"}},
+        DoUpdates: clause.AssignmentColumns([]string{"username", "first_name", "last_name", "language", "updated_at"}),
+    }).Create(user)
 
     return result.Error
 }
@@ -111,12 +104,11 @@ func (s *UserService) GetSystemStats(ctx context.Context) (*SystemStats, error) 
     s.db.WithContext(ctx).Model(&models.User{}).Count(&stats.TotalUsers)
     s.db.WithContext(ctx).Model(&models.User{}).Where("is_active = ?", true).Count(&stats.ActiveUsers)
 
-    yesterday := time.Now().AddDate(0, 0, -1)
+    yesterday := time.Now().UTC().AddDate(0, 0, -1)
     s.db.WithContext(ctx).Model(&models.User{}).Where("created_at > ?", yesterday).Count(&stats.NewUsers24h)
 
-    // Get location statistics
-    s.db.WithContext(ctx).Model(&models.Location{}).Count(&stats.TotalLocations)
-    s.db.WithContext(ctx).Model(&models.Location{}).Where("is_active = ?", true).Count(&stats.ActiveMonitoring)
+    // Get users with location configured
+    s.db.WithContext(ctx).Model(&models.User{}).Where("location_name != '' AND location_name IS NOT NULL").Count(&stats.UsersWithLocation)
 
     // Get subscription statistics
     s.db.WithContext(ctx).Model(&models.Subscription{}).Where("is_active = ?", true).Count(&stats.ActiveSubscriptions)
@@ -158,7 +150,7 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
     s.db.WithContext(ctx).Model(&models.User{}).Count(&stats.TotalUsers)
     s.db.WithContext(ctx).Model(&models.User{}).Where("is_active = ?", true).Count(&stats.ActiveUsers)
 
-    yesterday := time.Now().AddDate(0, 0, -1)
+    yesterday := time.Now().UTC().AddDate(0, 0, -1)
     s.db.WithContext(ctx).Model(&models.User{}).Where("created_at > ?", yesterday).Count(&stats.NewUsers24h)
 
     // Role counts
@@ -166,7 +158,7 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
     s.db.WithContext(ctx).Model(&models.User{}).Where("role = ?", models.RoleModerator).Count(&stats.ModeratorCount)
 
     // Activity counts
-    s.db.WithContext(ctx).Model(&models.Location{}).Where("is_active = ?", true).Count(&stats.LocationsSaved)
+    s.db.WithContext(ctx).Model(&models.User{}).Where("location_name != '' AND location_name IS NOT NULL").Count(&stats.LocationsSaved)
     s.db.WithContext(ctx).Model(&models.AlertConfig{}).Where("is_active = ?", true).Count(&stats.ActiveAlerts)
 
     // Get Redis stats
@@ -183,4 +175,110 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
     }
 
     return stats, nil
+}
+
+// SetUserLocation updates the user's location
+func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locationName, country, city string, lat, lon float64) error {
+    updates := map[string]interface{}{
+        "location_name": locationName,
+        "latitude":      lat,
+        "longitude":     lon,
+        "country":       country,
+        "city":          city,
+    }
+
+    // For now, keep timezone as UTC - could be enhanced later with timezone inference
+    // based on coordinates using external timezone API
+    if locationName != "" {
+        updates["timezone"] = "UTC" // Could be inferred from coordinates in future
+    }
+
+    err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
+    if err != nil {
+        return err
+    }
+
+    // Invalidate cache
+    cacheKey := fmt.Sprintf("user:%d", userID)
+    s.redis.Del(ctx, cacheKey)
+
+    return nil
+}
+
+// ClearUserLocation clears the user's location and sets timezone to UTC
+func (s *UserService) ClearUserLocation(ctx context.Context, userID int64) error {
+    updates := map[string]interface{}{
+        "location_name": "",
+        "latitude":      0,
+        "longitude":     0,
+        "country":       "",
+        "city":          "",
+        "timezone":      "UTC",
+    }
+
+    err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
+    if err != nil {
+        return err
+    }
+
+    // Invalidate cache
+    cacheKey := fmt.Sprintf("user:%d", userID)
+    s.redis.Del(ctx, cacheKey)
+
+    return nil
+}
+
+// GetUserLocation returns the user's location if set
+func (s *UserService) GetUserLocation(ctx context.Context, userID int64) (string, float64, float64, error) {
+    user, err := s.GetUser(ctx, userID)
+    if err != nil {
+        return "", 0, 0, err
+    }
+
+    if user.LocationName == "" {
+        return "", 0, 0, fmt.Errorf("user has no location set")
+    }
+
+    return user.LocationName, user.Latitude, user.Longitude, nil
+}
+
+// GetUserTimezone returns the user's timezone, defaulting to UTC if location not set
+func (s *UserService) GetUserTimezone(ctx context.Context, userID int64) string {
+    user, err := s.GetUser(ctx, userID)
+    if err != nil || user.LocationName == "" {
+        return "UTC"
+    }
+
+    if user.Timezone == "" {
+        return "UTC"
+    }
+
+    return user.Timezone
+}
+
+// ConvertToUserTime converts UTC time to user's local time
+func (s *UserService) ConvertToUserTime(ctx context.Context, userID int64, utcTime time.Time) time.Time {
+    timezone := s.GetUserTimezone(ctx, userID)
+
+    loc, err := time.LoadLocation(timezone)
+    if err != nil {
+        // Fall back to UTC if timezone is invalid
+        return utcTime
+    }
+
+    return utcTime.In(loc)
+}
+
+// ConvertToUTC converts user's local time to UTC
+func (s *UserService) ConvertToUTC(ctx context.Context, userID int64, localTime time.Time) time.Time {
+    timezone := s.GetUserTimezone(ctx, userID)
+
+    loc, err := time.LoadLocation(timezone)
+    if err != nil {
+        // Assume it's already UTC if timezone is invalid
+        return localTime
+    }
+
+    // Convert to the user's timezone first, then to UTC
+    return localTime.In(loc).UTC()
 }

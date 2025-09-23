@@ -74,43 +74,55 @@ func (s *SchedulerService) Stop() {
 func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
     s.logger.Debug().Msg("Checking weather alerts")
 
-    // Get all active locations
-    var locations []models.Location
-    if err := s.db.WithContext(ctx).Where("is_active = ?", true).Find(&locations).Error; err != nil {
-        s.logger.Error().Err(err).Msg("Failed to get active locations")
+    // Get all active users with locations and alerts configured
+    var users []models.User
+    if err := s.db.WithContext(ctx).
+        Where("is_active = ? AND location_name != '' AND location_name IS NOT NULL", true).
+        Find(&users).Error; err != nil {
+        s.logger.Error().Err(err).Msg("Failed to get active users with locations")
         return
     }
 
-    for _, location := range locations {
-        // Get current weather for location
-        weather, err := s.weather.GetCurrentWeatherByCoords(ctx, location.Latitude, location.Longitude)
+    for _, user := range users {
+        // Get current weather for user's location
+        weather, err := s.weather.GetCurrentWeatherByCoords(ctx, user.Latitude, user.Longitude)
         if err != nil {
-            s.logger.Error().Err(err).Str("location", location.Name).Msg("Failed to get weather data")
+            s.logger.Error().Err(err).
+                Str("location", user.LocationName).
+                Int64("user_id", user.ID).
+                Msg("Failed to get weather data")
             continue
         }
 
         // Check for triggered alerts
-        alerts, err := s.alert.CheckAlerts(ctx, weather.ToModelWeatherData(), location.ID)
+        alerts, err := s.alert.CheckAlerts(ctx, weather.ToModelWeatherData(), user.ID)
         if err != nil {
-            s.logger.Error().Err(err).Str("location", location.Name).Msg("Failed to check alerts")
+            s.logger.Error().Err(err).
+                Str("location", user.LocationName).
+                Int64("user_id", user.ID).
+                Msg("Failed to check alerts")
             continue
         }
 
         // Send notifications for triggered alerts
         for _, alert := range alerts {
-            if err := s.notification.SendSlackAlert(&alert, &location); err != nil {
+            if err := s.notification.SendSlackAlert(&alert, &user); err != nil {
                 s.logger.Error().Err(err).Msg("Failed to send Slack alert")
             }
         }
 
         if len(alerts) > 0 {
-            s.logger.Info().Int("count", len(alerts)).Str("location", location.Name).Msg("Processed weather alerts")
+            s.logger.Info().
+                Int("count", len(alerts)).
+                Str("location", user.LocationName).
+                Int64("user_id", user.ID).
+                Msg("Processed weather alerts")
         }
     }
 }
 
 func (s *SchedulerService) processDailyNotifications(ctx context.Context) {
-    now := time.Now()
+    now := time.Now().UTC()
 
     // Only send daily notifications at 8 AM
     if now.Hour() != 8 || now.Minute() != 0 {
@@ -119,12 +131,12 @@ func (s *SchedulerService) processDailyNotifications(ctx context.Context) {
 
     s.logger.Info().Msg("Processing daily weather notifications")
 
-    // Get users with daily subscriptions
+    // Get users with daily subscriptions who have locations set
     var subscriptions []models.Subscription
     if err := s.db.WithContext(ctx).
         Preload("User").
-        Preload("Location").
-        Where("subscription_type = ? AND is_active = ?", models.SubscriptionDaily, true).
+        Joins("JOIN users ON users.id = subscriptions.user_id").
+        Where("subscriptions.subscription_type = ? AND subscriptions.is_active = ? AND users.location_name != '' AND users.location_name IS NOT NULL", models.SubscriptionDaily, true).
         Find(&subscriptions).Error; err != nil {
         s.logger.Error().Err(err).Msg("Failed to get daily subscriptions")
         return
@@ -134,12 +146,13 @@ func (s *SchedulerService) processDailyNotifications(ctx context.Context) {
         // Get weather for user's location
         weather, err := s.weather.GetCurrentWeatherByCoords(
             ctx,
-            subscription.Location.Latitude,
-            subscription.Location.Longitude,
+            subscription.User.Latitude,
+            subscription.User.Longitude,
         )
         if err != nil {
             s.logger.Error().Err(err).
-                Str("location", subscription.Location.Name).
+                Str("location", subscription.User.LocationName).
+                Int64("user_id", subscription.UserID).
                 Msg("Failed to get weather for daily notification")
             continue
         }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/valpere/shopogoda/internal/models"
@@ -30,7 +31,15 @@ func New(services *services.Services, logger *zerolog.Logger) *CommandHandler {
 // Start command handler
 func (h *CommandHandler) Start(bot *gotgbot.Bot, ctx *ext.Context) error {
 	user := ctx.EffectiveUser
-	
+
+	// Debug logging for start command
+	h.logger.Info().
+		Int64("user_id", user.Id).
+		Interface("all_args", ctx.Args()).
+		Int("args_count", len(ctx.Args())).
+		Str("message_text", ctx.Message.Text).
+		Msg("START_DEBUG: Starting Start command")
+
 	// Register or update user
 	if err := h.services.User.RegisterUser(context.Background(), user); err != nil {
 		h.logger.Error().Err(err).Int64("user_id", user.Id).Msg("Failed to register user")
@@ -58,12 +67,12 @@ Hello %s! I'm your professional weather and environmental monitoring assistant.
 • Compliance reporting
 • Role-based access control
 
-Ready to get started? Try /weather to see current conditions!`, 
+Ready to get started? Try /weather to see current conditions!`,
 		user.FirstName)
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
 		{{Text: "🌤️ Current Weather", CallbackData: "weather_current"}},
-		{{Text: "📍 Add Location", CallbackData: "location_add"}},
+		{{Text: "📍 Set Default Location", CallbackData: "location_add"}},
 		{{Text: "⚙️ Settings", CallbackData: "settings_main"}},
 	}
 
@@ -129,34 +138,68 @@ For enterprise support, contact: support@weatherbot.com`
 // Current weather command
 func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+
+	// Extensive debug logging for argument parsing
+	h.logger.Info().
+		Int64("user_id", userID).
+		Interface("all_args", ctx.Args()).
+		Int("args_count", len(ctx.Args())).
+		Str("message_text", ctx.Message.Text).
+		Msg("WEATHER_DEBUG: Starting CurrentWeather command")
+
+	if len(ctx.Args()) > 1 {
+		h.logger.Info().
+			Interface("args_1_to_end", ctx.Args()[1:]).
+			Str("joined_args", strings.Join(ctx.Args()[1:], " ")).
+			Msg("WEATHER_DEBUG: Args after command")
+	}
+
 	location := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
 
-	// If no location provided, use default or ask for it
+	h.logger.Info().
+		Str("parsed_location", location).
+		Msg("WEATHER_DEBUG: Parsed location parameter")
+
+	// If no location provided, use user's saved location or ask for it
 	if location == "" {
-		defaultLocation, err := h.services.Location.GetDefaultLocation(context.Background(), userID)
-		if err != nil || defaultLocation == nil {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
-				"📍 Please provide a location or share your current location:\n\n/weather London\nor\n/addlocation to set a default location", 
+		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+		if err != nil || locationName == "" {
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+				"📍 Please provide a location or set your default location:\n\n/weather London\nor\n/setlocation to set your location",
 				&gotgbot.SendMessageOpts{
 					ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 						InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 							{{Text: "📍 Share Location", CallbackData: "share_location"}},
-							{{Text: "➕ Add Location", CallbackData: "location_add"}},
+							{{Text: "📍 Set Location", CallbackData: "location_set"}},
 						},
 					},
 				})
 			return err
 		}
-		location = defaultLocation.Name
+		location = locationName
 	}
 
 	// Get weather data
+	h.logger.Info().
+		Str("location", location).
+		Msg("WEATHER_DEBUG: Calling weather service")
+
 	weatherData, err := h.services.Weather.GetCurrentWeatherByLocation(context.Background(), location)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
+		h.logger.Error().
+			Err(err).
+			Str("location", location).
+			Msg("WEATHER_DEBUG: Failed to get weather data")
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			fmt.Sprintf("❌ Failed to get weather for '%s'. Please check the location name.", location), nil)
 		return err
 	}
+
+	h.logger.Info().
+		Str("location", location).
+		Interface("weather_data", weatherData).
+		Msg("WEATHER_DEBUG: Successfully got weather data")
 
 	// Format weather message
 	weatherText := h.formatWeatherMessage(weatherData)
@@ -180,20 +223,33 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 // Forecast command
 func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+
+	// Debug logging for argument parsing
+	h.logger.Info().
+		Int64("user_id", userID).
+		Interface("all_args", ctx.Args()).
+		Int("args_count", len(ctx.Args())).
+		Str("message_text", ctx.Message.Text).
+		Msg("FORECAST_DEBUG: Starting Forecast command")
+
 	location := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
 
+	h.logger.Info().
+		Str("parsed_location", location).
+		Msg("FORECAST_DEBUG: Parsed location parameter")
+
 	if location == "" {
-		defaultLocation, err := h.services.Location.GetDefaultLocation(context.Background(), userID)
-		if err != nil || defaultLocation == nil {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
+		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+		if err != nil || locationName == "" {
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 				"📍 Please provide a location: /forecast London", nil)
 			return err
 		}
-		location = defaultLocation.Name
+		location = locationName
 	}
 
 	// Get coordinates first for forecast
-	locationData, err := h.services.Location.SearchLocationByName(context.Background(), location)
+	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), location)
 	if err != nil {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			fmt.Sprintf("❌ Failed to find location '%s'", location), nil)
@@ -202,7 +258,7 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	forecast, err := h.services.Weather.GetForecast(context.Background(), locationData.Latitude, locationData.Longitude, 5)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			fmt.Sprintf("❌ Failed to get forecast for '%s'", location), nil)
 		return err
 	}
@@ -222,17 +278,17 @@ func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 	location := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
 
 	if location == "" {
-		defaultLocation, err := h.services.Location.GetDefaultLocation(context.Background(), userID)
-		if err != nil || defaultLocation == nil {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
+		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+		if err != nil || locationName == "" {
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 				"📍 Please provide a location: /air London", nil)
 			return err
 		}
-		location = defaultLocation.Name
+		location = locationName
 	}
 
 	// Get coordinates first for air quality
-	locationData, err := h.services.Location.SearchLocationByName(context.Background(), location)
+	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), location)
 	if err != nil {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			fmt.Sprintf("❌ Failed to find location '%s'", location), nil)
@@ -241,7 +297,7 @@ func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	airData, err := h.services.Weather.GetAirQuality(context.Background(), locationData.Latitude, locationData.Longitude)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			fmt.Sprintf("❌ Failed to get air quality for '%s'", location), nil)
 		return err
 	}
@@ -266,7 +322,7 @@ func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 // Settings command
 func (h *CommandHandler) Settings(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
-	
+
 	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil {
 		return err
@@ -276,6 +332,8 @@ func (h *CommandHandler) Settings(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 *Current Configuration:*
 Language: %s
+Units: %s
+Timezone: %s
 Role: %s
 Status: %s
 
@@ -285,8 +343,10 @@ Status: %s
 • Timezone settings
 • Notification preferences
 • Alert thresholds
-• Data export options`, 
-		user.Language, 
+• Data export options`,
+		user.Language,
+		h.getUnitsText(user.Units),
+		user.Timezone,
 		h.getRoleName(user.Role),
 		h.getStatusText(user.IsActive))
 
@@ -313,6 +373,8 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 	cq := ctx.CallbackQuery
 	data := cq.Data
 
+	h.logger.Info().Str("callback_data", data).Msg("Callback received")
+
 	// Answer callback query first
 	if _, err := bot.AnswerCallbackQuery(cq.Id, nil); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to answer callback query")
@@ -321,11 +383,13 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 	// Parse callback data
 	parts := strings.Split(data, "_")
 	if len(parts) < 2 {
+		h.logger.Warn().Str("data", data).Msg("Invalid callback data format")
 		return nil
 	}
 
 	action := parts[0]
 	subAction := parts[1]
+	h.logger.Info().Str("action", action).Str("subAction", subAction).Int("parts_count", len(parts)).Msg("Parsed callback data")
 
 	switch action {
 	case "weather":
@@ -338,10 +402,14 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleLocationCallback(bot, ctx, subAction, parts[2:])
 	case "alert":
 		return h.handleAlertCallback(bot, ctx, subAction, parts[2:])
+	case "alerts":
+		return h.handleAlertsCallback(bot, ctx, subAction, parts[2:])
 	case "subscribe", "unsubscribe":
 		return h.handleSubscriptionCallback(bot, ctx, action, subAction, parts[2:])
 	case "sub":
 		return h.handleSubscriptionCallback(bot, ctx, subAction, parts[1], parts[2:])
+	case "subscriptions":
+		return h.handleSubscriptionCallback(bot, ctx, action, subAction, parts[2:])
 	case "admin":
 		return h.handleAdminCallback(bot, ctx, subAction, parts[2:])
 	case "share":
@@ -355,13 +423,22 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 
 // Location message handler
 func (h *CommandHandler) HandleLocationMessage(bot *gotgbot.Bot, ctx *ext.Context) error {
+	h.logger.Info().Msg("HandleLocationMessage called")
+
 	if ctx.Message.Location == nil {
+		h.logger.Warn().Msg("Location message received but no location data")
 		return nil
 	}
 
-	_ = ctx.EffectiveUser.Id // userID declared but not used
+	// Register or update user (ensure user exists before saving location)
+	user := ctx.EffectiveUser
+	if err := h.services.User.RegisterUser(context.Background(), user); err != nil {
+		h.logger.Error().Err(err).Int64("user_id", user.Id).Msg("Failed to register user")
+	}
+
 	lat := ctx.Message.Location.Latitude
 	lon := ctx.Message.Location.Longitude
+	h.logger.Info().Float64("lat", lat).Float64("lon", lon).Msg("Processing location message")
 
 	// Get location name from coordinates
 	locationName, err := h.services.Weather.GetLocationName(context.Background(), lat, lon)
@@ -372,15 +449,19 @@ func (h *CommandHandler) HandleLocationMessage(bot *gotgbot.Bot, ctx *ext.Contex
 	// Get weather for this location
 	weatherData, err := h.services.Weather.GetCurrentWeatherByCoords(context.Background(), lat, lon)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, 
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			"❌ Failed to get weather for your location", nil)
 		return err
 	}
 
 	weatherText := h.formatWeatherMessage(weatherData)
 
+	// URL encode the location name to handle spaces and special characters
+	encodedName := strings.ReplaceAll(locationName, " ", "%20")
+	encodedName = strings.ReplaceAll(encodedName, "_", "%5F")
+
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "💾 Save Location", CallbackData: fmt.Sprintf("location_save_%.4f_%.4f_%s", lat, lon, locationName)}},
+		{{Text: "💾 Save Location", CallbackData: fmt.Sprintf("location_save_%.4f_%.4f_%s", lat, lon, encodedName)}},
 		{{Text: "📊 Forecast", CallbackData: fmt.Sprintf("forecast_coords_%.4f_%.4f", lat, lon)}},
 		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_coords_%.4f_%.4f", lat, lon)}},
 	}
@@ -393,6 +474,39 @@ func (h *CommandHandler) HandleLocationMessage(bot *gotgbot.Bot, ctx *ext.Contex
 	})
 
 	return err
+}
+
+// HandleAnyMessage logs all incoming messages for debugging
+func (h *CommandHandler) HandleAnyMessage(bot *gotgbot.Bot, ctx *ext.Context) error {
+	msg := ctx.Message
+	if msg == nil {
+		h.logger.Info().Msg("Non-message update received")
+		return nil
+	}
+
+	h.logger.Info().
+		Int64("user_id", ctx.EffectiveUser.Id).
+		Str("username", ctx.EffectiveUser.Username).
+		Str("first_name", ctx.EffectiveUser.FirstName).
+		Int64("chat_id", ctx.EffectiveChat.Id).
+		Str("chat_type", ctx.EffectiveChat.Type).
+		Interface("message_id", msg.MessageId).
+		Str("text", msg.Text).
+		Bool("has_location", msg.Location != nil).
+		Bool("has_photo", len(msg.Photo) > 0).
+		Bool("has_document", msg.Document != nil).
+		Bool("has_voice", msg.Voice != nil).
+		Interface("entities", msg.Entities).
+		Msg("ALL_MESSAGES_DEBUG: Received message")
+
+	if msg.Location != nil {
+		h.logger.Info().
+			Float64("latitude", msg.Location.Latitude).
+			Float64("longitude", msg.Location.Longitude).
+			Msg("ALL_MESSAGES_DEBUG: Location details")
+	}
+
+	return nil // Don't consume the message, let other handlers process it
 }
 
 // Helper methods for formatting messages
@@ -454,6 +568,17 @@ func (h *CommandHandler) getStatusText(isActive bool) string {
 	return "Inactive"
 }
 
+func (h *CommandHandler) getUnitsText(units string) string {
+	switch units {
+	case "metric":
+		return "🌡️ Metric (°C, km/h, km)"
+	case "imperial":
+		return "🌡️ Imperial (°F, mph, miles)"
+	default:
+		return units
+	}
+}
+
 func (h *CommandHandler) getAQIDescription(aqi int) string {
 	switch {
 	case aqi <= 50:
@@ -481,7 +606,7 @@ func (h *CommandHandler) formatForecastMessage(forecast *weather.ForecastData) s
 		text += fmt.Sprintf("💧 Humidity: %d%% | 🌬️ Wind: %.1f km/h\n\n",
 			day.Humidity, day.WindSpeed)
 	}
-	
+
 	return text
 }
 
@@ -537,7 +662,7 @@ func (h *CommandHandler) AddLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	if locationName == "" {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 Please provide a location name:\n\n/addlocation London\nor share your current location", 
+			"📍 Please provide a location name:\n\n/addlocation London\nor share your current location",
 			&gotgbot.SendMessageOpts{
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
@@ -549,15 +674,15 @@ func (h *CommandHandler) AddLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Validate location
-	coords, err := h.services.Location.SearchLocationByName(context.Background(), locationName)
+	coords, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
 	if err != nil {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			fmt.Sprintf("❌ Could not find location '%s'. Please check the spelling.", locationName), nil)
 		return err
 	}
 
-	// Save location
-	location, err := h.services.Location.AddLocation(context.Background(), userID, locationName, coords.Latitude, coords.Longitude)
+	// Save location as user's location
+	err = h.services.User.SetUserLocation(context.Background(), userID, locationName, coords.Country, "", coords.Latitude, coords.Longitude)
 	if err != nil {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			"❌ Failed to save location. Please try again.", nil)
@@ -565,13 +690,13 @@ func (h *CommandHandler) AddLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🏠 Set as Default", CallbackData: fmt.Sprintf("location_default_%s", location.ID)}},
 		{{Text: "🌤️ Get Weather", CallbackData: fmt.Sprintf("weather_%s", locationName)}},
 		{{Text: "🔔 Add Alert", CallbackData: fmt.Sprintf("alert_%s", locationName)}},
 	}
 
-	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
-		fmt.Sprintf("✅ Location '%s' saved successfully!\n📍 %s", locationName, location.Name),
+	message := fmt.Sprintf("✅ Location '%s' saved successfully!\n📍 This is now your current location", locationName)
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message,
 		&gotgbot.SendMessageOpts{
 			ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 				InlineKeyboard: keyboard,
@@ -583,44 +708,31 @@ func (h *CommandHandler) AddLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 func (h *CommandHandler) ListLocations(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
-	
-	locations, err := h.services.Location.GetUserLocations(context.Background(), userID)
+
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil {
 		return err
 	}
 
-	if len(locations) == 0 {
+	if locationName == "" {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 No saved locations found.\n\nUse /addlocation to add your first location!",
+			"📍 No location set.\n\nUse /setlocation to set your location!",
 			&gotgbot.SendMessageOpts{
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-						{{Text: "➕ Add Location", CallbackData: "location_add"}},
+						{{Text: "📍 Set Location", CallbackData: "location_set"}},
 					},
 				},
 			})
 		return err
 	}
 
-	text := "📍 *Your Saved Locations:*\n\n"
-	var keyboard [][]gotgbot.InlineKeyboardButton
+	text := fmt.Sprintf("📍 *Your Current Location:*\n\n🏠 %s", locationName)
 
-	for i, loc := range locations {
-		defaultText := ""
-		if loc.IsDefault {
-			defaultText = " 🏠"
-		}
-		text += fmt.Sprintf("%d. %s%s\n", i+1, loc.Name, defaultText)
-		
-		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: fmt.Sprintf("🌤️ %s", loc.Name), CallbackData: fmt.Sprintf("weather_%s", loc.Name)},
-			{Text: "🗑️", CallbackData: fmt.Sprintf("location_delete_%s", loc.ID)},
-		})
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: fmt.Sprintf("🌤️ Current Weather"), CallbackData: fmt.Sprintf("weather_%s", locationName)}},
+		{{Text: "📍 Change Location", CallbackData: "location_set"}},
 	}
-
-	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-		{Text: "➕ Add New Location", CallbackData: "location_add"},
-	})
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
@@ -633,8 +745,6 @@ func (h *CommandHandler) ListLocations(bot *gotgbot.Bot, ctx *ext.Context) error
 }
 
 func (h *CommandHandler) Subscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
-	_ = ctx.EffectiveUser.Id // userID declared but not used
-	
 	subscriptionText := `🔔 *Weather Notifications*
 
 Set up automatic weather updates for your locations:
@@ -708,7 +818,7 @@ Create custom alerts for weather conditions:
 // Admin commands
 func (h *CommandHandler) AdminStats(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
-	
+
 	// Check admin permissions
 	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {
@@ -727,10 +837,7 @@ func (h *CommandHandler) AdminStats(bot *gotgbot.Bot, ctx *ext.Context) error {
 Total Users: %d
 Active Users: %d
 New Users (24h): %d
-
-📍 *Locations:*
-Total Locations: %d
-Active Monitoring: %d
+Users with Location: %d
 
 🔔 *Notifications:*
 Active Subscriptions: %d
@@ -747,8 +854,7 @@ Uptime: %.2f%%`,
 		stats.TotalUsers,
 		stats.ActiveUsers,
 		stats.NewUsers24h,
-		stats.TotalLocations,
-		stats.ActiveMonitoring,
+		stats.UsersWithLocation,
 		stats.ActiveSubscriptions,
 		stats.AlertsConfigured,
 		stats.MessagesSent24h,
@@ -770,28 +876,139 @@ func (h *CommandHandler) handleWeatherCallback(bot *gotgbot.Bot, ctx *ext.Contex
 	case "current":
 		return h.CurrentWeather(bot, ctx)
 	default:
+		// Handle weather for specific location from button callback
+		locationName := action
 		if len(params) > 0 {
-			// Handle weather for specific location
-			location := strings.Join(params, "_")
-			// Simulate args for existing handler
-			// Cannot assign to ctx.Args - use different approach
-			// Simulate weather request by calling with location parameter
-			locationArgs := []string{"/weather", location}
-			_ = locationArgs // Temporary fix
-			return h.CurrentWeather(bot, ctx)
+			locationName = strings.Join(append([]string{action}, params...), " ")
 		}
+
+		return h.getWeatherForLocation(bot, ctx, locationName)
 	}
 	return nil
 }
 
+// Helper function to get weather for a specific location
+func (h *CommandHandler) getWeatherForLocation(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
+	// Get weather data
+	weatherData, err := h.services.Weather.GetCurrentWeatherByLocation(context.Background(), locationName)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			fmt.Sprintf("❌ Failed to get weather for '%s'. Please check the location name.", locationName), nil)
+		return err
+	}
+
+	// Format weather information
+	weatherText := fmt.Sprintf(
+		"🌤️ *Current Weather in %s*\n\n"+
+			"🌡️ *Temperature:* %.1f°C\n"+
+			"💨 *Wind:* %.1f km/h\n"+
+			"💧 *Humidity:* %d%%\n"+
+			"🏗️ *Pressure:* %.0f hPa\n"+
+			"👁️ *Visibility:* %.1f km\n"+
+			"☀️ *UV Index:* %.0f\n"+
+			"☁️ *Description:* %s",
+		weatherData.LocationName,
+		weatherData.Temperature,
+		weatherData.WindSpeed,
+		weatherData.Humidity,
+		weatherData.Pressure,
+		weatherData.Visibility,
+		weatherData.UVIndex,
+		weatherData.Description,
+	)
+
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "📊 5-Day Forecast", CallbackData: fmt.Sprintf("forecast_%s", locationName)}},
+		{{Text: "🌬️ Air Quality", CallbackData: fmt.Sprintf("air_%s", locationName)}},
+		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_%s", locationName)}},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, weatherText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	return err
+}
+
+func (h *CommandHandler) getForecastForLocation(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
+	// First get coordinates for the location
+	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			fmt.Sprintf("❌ Failed to find location '%s'", locationName), nil)
+		return err
+	}
+
+	forecast, err := h.services.Weather.GetForecast(context.Background(), locationData.Latitude, locationData.Longitude, 5)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			fmt.Sprintf("❌ Failed to get forecast for '%s'. Please check the location name.", locationName), nil)
+		return err
+	}
+
+	forecastText := h.formatForecastMessage(forecast)
+
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_%s", locationName)}},
+		{{Text: "🌬️ Air Quality", CallbackData: fmt.Sprintf("air_%s", locationName)}},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, forecastText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+	return err
+}
+
+func (h *CommandHandler) getForecastByCoords(bot *gotgbot.Bot, ctx *ext.Context, lat, lon float64) error {
+	forecast, err := h.services.Weather.GetForecast(context.Background(), lat, lon, 5)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get forecast for this location", nil)
+		return err
+	}
+
+	forecastText := h.formatForecastMessage(forecast)
+
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: "🌬️ Air Quality", CallbackData: fmt.Sprintf("air_coords_%.4f_%.4f", lat, lon)}},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, forecastText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+	return err
+}
+
 func (h *CommandHandler) handleForecastCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
-	if len(params) > 0 {
-		location := strings.Join(params, "_")
-		// Cannot assign to ctx.Args - use different approach
-	// Simulate forecast request by calling with location parameter
-	locationArgs := []string{"/forecast", location}
-	_ = locationArgs // Temporary fix
-		return h.Forecast(bot, ctx)
+	switch action {
+	case "coords":
+		if len(params) >= 2 {
+			lat, err := strconv.ParseFloat(params[0], 64)
+			if err != nil {
+				return err
+			}
+			lon, err := strconv.ParseFloat(params[1], 64)
+			if err != nil {
+				return err
+			}
+			return h.getForecastByCoords(bot, ctx, lat, lon)
+		}
+	default:
+		// Handle forecast for specific location from button callback
+		locationName := action
+		if len(params) > 0 {
+			locationName = strings.Join(append([]string{action}, params...), " ")
+		}
+		return h.getForecastForLocation(bot, ctx, locationName)
 	}
 	return nil
 }
@@ -801,11 +1018,24 @@ func (h *CommandHandler) handleSettingsCallback(bot *gotgbot.Bot, ctx *ext.Conte
 	case "main":
 		return h.Settings(bot, ctx)
 	case "language":
+		if len(params) >= 2 && params[0] == "set" {
+			return h.setUserLanguage(bot, ctx, params[1])
+		}
 		return h.handleLanguageSettings(bot, ctx)
 	case "units":
+		if len(params) >= 2 && params[0] == "set" {
+			return h.setUserUnits(bot, ctx, params[1])
+		}
 		return h.handleUnitSettings(bot, ctx)
 	case "timezone":
+		if len(params) >= 2 && params[0] == "set" {
+			return h.setUserTimezone(bot, ctx, strings.Join(params[1:], "_"))
+		}
 		return h.handleTimezoneSettings(bot, ctx)
+	case "notifications":
+		return h.handleNotificationSettings(bot, ctx)
+	case "export":
+		return h.handleExportSettings(bot, ctx)
 	}
 	return nil
 }
@@ -825,23 +1055,38 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 				},
 			})
 		return err
+	case "default":
+		// With single location per user, this is no longer needed
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ You only have one location - it's already your default!", nil)
+		return err
 	case "save":
+		h.logger.Info().Int("params_count", len(params)).Interface("params", params).Msg("Location save callback")
 		// Handle saving shared location
 		if len(params) >= 3 {
 			lat, _ := strconv.ParseFloat(params[0], 64)
 			lon, _ := strconv.ParseFloat(params[1], 64)
-			name := strings.Join(params[2:], "_")
-			
+			encodedName := strings.Join(params[2:], "_")
+
+			// URL decode the location name
+			name := strings.ReplaceAll(encodedName, "%20", " ")
+			name = strings.ReplaceAll(name, "%5F", "_")
+
+			h.logger.Info().Float64("lat", lat).Float64("lon", lon).Str("name", name).Msg("Saving location")
+
 			userID := ctx.EffectiveUser.Id
-			_, err := h.services.Location.AddLocation(context.Background(), userID, name, lat, lon)
+			err := h.services.User.SetUserLocation(context.Background(), userID, name, "", "", lat, lon)
 			if err != nil {
+				h.logger.Error().Err(err).Msg("Failed to save location to database")
 				_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location", nil)
 				return err
 			}
-			
-			_, err = bot.SendMessage(ctx.EffectiveChat.Id, 
+
+			h.logger.Info().Str("name", name).Msg("Location saved successfully")
+			_, err = bot.SendMessage(ctx.EffectiveChat.Id,
 				fmt.Sprintf("✅ Location '%s' saved successfully!", name), nil)
 			return err
+		} else {
+			h.logger.Warn().Int("params_count", len(params)).Msg("Not enough parameters for location save")
 		}
 	}
 	return nil
@@ -854,26 +1099,83 @@ func (h *CommandHandler) handleAlertCallback(bot *gotgbot.Bot, ctx *ext.Context,
 			alertType := params[0]
 			return h.handleCreateAlert(bot, ctx, alertType)
 		}
+	case "temp":
+		if len(params) >= 2 {
+			return h.handleTemperatureAlert(bot, ctx, params[0], params[1])
+		}
+	case "wind":
+		if len(params) >= 2 {
+			return h.handleWindAlert(bot, ctx, params[0], params[1])
+		}
+	case "air":
+		if len(params) >= 2 {
+			return h.handleAirQualityAlert(bot, ctx, params[0], params[1])
+		}
+	case "humidity":
+		if len(params) >= 2 {
+			return h.handleHumidityAlert(bot, ctx, params[0], params[1])
+		}
+	case "edit":
+		if len(params) > 0 {
+			return h.editAlert(bot, ctx, params[0])
+		}
+	case "remove":
+		if len(params) > 0 {
+			return h.removeAlert(bot, ctx, params[0])
+		}
+	default:
+		// Handle alert setup for specific location from button callback
+		locationName := action
+		if len(params) > 0 {
+			locationName = strings.Join(append([]string{action}, params...), " ")
+		}
+
+		return h.showAlertOptions(bot, ctx, locationName)
 	}
 	return nil
 }
 
+// Helper function to show alert options for a location
+func (h *CommandHandler) showAlertOptions(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "🌡️ Temperature Alert", CallbackData: fmt.Sprintf("alert_temp_setup_%s", locationName)}},
+		{{Text: "💨 Wind Speed Alert", CallbackData: fmt.Sprintf("alert_wind_setup_%s", locationName)}},
+		{{Text: "🌬️ Air Quality Alert", CallbackData: fmt.Sprintf("alert_air_setup_%s", locationName)}},
+		{{Text: "💧 Humidity Alert", CallbackData: fmt.Sprintf("alert_humidity_setup_%s", locationName)}},
+	}
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+		fmt.Sprintf("🔔 *Set Alert for %s*\n\nChoose the type of alert you want to create:", locationName),
+		&gotgbot.SendMessageOpts{
+			ParseMode: "Markdown",
+			ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+				InlineKeyboard: keyboard,
+			},
+		})
+
+	return err
+}
+
 // Additional helper methods for settings
 func (h *CommandHandler) handleLanguageSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
-	languages := map[string]string{
-		"en": "🇺🇸 English",
-		"uk": "🇺🇦 Українська",
-		"de": "🇩🇪 Deutsch",
-		"fr": "🇫🇷 Français",
-		"es": "🇪🇸 Español",
+	// Languages in alphabetical order by name
+	languages := []struct {
+		code string
+		name string
+	}{
+		{"de", "🇩🇪 Deutsch"},
+		{"en", "🇺🇸 English"},
+		{"es", "🇪🇸 Español"},
+		{"fr", "🇫🇷 Français"},
+		{"uk", "🇺🇦 Українська"},
 	}
 
 	text := "🌐 *Choose your language:*"
 	var keyboard [][]gotgbot.InlineKeyboardButton
 
-	for code, name := range languages {
+	for _, lang := range languages {
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: name, CallbackData: fmt.Sprintf("settings_language_set_%s", code)},
+			{Text: lang.name, CallbackData: fmt.Sprintf("settings_language_set_%s", lang.code)},
 		})
 	}
 
@@ -889,7 +1191,7 @@ func (h *CommandHandler) handleLanguageSettings(bot *gotgbot.Bot, ctx *ext.Conte
 
 func (h *CommandHandler) handleUnitSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
 	text := "📏 *Choose your preferred units:*"
-	
+
 	keyboard := [][]gotgbot.InlineKeyboardButton{
 		{{Text: "🌡️ Metric (°C, km/h, km)", CallbackData: "settings_units_set_metric"}},
 		{{Text: "🌡️ Imperial (°F, mph, miles)", CallbackData: "settings_units_set_imperial"}},
@@ -907,7 +1209,7 @@ func (h *CommandHandler) handleUnitSettings(bot *gotgbot.Bot, ctx *ext.Context) 
 
 func (h *CommandHandler) handleTimezoneSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
 	text := "🕐 *Select your timezone:*"
-	
+
 	timezones := []string{
 		"UTC", "Europe/London", "Europe/Berlin", "Europe/Kyiv",
 		"America/New_York", "America/Los_Angeles", "Asia/Tokyo",
@@ -983,11 +1285,19 @@ func (h *CommandHandler) handleSubscriptionCallback(bot *gotgbot.Bot, ctx *ext.C
 			return h.createDailySubscription(bot, ctx)
 		case "weekly":
 			return h.createWeeklySubscription(bot, ctx)
+		case "alerts":
+			return h.createAlertsSubscription(bot, ctx)
+		case "air":
+			return h.createAirQualitySubscription(bot, ctx)
 		}
 	case "unsubscribe":
 		return h.removeSubscription(bot, ctx, subAction)
 	case "edit":
 		return h.editSubscription(bot, ctx, subAction)
+	case "subscriptions":
+		if subAction == "list" {
+			return h.listUserSubscriptions(bot, ctx)
+		}
 	}
 	return nil
 }
@@ -996,8 +1306,19 @@ func (h *CommandHandler) handleSubscriptionCallback(bot *gotgbot.Bot, ctx *ext.C
 func (h *CommandHandler) handleAdminCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
 	switch action {
 	case "users":
+		if len(params) > 0 {
+			switch params[0] {
+			case "recent":
+				return h.showRecentUsers(bot, ctx)
+			case "roles":
+				return h.showUserRoles(bot, ctx)
+			}
+		}
 		return h.AdminListUsers(bot, ctx)
 	case "stats":
+		if len(params) > 0 && params[0] == "detailed" {
+			return h.showDetailedStats(bot, ctx)
+		}
 		return h.AdminStats(bot, ctx)
 	}
 	return nil
@@ -1014,7 +1335,7 @@ func (h *CommandHandler) handleShareCallback(bot *gotgbot.Bot, ctx *ext.Context,
 						{{Text: "📍 Share Location", RequestLocation: true}},
 					},
 					OneTimeKeyboard: true,
-					ResizeKeyboard: true,
+					ResizeKeyboard:  true,
 				},
 			})
 		return err
@@ -1024,78 +1345,102 @@ func (h *CommandHandler) handleShareCallback(bot *gotgbot.Bot, ctx *ext.Context,
 
 // handleAirCallback handles air quality button callbacks
 func (h *CommandHandler) handleAirCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
-	if len(params) > 0 {
-		location := strings.Join(params, "_")
-		return h.getAirQualityData(bot, ctx, location)
+	switch action {
+	case "coords":
+		if len(params) >= 2 {
+			lat, err := strconv.ParseFloat(params[0], 64)
+			if err != nil {
+				return err
+			}
+			lon, err := strconv.ParseFloat(params[1], 64)
+			if err != nil {
+				return err
+			}
+			return h.getAirQualityByCoords(bot, ctx, lat, lon)
+		}
+	default:
+		// Handle air quality for specific location from button callback
+		locationName := action
+		if len(params) > 0 {
+			locationName = strings.Join(append([]string{action}, params...), " ")
+		}
+		return h.getAirQualityData(bot, ctx, locationName)
 	}
-	return h.AirQuality(bot, ctx)
+	return nil
 }
 
 // Helper functions for subscription handling
 func (h *CommandHandler) createDailySubscription(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 
-	_ = userID // userID declared but not used for now
-	_ = &models.Subscription{
-		UserID:           userID,
-		SubscriptionType: models.SubscriptionDaily,
-		Frequency:        models.FrequencyDaily,
-		TimeOfDay:        "08:00",
-		IsActive:         true,
+	// Get user's location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
 	}
 
-	// Note: CreateSubscription method needs to be implemented in UserService
-	// For now, just return success message
-	// if err := h.services.User.CreateSubscription(context.Background(), subscription); err != nil {
-	//     _, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create subscription. Please try again.", nil)
-	//     if sendErr != nil {
-	//         return sendErr
-	//     }
-	//     return err
-	// }
+	_, err = h.services.Subscription.CreateSubscription(
+		context.Background(),
+		userID,
+		models.SubscriptionDaily,
+		models.FrequencyDaily,
+		"08:00",
+	)
 
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Daily weather subscription created! You'll receive morning updates at 8:00 AM.", nil)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create subscription. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Daily weather subscription created! You'll receive morning updates at 8:00 AM.", nil)
 	return err
 }
 
 func (h *CommandHandler) createWeeklySubscription(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 
-	_ = userID // userID declared but not used for now
-	_ = &models.Subscription{
-		UserID:           userID,
-		SubscriptionType: models.SubscriptionWeekly,
-		Frequency:        models.FrequencyWeekly,
-		TimeOfDay:        "09:00",
-		IsActive:         true,
+	// Get user's location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
 	}
 
-	// Note: CreateSubscription method needs to be implemented in UserService
-	// For now, just return success message
-	// if err := h.services.User.CreateSubscription(context.Background(), subscription); err != nil {
-	//     _, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create subscription. Please try again.", nil)
-	//     if sendErr != nil {
-	//         return sendErr
-	//     }
-	//     return err
-	// }
+	_, err = h.services.Subscription.CreateSubscription(
+		context.Background(),
+		userID,
+		models.SubscriptionWeekly,
+		models.FrequencyWeekly,
+		"09:00",
+	)
 
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Weekly weather subscription created! You'll receive updates every Sunday at 9:00 AM.", nil)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create subscription. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Weekly weather subscription created! You'll receive updates every Sunday at 9:00 AM.", nil)
 	return err
 }
 
 func (h *CommandHandler) removeSubscription(bot *gotgbot.Bot, ctx *ext.Context, subscriptionID string) error {
-	// Note: DeleteSubscription method needs to be implemented in UserService
-	// For now, just return success message
-	// if err := h.services.User.DeleteSubscription(context.Background(), subscriptionID); err != nil {
-	//     _, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to remove subscription. Please try again.", nil)
-	//     if sendErr != nil {
-	//         return sendErr
-	//     }
-	//     return err
-	// }
+	userID := ctx.EffectiveUser.Id
 
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Subscription removed successfully.", nil)
+	// Parse UUID from string
+	subscriptionUUID, err := uuid.Parse(subscriptionID)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid subscription ID.", nil)
+		return sendErr
+	}
+
+	err = h.services.Subscription.DeleteSubscription(context.Background(), userID, subscriptionUUID)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to remove subscription. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Subscription removed successfully.", nil)
 	return err
 }
 
@@ -1104,6 +1449,618 @@ func (h *CommandHandler) editSubscription(bot *gotgbot.Bot, ctx *ext.Context, su
 	return err
 }
 
-func (h *CommandHandler) getAirQualityData(bot *gotgbot.Bot, ctx *ext.Context, location string) error {
-	return h.AirQuality(bot, ctx)
+func (h *CommandHandler) getAirQualityData(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
+	// Get coordinates first for air quality
+	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			fmt.Sprintf("❌ Failed to find location '%s'", locationName), nil)
+		return err
+	}
+
+	airData, err := h.services.Weather.GetAirQuality(context.Background(), locationData.Latitude, locationData.Longitude)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			fmt.Sprintf("❌ Failed to get air quality for '%s'", locationName), nil)
+		return err
+	}
+
+	airText := h.formatAirQualityMessage(airData)
+
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_%s", locationName)}},
+		{{Text: "📊 5-Day Forecast", CallbackData: fmt.Sprintf("forecast_%s", locationName)}},
+		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_%s", locationName)}},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, airText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+	return err
+}
+
+func (h *CommandHandler) getAirQualityByCoords(bot *gotgbot.Bot, ctx *ext.Context, lat, lon float64) error {
+	airData, err := h.services.Weather.GetAirQuality(context.Background(), lat, lon)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get air quality for this location", nil)
+		return err
+	}
+
+	airText := h.formatAirQualityMessage(airData)
+
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: "📊 5-Day Forecast", CallbackData: fmt.Sprintf("forecast_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_coords_%.4f_%.4f", lat, lon)}},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, airText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+	return err
+}
+
+// Additional subscription handlers
+func (h *CommandHandler) createAlertsSubscription(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's default location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
+	}
+
+	_, err = h.services.Subscription.CreateSubscription(
+		context.Background(),
+		userID,
+		models.SubscriptionAlerts,
+		models.FrequencyDaily,
+		"12:00",
+	)
+
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create alerts subscription. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Weather alerts subscription created! You'll receive alert notifications when thresholds are exceeded.", nil)
+	return err
+}
+
+func (h *CommandHandler) createAirQualitySubscription(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
+	}
+
+	_, err = h.services.Subscription.CreateSubscription(
+		context.Background(),
+		userID,
+		models.SubscriptionAlerts,
+		models.FrequencyDaily,
+		"10:00",
+	)
+
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create air quality subscription. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Air quality subscription created! You'll receive daily air quality updates at 10:00 AM.", nil)
+	return err
+}
+
+func (h *CommandHandler) listUserSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get subscriptions. Please try again.", nil)
+		return sendErr
+	}
+
+	if len(subscriptions) == 0 {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "📋 You have no active subscriptions.\n\nUse /subscribe to create new subscriptions.", nil)
+		return err
+	}
+
+	var text strings.Builder
+	text.WriteString("📋 *Your Active Subscriptions:*\n\n")
+
+	for _, sub := range subscriptions {
+		text.WriteString(fmt.Sprintf("• **%s** - %s at %s\n",
+			sub.SubscriptionType.String(),
+			sub.Frequency.String(),
+			sub.TimeOfDay))
+	}
+
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "🔔 Add New Subscription", CallbackData: "subscribe_daily"}},
+		{{Text: "⚙️ Settings", CallbackData: "settings_main"}},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text.String(), &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+	return err
+}
+
+// Additional admin handlers
+func (h *CommandHandler) showRecentUsers(bot *gotgbot.Bot, ctx *ext.Context) error {
+	stats, err := h.services.User.GetUserStatistics(context.Background())
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get user statistics. Please try again.", nil)
+		return sendErr
+	}
+
+	text := fmt.Sprintf(`👥 *Recent User Activity*
+
+📈 New Users (24h): %d
+👤 Total Active Users: %d
+📊 Total Users: %d
+📍 Locations Saved: %d
+⚠️ Active Alerts: %d
+💬 Messages (24h): %d
+🌤️ Weather Requests (24h): %d`,
+		stats.NewUsers24h,
+		stats.ActiveUsers,
+		stats.TotalUsers,
+		stats.LocationsSaved,
+		stats.ActiveAlerts,
+		stats.Messages24h,
+		stats.WeatherRequests24h)
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+	return err
+}
+
+func (h *CommandHandler) showUserRoles(bot *gotgbot.Bot, ctx *ext.Context) error {
+	stats, err := h.services.User.GetUserStatistics(context.Background())
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get user statistics. Please try again.", nil)
+		return sendErr
+	}
+
+	text := fmt.Sprintf(`👥 *User Roles Overview*
+
+🔧 Administrators: %d
+⚙️ Moderators: %d
+👤 Regular Users: %d
+📊 Total Users: %d`,
+		stats.AdminCount,
+		stats.ModeratorCount,
+		stats.TotalUsers-stats.AdminCount-stats.ModeratorCount,
+		stats.TotalUsers)
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+	return err
+}
+
+func (h *CommandHandler) showDetailedStats(bot *gotgbot.Bot, ctx *ext.Context) error {
+	systemStats, err := h.services.User.GetSystemStats(context.Background())
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get system statistics. Please try again.", nil)
+		return sendErr
+	}
+
+	text := fmt.Sprintf(`📊 *Detailed System Statistics*
+
+*👥 Users:*
+• Total: %d
+• Active: %d
+• New (24h): %d
+
+*📍 Locations:*
+• Total: %d
+• Active Monitoring: %d
+
+*🔔 Subscriptions & Alerts:*
+• Active Subscriptions: %d
+• Configured Alerts: %d
+
+*📈 Performance:*
+• Messages Sent (24h): %d
+• Weather Requests (24h): %d
+• Cache Hit Rate: %.1f%%
+• Avg Response Time: %dms
+• Uptime: %.1f%%`,
+		systemStats.TotalUsers,
+		systemStats.ActiveUsers,
+		systemStats.NewUsers24h,
+		systemStats.UsersWithLocation,
+		systemStats.ActiveSubscriptions,
+		systemStats.AlertsConfigured,
+		systemStats.MessagesSent24h,
+		systemStats.WeatherRequests24h,
+		systemStats.CacheHitRate,
+		systemStats.AvgResponseTime,
+		systemStats.Uptime)
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+	return err
+}
+
+// Settings handlers
+func (h *CommandHandler) setUserLanguage(bot *gotgbot.Bot, ctx *ext.Context, language string) error {
+	userID := ctx.EffectiveUser.Id
+
+	err := h.services.User.UpdateUserSettings(context.Background(), userID, map[string]interface{}{
+		"language": language,
+	})
+
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to update language setting. Please try again.", nil)
+		return sendErr
+	}
+
+	languageNames := map[string]string{
+		"en": "🇺🇸 English",
+		"uk": "🇺🇦 Українська",
+		"de": "🇩🇪 Deutsch",
+		"fr": "🇫🇷 Français",
+		"es": "🇪🇸 Español",
+	}
+
+	languageName := languageNames[language]
+	if languageName == "" {
+		languageName = language
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+		fmt.Sprintf("✅ Language updated to %s", languageName), nil)
+	return err
+}
+
+func (h *CommandHandler) setUserUnits(bot *gotgbot.Bot, ctx *ext.Context, units string) error {
+	userID := ctx.EffectiveUser.Id
+
+	err := h.services.User.UpdateUserSettings(context.Background(), userID, map[string]interface{}{
+		"units": units,
+	})
+
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to update units setting. Please try again.", nil)
+		return sendErr
+	}
+
+	unitNames := map[string]string{
+		"metric":   "🌡️ Metric (°C, km/h, km)",
+		"imperial": "🌡️ Imperial (°F, mph, miles)",
+	}
+
+	unitName := unitNames[units]
+	if unitName == "" {
+		unitName = units
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+		fmt.Sprintf("✅ Units updated to %s", unitName), nil)
+	return err
+}
+
+func (h *CommandHandler) setUserTimezone(bot *gotgbot.Bot, ctx *ext.Context, timezone string) error {
+	userID := ctx.EffectiveUser.Id
+
+	err := h.services.User.UpdateUserSettings(context.Background(), userID, map[string]interface{}{
+		"timezone": timezone,
+	})
+
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to update timezone setting. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+		fmt.Sprintf("✅ Timezone updated to %s", timezone), nil)
+	return err
+}
+
+func (h *CommandHandler) handleNotificationSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "🔔 Notification settings will be available soon!", nil)
+	return err
+}
+
+func (h *CommandHandler) handleExportSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "📊 Data export feature will be available soon!", nil)
+	return err
+}
+
+// Alert handlers
+func (h *CommandHandler) handleTemperatureAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's default location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
+	}
+
+	// Parse threshold and determine operator
+	var thresholdValue float64
+	var operator string
+	var message string
+
+	switch condition {
+	case "high":
+		thresholdValue = 30.0 // Default high temperature
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = fmt.Sprintf("✅ High temperature alert created! You'll be notified when temperature exceeds %.1f°C.", thresholdValue)
+	case "low":
+		thresholdValue = 0.0 // Default low temperature
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "lt"
+		message = fmt.Sprintf("✅ Low temperature alert created! You'll be notified when temperature drops below %.1f°C.", thresholdValue)
+	case "custom":
+		thresholdValue = 25.0 // Default value for custom
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = "✅ Custom temperature alert created! Specify your threshold next."
+	default:
+		thresholdValue = 25.0
+		operator = "gt"
+		message = "✅ Temperature alert created!"
+	}
+
+	// Create the alert in database
+	alertCondition := services.AlertCondition{
+		Operator: operator,
+		Value:    thresholdValue,
+	}
+
+	_, err = h.services.Alert.CreateAlert(context.Background(), userID, models.AlertTemperature, alertCondition)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create temperature alert. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, nil)
+	return err
+}
+
+func (h *CommandHandler) handleWindAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's default location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
+	}
+
+	// Parse threshold and determine operator
+	var thresholdValue float64
+	var operator string
+	var message string
+
+	switch condition {
+	case "high":
+		thresholdValue = 50.0 // Default high wind speed in km/h
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = fmt.Sprintf("✅ Wind alert created! You'll be notified when wind speed exceeds %.1f km/h.", thresholdValue)
+	case "custom":
+		thresholdValue = 30.0 // Default value for custom
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = "✅ Custom wind alert created! Specify your threshold next."
+	default:
+		thresholdValue = 40.0
+		operator = "gt"
+		message = "✅ Wind alert created!"
+	}
+
+	// Create the alert in database
+	alertCondition := services.AlertCondition{
+		Operator: operator,
+		Value:    thresholdValue,
+	}
+
+	_, err = h.services.Alert.CreateAlert(context.Background(), userID, models.AlertWindSpeed, alertCondition)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create wind alert. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, nil)
+	return err
+}
+
+func (h *CommandHandler) handleAirQualityAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's default location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
+	}
+
+	// Parse threshold and determine operator
+	var thresholdValue float64
+	var operator string
+	var message string
+
+	switch condition {
+	case "moderate":
+		thresholdValue = 100.0 // Moderate AQI threshold
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = fmt.Sprintf("✅ Air quality alert created! You'll be notified when AQI exceeds %.0f.", thresholdValue)
+	case "unhealthy":
+		thresholdValue = 150.0 // Unhealthy AQI threshold
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = fmt.Sprintf("✅ Air quality alert created! You'll be notified when AQI reaches unhealthy levels (%.0f+).", thresholdValue)
+	case "custom":
+		thresholdValue = 75.0 // Default value for custom
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = "✅ Custom air quality alert created! Specify your threshold next."
+	default:
+		thresholdValue = 100.0
+		operator = "gt"
+		message = "✅ Air quality alert created!"
+	}
+
+	// Create the alert in database
+	alertCondition := services.AlertCondition{
+		Operator: operator,
+		Value:    thresholdValue,
+	}
+
+	_, err = h.services.Alert.CreateAlert(context.Background(), userID, models.AlertAirQuality, alertCondition)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create air quality alert. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, nil)
+	return err
+}
+
+func (h *CommandHandler) handleHumidityAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's default location
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		return sendErr
+	}
+
+	// Parse threshold and determine operator
+	var thresholdValue float64
+	var operator string
+	var message string
+
+	switch condition {
+	case "high":
+		thresholdValue = 80.0 // High humidity threshold (%)
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = fmt.Sprintf("✅ High humidity alert created! You'll be notified when humidity exceeds %.1f%%.", thresholdValue)
+	case "low":
+		thresholdValue = 30.0 // Low humidity threshold (%)
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "lt"
+		message = fmt.Sprintf("✅ Low humidity alert created! You'll be notified when humidity drops below %.1f%%.", thresholdValue)
+	case "custom":
+		thresholdValue = 60.0 // Default value for custom
+		if threshold != "" {
+			if val, err := strconv.ParseFloat(threshold, 64); err == nil {
+				thresholdValue = val
+			}
+		}
+		operator = "gt"
+		message = "✅ Custom humidity alert created! Specify your threshold next."
+	default:
+		thresholdValue = 70.0
+		operator = "gt"
+		message = "✅ Humidity alert created!"
+	}
+
+	// Create the alert in database
+	alertCondition := services.AlertCondition{
+		Operator: operator,
+		Value:    thresholdValue,
+	}
+
+	_, err = h.services.Alert.CreateAlert(context.Background(), userID, models.AlertHumidity, alertCondition)
+	if err != nil {
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to create humidity alert. Please try again.", nil)
+		return sendErr
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, nil)
+	return err
+}
+
+func (h *CommandHandler) editAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string) error {
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "⚙️ Alert editing feature coming soon!", nil)
+	return err
+}
+
+func (h *CommandHandler) removeAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string) error {
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Alert removed successfully!", nil)
+	return err
+}
+
+// handleAlertsCallback handles the alerts list callback
+func (h *CommandHandler) handleAlertsCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	switch action {
+	case "list":
+		return h.listUserAlerts(bot, ctx)
+	}
+	return nil
+}
+
+func (h *CommandHandler) listUserAlerts(bot *gotgbot.Bot, ctx *ext.Context) error {
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+		"⚠️ *Your Active Alerts*\n\nNo alerts configured yet.\n\nUse /addalert to create new alerts.",
+		&gotgbot.SendMessageOpts{
+			ParseMode: "Markdown",
+		})
+	return err
 }

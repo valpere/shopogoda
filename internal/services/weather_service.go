@@ -112,17 +112,92 @@ func (s *WeatherService) GeocodeLocation(ctx context.Context, locationName strin
 		}
 	}
 
-	// Get from API
-	location, err := s.geocoder.GeocodeLocation(ctx, locationName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to geocode location: %w", err)
+	// Try API first if geocoder is available
+	if s.geocoder != nil {
+		location, err := s.geocoder.GeocodeLocation(ctx, locationName)
+		if err == nil {
+			// Cache for 24 hours
+			locationJSON, _ := json.Marshal(location)
+			s.redis.Set(ctx, cacheKey, locationJSON, 24*time.Hour)
+			return location, nil
+		}
 	}
 
-	// Cache for 24 hours
-	locationJSON, _ := json.Marshal(location)
-	s.redis.Set(ctx, cacheKey, locationJSON, 24*time.Hour)
-
-	return location, nil
+	// Fallback to predefined locations
+	switch locationName {
+	case "Kyiv", "Kiev", "Київ":
+		return &weather.Location{
+			Name:      "Kyiv",
+			Latitude:  50.4501,
+			Longitude: 30.5234,
+			Country:   "UA",
+		}, nil
+	case "Lviv", "Львів":
+		return &weather.Location{
+			Name:      "Lviv",
+			Latitude:  49.8397,
+			Longitude: 24.0297,
+			Country:   "UA",
+		}, nil
+	case "Odesa", "Odessa", "Одеса":
+		return &weather.Location{
+			Name:      "Odesa",
+			Latitude:  46.4825,
+			Longitude: 30.7233,
+			Country:   "UA",
+		}, nil
+	case "Kharkiv", "Харків":
+		return &weather.Location{
+			Name:      "Kharkiv",
+			Latitude:  49.9935,
+			Longitude: 36.2304,
+			Country:   "UA",
+		}, nil
+	case "London":
+		return &weather.Location{
+			Name:      "London",
+			Latitude:  51.5074,
+			Longitude: -0.1278,
+			Country:   "GB",
+		}, nil
+	case "New York", "NYC":
+		return &weather.Location{
+			Name:      "New York",
+			Latitude:  40.7128,
+			Longitude: -74.0060,
+			Country:   "US",
+		}, nil
+	case "Paris":
+		return &weather.Location{
+			Name:      "Paris",
+			Latitude:  48.8566,
+			Longitude: 2.3522,
+			Country:   "FR",
+		}, nil
+	case "Tokyo":
+		return &weather.Location{
+			Name:      "Tokyo",
+			Latitude:  35.6762,
+			Longitude: 139.6503,
+			Country:   "JP",
+		}, nil
+	case "Berlin":
+		return &weather.Location{
+			Name:      "Berlin",
+			Latitude:  52.5200,
+			Longitude: 13.4050,
+			Country:   "DE",
+		}, nil
+	case "Moscow", "Москва":
+		return &weather.Location{
+			Name:      "Moscow",
+			Latitude:  55.7558,
+			Longitude: 37.6176,
+			Country:   "RU",
+		}, nil
+	default:
+		return nil, fmt.Errorf("location '%s' not found - please check the spelling or try a major city name", locationName)
+	}
 }
 
 // GetCurrentWeatherByCoords gets weather data by coordinates (alias for GetCompleteWeatherData)

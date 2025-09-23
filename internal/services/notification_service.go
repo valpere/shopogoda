@@ -44,12 +44,17 @@ func NewNotificationService(config *config.IntegrationsConfig, logger *zerolog.L
     }
 }
 
-func (s *NotificationService) SendSlackAlert(alert *models.EnvironmentalAlert, location *models.Location) error {
+func (s *NotificationService) SendSlackAlert(alert *models.EnvironmentalAlert, user *models.User) error {
     if s.config.SlackWebhookURL == "" {
         return nil // Slack not configured
     }
 
     color := s.getSeverityColor(alert.Severity)
+
+    locationName := user.LocationName
+    if locationName == "" {
+        locationName = "Unknown Location"
+    }
 
     message := SlackMessage{
         Text: "🚨 Weather Alert",
@@ -59,7 +64,8 @@ func (s *NotificationService) SendSlackAlert(alert *models.EnvironmentalAlert, l
                 Title: alert.Title,
                 Text:  alert.Description,
                 Fields: []SlackField{
-                    {Title: "Location", Value: location.Name, Short: true},
+                    {Title: "Location", Value: locationName, Short: true},
+                    {Title: "User", Value: user.GetDisplayName(), Short: true},
                     {Title: "Severity", Value: s.getSeverityText(alert.Severity), Short: true},
                     {Title: "Current Value", Value: fmt.Sprintf("%.1f", alert.Value), Short: true},
                     {Title: "Threshold", Value: fmt.Sprintf("%.1f", alert.Threshold), Short: true},

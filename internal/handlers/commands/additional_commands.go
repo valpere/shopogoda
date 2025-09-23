@@ -14,7 +14,6 @@ import (
 
 // SetDefaultLocation command handler
 func (h *CommandHandler) SetDefaultLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
-	userID := ctx.EffectiveUser.Id
 	args := ctx.Args()
 
 	if len(args) < 2 {
@@ -23,23 +22,9 @@ func (h *CommandHandler) SetDefaultLocation(bot *gotgbot.Bot, ctx *ext.Context) 
 		return err
 	}
 
-	locationIDStr := args[1]
-	locationID, err := uuid.Parse(locationIDStr)
-	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"❌ Invalid location ID format", nil)
-		return err
-	}
-
-	err = h.services.Location.SetDefaultLocation(context.Background(), userID, locationID)
-	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"❌ Failed to set default location", nil)
-		return err
-	}
-
-	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
-		"✅ Default location updated successfully!", nil)
+	// This functionality is deprecated - use /setlocation instead
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+		"⚠️ This command is deprecated. Use /setlocation instead to set your location.", nil)
 	return err
 }
 
@@ -63,7 +48,7 @@ func (h *CommandHandler) Unsubscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	for i, sub := range subscriptions {
 		subTypeText := h.getSubscriptionTypeText(sub.SubscriptionType)
-		text += fmt.Sprintf("%d. %s - %s\n", i+1, subTypeText, sub.Location.Name)
+		text += fmt.Sprintf("%d. %s - %s\n", i+1, subTypeText, sub.User.LocationName)
 		
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
 			{Text: fmt.Sprintf("🗑️ Remove %s", subTypeText), 
@@ -111,7 +96,7 @@ func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) e
 		freqText := h.getFrequencyText(sub.Frequency)
 		
 		text += fmt.Sprintf("%d. **%s**\n", i+1, subTypeText)
-		text += fmt.Sprintf("   📍 Location: %s\n", sub.Location.Name)
+		text += fmt.Sprintf("   📍 Location: %s\n", sub.User.LocationName)
 		text += fmt.Sprintf("   ⏰ Frequency: %s\n", freqText)
 		text += fmt.Sprintf("   🕐 Time: %s\n", sub.TimeOfDay)
 		text += "\n"
@@ -167,7 +152,7 @@ func (h *CommandHandler) ListAlerts(bot *gotgbot.Bot, ctx *ext.Context) error {
 		alertTypeText := h.getAlertTypeText(alert.AlertType)
 
 		text += fmt.Sprintf("%d. **%s Alert**\n", i+1, alertTypeText)
-		text += fmt.Sprintf("   📍 Location: %s\n", alert.Location.Name)
+		text += fmt.Sprintf("   📍 Location: %s\n", alert.User.LocationName)
 		text += fmt.Sprintf("   ⚡ Condition: %s %.1f\n", alert.Condition, alert.Threshold)
 		text += fmt.Sprintf("   🔔 Status: %s\n", h.getAlertStatusText(alert.IsActive))
 		text += "\n"

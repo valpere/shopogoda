@@ -61,11 +61,11 @@ func TestWeatherServiceIntegration(t *testing.T) {
             t.Skip("Skipping API test in short mode")
         }
 
-        coords, err := weatherService.GetCoordinates(ctx, "London")
+        coords, err := weatherService.GeocodeLocation(ctx, "London")
         assert.NoError(t, err)
         assert.NotNil(t, coords)
-        assert.InDelta(t, 51.5074, coords.Lat, 0.1)
-        assert.InDelta(t, -0.1278, coords.Lon, 0.1)
+        assert.InDelta(t, 51.5074, coords.Latitude, 0.1)
+        assert.InDelta(t, -0.1278, coords.Longitude, 0.1)
     })
 
     t.Run("CacheCoordinates", func(t *testing.T) {
@@ -73,14 +73,14 @@ func TestWeatherServiceIntegration(t *testing.T) {
         location := "TestCity"
 
         // First call should cache
-        _, err := weatherService.GetCoordinates(ctx, location)
+        _, err := weatherService.GeocodeLocation(ctx, location)
         if err != nil {
             t.Skip("Skipping cache test due to API error")
         }
 
         // Second call should be faster (cached)
         start := time.Now()
-        _, err = weatherService.GetCoordinates(ctx, location)
+        _, err = weatherService.GeocodeLocation(ctx, location)
         duration := time.Since(start)
 
         assert.NoError(t, err)

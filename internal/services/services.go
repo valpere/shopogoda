@@ -13,7 +13,6 @@ import (
 type Services struct {
     User        *UserService
     Weather     *WeatherService
-    Location    *LocationService
     Alert       *AlertService
     Subscription *SubscriptionService
     Notification *NotificationService
@@ -23,7 +22,6 @@ type Services struct {
 func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.Logger) *Services {
     userService := NewUserService(db, redis)
     weatherService := NewWeatherService(&cfg.Weather, redis)
-    locationService := NewLocationService(db, redis)
     alertService := NewAlertService(db, redis)
     subscriptionService := NewSubscriptionService(db, redis)
     notificationService := NewNotificationService(&cfg.Integrations, logger)
@@ -32,7 +30,6 @@ func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.L
     return &Services{
         User:         userService,
         Weather:      weatherService,
-        Location:     locationService,
         Alert:        alertService,
         Subscription: subscriptionService,
         Notification: notificationService,

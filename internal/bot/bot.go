@@ -139,7 +139,14 @@ func (b *Bot) setupHandlers() error {
     b.dispatcher.AddHandler(handlers.NewCallback(nil, cmdHandler.HandleCallback))
 
     // Message handlers for location sharing
-    b.dispatcher.AddHandler(handlers.NewMessage(nil, cmdHandler.HandleLocationMessage))
+    b.dispatcher.AddHandler(handlers.NewMessage(func(msg *gotgbot.Message) bool {
+        return msg.Location != nil
+    }, cmdHandler.HandleLocationMessage))
+
+    // Catch-all message handler for debugging (add at the end with low priority)
+    b.dispatcher.AddHandlerToGroup(handlers.NewMessage(func(msg *gotgbot.Message) bool {
+        return true // Catch all messages
+    }, cmdHandler.HandleAnyMessage), 999) // Low priority group
 
     return nil
 }
@@ -164,11 +171,28 @@ func (b *Bot) setupHTTPServer() {
     // Webhook endpoint
     if b.config.Bot.WebhookURL != "" {
         router.POST("/webhook", func(c *gin.Context) {
+            b.logger.Info().Msg("WEBHOOK_DEBUG: Received webhook request")
+
             var update gotgbot.Update
             if err := c.ShouldBindJSON(&update); err != nil {
                 b.logger.Error().Err(err).Msg("Failed to parse webhook update")
                 c.Status(http.StatusBadRequest)
                 return
+            }
+
+            b.logger.Info().
+                Interface("update_id", update.UpdateId).
+                Bool("has_message", update.Message != nil).
+                Bool("has_callback", update.CallbackQuery != nil).
+                Bool("has_inline", update.InlineQuery != nil).
+                Msg("WEBHOOK_DEBUG: Parsed update")
+
+            if update.Message != nil {
+                b.logger.Info().
+                    Int64("user_id", update.Message.From.Id).
+                    Str("text", update.Message.Text).
+                    Bool("has_location", update.Message.Location != nil).
+                    Msg("WEBHOOK_DEBUG: Message details")
             }
 
             if err := b.dispatcher.ProcessUpdate(b.bot, &update, nil); err != nil {
@@ -177,6 +201,7 @@ func (b *Bot) setupHTTPServer() {
                 return
             }
 
+            b.logger.Info().Msg("WEBHOOK_DEBUG: Successfully processed update")
             c.Status(http.StatusOK)
         })
     }
@@ -210,6 +235,7 @@ func (b *Bot) Start(ctx context.Context) error {
         }
     } else {
         b.logger.Info().Msg("Starting polling...")
+        b.logger.Info().Msg("POLLING_DEBUG: Polling mode enabled - will log all updates")
         if err := b.updater.StartPolling(b.bot, &ext.PollingOpts{
             DropPendingUpdates: true,
             GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
@@ -221,6 +247,7 @@ func (b *Bot) Start(ctx context.Context) error {
         }); err != nil {
             return fmt.Errorf("failed to start polling: %w", err)
         }
+        b.logger.Info().Msg("POLLING_DEBUG: Polling started successfully")
     }
 
     // Start background services

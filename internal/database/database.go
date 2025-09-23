@@ -65,10 +65,10 @@ func ConnectRedis(cfg *config.RedisConfig) (*redis.Client, error) {
 func Migrate(db *gorm.DB) error {
     return db.AutoMigrate(
         &models.User{},
-        &models.Location{},
         &models.WeatherData{},
         &models.Subscription{},
         &models.AlertConfig{},
         &models.EnvironmentalAlert{},
+        &models.UserSession{},
     )
 }
