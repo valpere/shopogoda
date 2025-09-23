@@ -10,10 +10,16 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
 	"github.com/valpere/shopogoda/internal/config"
 	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/pkg/weather"
+)
+
+const (
+	// User-Agent for Nominatim API requests (as required by usage policy)
+	nominatimUserAgent = "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)"
 )
 
 type WeatherService struct {
@@ -21,14 +27,16 @@ type WeatherService struct {
 	geocoder      *weather.GeocodingClient
 	redis         *redis.Client
 	config        *config.WeatherConfig
+	logger        *zerolog.Logger
 }
 
-func NewWeatherService(cfg *config.WeatherConfig, redis *redis.Client) *WeatherService {
+func NewWeatherService(cfg *config.WeatherConfig, redis *redis.Client, logger *zerolog.Logger) *WeatherService {
 	return &WeatherService{
 		client:   weather.NewClient(cfg.OpenWeatherAPIKey),
 		geocoder: weather.NewGeocodingClient(cfg.OpenWeatherAPIKey),
 		redis:    redis,
 		config:   cfg,
+		logger:   logger,
 	}
 }
 
@@ -127,18 +135,31 @@ func (s *WeatherService) GeocodeLocation(ctx context.Context, locationName strin
 		if err == nil {
 			// Cache for 24 hours
 			if err := s.cacheLocation(ctx, cacheKey, location); err != nil {
-				// Log marshaling error but continue without caching
-				// This ensures the user still gets the location even if caching fails
+				s.logger.Error().
+					Err(err).
+					Str("location", locationName).
+					Str("service", "openweathermap").
+					Msg("Failed to cache geocoding result")
 			}
 			return location, nil
 		}
+		s.logger.Debug().
+			Err(err).
+			Str("location", locationName).
+			Msg("OpenWeatherMap geocoding failed, trying Nominatim")
 	}
 
 	// Try Nominatim as fallback
 	nominatimLocation, err := s.geocodeWithNominatim(ctx, locationName)
 	if err == nil {
 		// Cache successful Nominatim results for 24 hours
-		s.cacheLocation(ctx, cacheKey, nominatimLocation)
+		if err := s.cacheLocation(ctx, cacheKey, nominatimLocation); err != nil {
+			s.logger.Error().
+				Err(err).
+				Str("location", locationName).
+				Str("service", "nominatim").
+				Msg("Failed to cache geocoding result")
+		}
 		return nominatimLocation, nil
 	}
 
@@ -182,9 +203,25 @@ func (s *WeatherService) GetCurrentWeatherByLocation(ctx context.Context, locati
 
 // GetLocationName returns a formatted location name from coordinates (reverse geocoding)
 func (s *WeatherService) GetLocationName(ctx context.Context, lat, lon float64) (string, error) {
-	// This would use reverse geocoding in production
-	// For now, return a simple formatted string
-	return fmt.Sprintf("Location %.4f, %.4f", lat, lon), nil
+	// Try cache first
+	cacheKey := fmt.Sprintf("reverse_geocode:%.4f:%.4f", lat, lon)
+	cached, err := s.redis.Get(ctx, cacheKey).Result()
+	if err == nil {
+		return cached, nil
+	}
+
+	// Try reverse geocoding with Nominatim
+	locationName, err := s.reverseGeocodeWithNominatim(ctx, lat, lon)
+	if err != nil {
+		s.logger.Warn().Err(err).Float64("lat", lat).Float64("lon", lon).Msg("Reverse geocoding failed")
+		// Fallback to coordinate format
+		return fmt.Sprintf("Location (%.4f, %.4f)", lat, lon), nil
+	}
+
+	// Cache for 24 hours
+	s.redis.Set(ctx, cacheKey, locationName, 24*time.Hour)
+
+	return locationName, nil
 }
 
 // ToModelWeatherData converts service WeatherData to models.WeatherData
@@ -282,7 +319,7 @@ func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName 
 	}
 
 	// Set User-Agent as required by Nominatim usage policy
-	req.Header.Set("User-Agent", "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)")
+	req.Header.Set("User-Agent", nominatimUserAgent)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -341,4 +378,107 @@ func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName 
 		Country:   country,
 		City:      city,
 	}, nil
+}
+
+// reverseGeocodeWithNominatim performs reverse geocoding using Nominatim
+func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, lon float64) (string, error) {
+	url := fmt.Sprintf("https://nominatim.openstreetmap.org/reverse?lat=%.6f&lon=%.6f&format=json&addressdetails=1",
+		lat, lon)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Nominatim reverse request: %w", err)
+	}
+
+	// Set User-Agent as required by Nominatim usage policy
+	req.Header.Set("User-Agent", nominatimUserAgent)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to make Nominatim reverse request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Nominatim reverse API request failed with status: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		DisplayName string `json:"display_name"`
+		Address     struct {
+			City        string `json:"city"`
+			Town        string `json:"town"`
+			Village     string `json:"village"`
+			Hamlet      string `json:"hamlet"`
+			County      string `json:"county"`
+			State       string `json:"state"`
+			Country     string `json:"country"`
+			Suburb      string `json:"suburb"`
+			Neighbourhood string `json:"neighbourhood"`
+		} `json:"address"`
+		Lat  string `json:"lat"`
+		Lon  string `json:"lon"`
+		Type string `json:"type"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode Nominatim reverse response: %w", err)
+	}
+
+	// Determine the most appropriate location name and format
+	return s.formatLocationFromAddress(result.Address, lat, lon), nil
+}
+
+// formatLocationFromAddress formats location name with smart logic for exact vs nearby matches
+func (s *WeatherService) formatLocationFromAddress(address struct {
+	City          string `json:"city"`
+	Town          string `json:"town"`
+	Village       string `json:"village"`
+	Hamlet        string `json:"hamlet"`
+	County        string `json:"county"`
+	State         string `json:"state"`
+	Country       string `json:"country"`
+	Suburb        string `json:"suburb"`
+	Neighbourhood string `json:"neighbourhood"`
+}, lat, lon float64) string {
+
+	// Prioritize location names from most specific to general
+	var locationName string
+	var isExact bool
+
+	if address.City != "" {
+		locationName = address.City
+		isExact = true // Cities are usually exact matches
+	} else if address.Town != "" {
+		locationName = address.Town
+		isExact = true // Towns are usually exact matches
+	} else if address.Village != "" {
+		locationName = address.Village
+		isExact = true // Villages are usually exact matches
+	} else if address.Suburb != "" {
+		locationName = address.Suburb
+		isExact = false // Suburbs indicate "near" a larger city
+	} else if address.Neighbourhood != "" {
+		locationName = address.Neighbourhood
+		isExact = false // Neighbourhoods indicate "near" a larger area
+	} else if address.County != "" {
+		locationName = address.County
+		isExact = false // Counties are large areas, so "near"
+	} else if address.State != "" {
+		locationName = address.State
+		isExact = false // States are very large, so "near"
+	} else {
+		// Fallback to coordinate format
+		return fmt.Sprintf("Location (%.4f, %.4f)", lat, lon)
+	}
+
+	// Format the final location string
+	coords := fmt.Sprintf("(%.4f, %.4f)", lat, lon)
+
+	if isExact {
+		return fmt.Sprintf("%s %s", locationName, coords)
+	} else {
+		return fmt.Sprintf("near %s %s", locationName, coords)
+	}
 }

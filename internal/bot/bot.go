@@ -6,6 +6,7 @@ import (
     "net/http"
     "os"
     "strconv"
+    "strings"
     "time"
 
     "github.com/PaulSonOfLars/gotgbot/v2"
@@ -116,9 +117,7 @@ func (b *Bot) setupHandlers() error {
     b.dispatcher.AddHandler(handlers.NewCommand("air", cmdHandler.AirQuality))
 
     // Location management
-    b.dispatcher.AddHandler(handlers.NewCommand("addlocation", cmdHandler.AddLocation))
-    b.dispatcher.AddHandler(handlers.NewCommand("locations", cmdHandler.ListLocations))
-    b.dispatcher.AddHandler(handlers.NewCommand("setdefault", cmdHandler.SetDefaultLocation))
+    b.dispatcher.AddHandler(handlers.NewCommand("setlocation", cmdHandler.SetLocation))
 
     // Subscription management
     b.dispatcher.AddHandler(handlers.NewCommand("subscribe", cmdHandler.Subscribe))
@@ -142,6 +141,11 @@ func (b *Bot) setupHandlers() error {
     b.dispatcher.AddHandler(handlers.NewMessage(func(msg *gotgbot.Message) bool {
         return msg.Location != nil
     }, cmdHandler.HandleLocationMessage))
+
+    // Text message handler for plain location input
+    b.dispatcher.AddHandler(handlers.NewMessage(func(msg *gotgbot.Message) bool {
+        return msg.Text != "" && msg.Location == nil && !strings.HasPrefix(msg.Text, "/")
+    }, cmdHandler.HandleTextMessage))
 
     // Catch-all message handler for debugging (add at the end with low priority)
     b.dispatcher.AddHandlerToGroup(handlers.NewMessage(func(msg *gotgbot.Message) bool {

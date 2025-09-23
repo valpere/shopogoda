@@ -21,7 +21,7 @@ type Services struct {
 
 func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.Logger) *Services {
     userService := NewUserService(db, redis)
-    weatherService := NewWeatherService(&cfg.Weather, redis)
+    weatherService := NewWeatherService(&cfg.Weather, redis, logger)
     alertService := NewAlertService(db, redis)
     subscriptionService := NewSubscriptionService(db, redis)
     notificationService := NewNotificationService(&cfg.Integrations, logger)

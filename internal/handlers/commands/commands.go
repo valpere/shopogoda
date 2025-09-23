@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -34,12 +35,10 @@ func (h *CommandHandler) Start(bot *gotgbot.Bot, ctx *ext.Context) error {
 	user := ctx.EffectiveUser
 
 	// Debug logging for start command
-	h.logger.Info().
+	h.logger.Debug().
 		Int64("user_id", user.Id).
-		Interface("all_args", ctx.Args()).
 		Int("args_count", len(ctx.Args())).
-		Str("message_text", ctx.Message.Text).
-		Msg("START_DEBUG: Starting Start command")
+		Msg("Starting Start command")
 
 	// Register or update user
 	if err := h.services.User.RegisterUser(context.Background(), user); err != nil {
@@ -54,7 +53,7 @@ Hello %s! I'm your professional weather and environmental monitoring assistant.
 🏠 /weather - Get current weather
 📊 /forecast - 5-day weather forecast
 🌬️ /air - Air quality information
-📍 /addlocation - Add monitoring location
+📍 /setlocation - Set your location
 ⚙️ /settings - Configure preferences
 🔔 /subscribe - Set up notifications
 ⚠️ /addalert - Create weather alerts
@@ -73,7 +72,6 @@ Ready to get started? Try /weather to see current conditions!`,
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
 		{{Text: "🌤️ Current Weather", CallbackData: "weather_current"}},
-		{{Text: "📍 Set Default Location", CallbackData: "location_add"}},
 		{{Text: "⚙️ Settings", CallbackData: "settings_main"}},
 	}
 
@@ -97,9 +95,7 @@ func (h *CommandHandler) Help(bot *gotgbot.Bot, ctx *ext.Context) error {
 /air \[location\] - Air quality index and pollutants
 
 *📍 Location Management:*
-/addlocation - Add a new monitoring location
-/locations - List all your saved locations
-/setdefault \<location\> - Set default location
+/setlocation - Set your location
 
 *🔔 Notifications:*
 /subscribe - Set up weather notifications
@@ -140,33 +136,38 @@ For enterprise support, contact: support@weatherbot.com`
 func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 
-	// Extensive debug logging for argument parsing
-	h.logger.Info().
-		Int64("user_id", userID).
-		Interface("all_args", ctx.Args()).
-		Int("args_count", len(ctx.Args())).
-		Str("message_text", ctx.Message.Text).
-		Msg("WEATHER_DEBUG: Starting CurrentWeather command")
+	var location string
 
-	if len(ctx.Args()) > 1 {
-		h.logger.Info().
-			Interface("args_1_to_end", ctx.Args()[1:]).
-			Str("joined_args", strings.Join(ctx.Args()[1:], " ")).
-			Msg("WEATHER_DEBUG: Args after command")
+	// Check if this is called from a callback query (no args) or command (has args)
+	if ctx.CallbackQuery != nil {
+		// Called from button - no location argument, use user's saved location
+		h.logger.Debug().
+			Int64("user_id", userID).
+			Msg("CurrentWeather called from callback button")
+		location = ""
+	} else {
+		// Called from command - parse location from arguments
+		h.logger.Debug().
+			Int64("user_id", userID).
+			Interface("all_args", ctx.Args()).
+			Int("args_count", len(ctx.Args())).
+			Msg("CurrentWeather called from command")
+
+		if len(ctx.Args()) > 1 {
+			location = strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
+		}
 	}
 
-	location := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
-
-	h.logger.Info().
+	h.logger.Debug().
 		Str("parsed_location", location).
-		Msg("WEATHER_DEBUG: Parsed location parameter")
+		Msg("Parsed location parameter")
 
 	// If no location provided, use user's saved location or ask for it
 	if location == "" {
 		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 		if err != nil || locationName == "" {
 			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-				"📍 Please provide a location or set your default location:\n\n/weather London\nor\n/setlocation to set your location",
+				"📍 Please provide a location or set your location:\n\n/weather London\nor\n/setlocation to set your location",
 				&gotgbot.SendMessageOpts{
 					ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 						InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
@@ -181,26 +182,25 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 	}
 
 	// Get weather data
-	h.logger.Info().
+	h.logger.Debug().
 		Str("location", location).
-		Msg("WEATHER_DEBUG: Calling weather service")
+		Msg("Calling weather service")
 
 	weatherData, err := h.services.Weather.GetCurrentWeatherByLocation(context.Background(), location)
 	if err != nil {
 		h.logger.Error().
 			Err(err).
 			Str("location", location).
-			Msg("WEATHER_DEBUG: Failed to get weather data")
+			Msg("Failed to get weather data")
 
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			fmt.Sprintf("❌ Failed to get weather for '%s'. Please check the location name.", location), nil)
 		return err
 	}
 
-	h.logger.Info().
+	h.logger.Debug().
 		Str("location", location).
-		Interface("weather_data", weatherData).
-		Msg("WEATHER_DEBUG: Successfully got weather data")
+		Msg("Successfully got weather data")
 
 	// Format weather message
 	weatherText := h.formatWeatherMessage(weatherData)
@@ -329,9 +329,19 @@ func (h *CommandHandler) Settings(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
+	// Get user's current location
+	locationName, lat, lon, err := h.services.User.GetUserLocation(context.Background(), userID)
+	var locationText string
+	if err != nil || locationName == "" {
+		locationText = "Not set"
+	} else {
+		locationText = fmt.Sprintf("%s (%.4f, %.4f)", locationName, lat, lon)
+	}
+
 	settingsText := fmt.Sprintf(`⚙️ *Settings*
 
 *Current Configuration:*
+Location: %s
 Language: %s
 Units: %s
 Timezone: %s
@@ -339,12 +349,13 @@ Role: %s
 Status: %s
 
 *Available Settings:*
+• Location management
 • Language preferences
 • Unit system (Metric/Imperial)
 • Timezone settings
 • Notification preferences
-• Alert thresholds
 • Data export options`,
+		locationText,
 		user.Language,
 		h.getUnitsText(user.Units),
 		user.Timezone,
@@ -352,6 +363,7 @@ Status: %s
 		h.getStatusText(user.IsActive))
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "📍 Set Location", CallbackData: "settings_location"}},
 		{{Text: "🌐 Language", CallbackData: "settings_language"}},
 		{{Text: "📏 Units", CallbackData: "settings_units"}},
 		{{Text: "🕐 Timezone", CallbackData: "settings_timezone"}},
@@ -476,37 +488,181 @@ func (h *CommandHandler) HandleLocationMessage(bot *gotgbot.Bot, ctx *ext.Contex
 	return err
 }
 
-// HandleAnyMessage logs all incoming messages for debugging
+// HandleAnyMessage logs incoming messages for debugging (debug level only)
 func (h *CommandHandler) HandleAnyMessage(bot *gotgbot.Bot, ctx *ext.Context) error {
 	msg := ctx.Message
 	if msg == nil {
-		h.logger.Info().Msg("Non-message update received")
+		h.logger.Debug().Msg("Non-message update received")
 		return nil
 	}
 
-	h.logger.Info().
+	// Only log in debug mode to avoid privacy concerns and log spam
+	h.logger.Debug().
 		Int64("user_id", ctx.EffectiveUser.Id).
-		Str("username", ctx.EffectiveUser.Username).
-		Str("first_name", ctx.EffectiveUser.FirstName).
 		Int64("chat_id", ctx.EffectiveChat.Id).
 		Str("chat_type", ctx.EffectiveChat.Type).
-		Interface("message_id", msg.MessageId).
-		Str("text", msg.Text).
+		Int64("message_id", msg.MessageId).
 		Bool("has_location", msg.Location != nil).
 		Bool("has_photo", len(msg.Photo) > 0).
 		Bool("has_document", msg.Document != nil).
 		Bool("has_voice", msg.Voice != nil).
-		Interface("entities", msg.Entities).
-		Msg("ALL_MESSAGES_DEBUG: Received message")
+		Msg("Received message")
 
 	if msg.Location != nil {
-		h.logger.Info().
+		h.logger.Debug().
 			Float64("latitude", msg.Location.Latitude).
 			Float64("longitude", msg.Location.Longitude).
-			Msg("ALL_MESSAGES_DEBUG: Location details")
+			Msg("Location shared")
 	}
 
 	return nil // Don't consume the message, let other handlers process it
+}
+
+// HandleTextMessage processes plain text messages that might be location names
+func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) error {
+	msg := ctx.Message
+	if msg == nil || msg.Text == "" {
+		return nil
+	}
+
+	// Skip if it's a command (starts with /)
+	if strings.HasPrefix(msg.Text, "/") {
+		return nil
+	}
+
+	text := strings.TrimSpace(msg.Text)
+
+	// Check if this looks like GPS coordinates first
+	coordPattern := `^(-?\d+\.?\d*),?\s*(-?\d+\.?\d*)$`
+	coordMatch, _ := regexp.MatchString(coordPattern, text)
+	if coordMatch {
+		return h.handleCoordinateInput(bot, ctx, text)
+	}
+
+	// Simple heuristics to detect if this might be a location name
+	// - Should be 2-50 characters
+	// - Should contain only letters, spaces, hyphens, apostrophes
+	// - Should not be too short (avoid "ok", "yes", etc.)
+	if len(text) < 2 || len(text) > 50 {
+		return nil
+	}
+
+	// Check if text looks like a location name (letters, spaces, hyphens, apostrophes only)
+	locationPattern := `^[a-zA-ZÀ-ÿ\s\-']+$`
+	matched, _ := regexp.MatchString(locationPattern, text)
+	if !matched {
+		return nil
+	}
+
+	// Skip common non-location words
+	commonWords := map[string]bool{
+		"ok": true, "yes": true, "no": true, "hi": true, "hello": true,
+		"thanks": true, "thank you": true, "good": true, "bad": true,
+		"help": true, "stop": true, "cancel": true, "back": true,
+	}
+	if commonWords[strings.ToLower(text)] {
+		return nil
+	}
+
+	userID := ctx.EffectiveUser.Id
+
+	// Check if user already has a location set
+	existingLocation, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+
+	var messageText string
+	var keyboard [][]gotgbot.InlineKeyboardButton
+
+	if err != nil || existingLocation == "" {
+		// No location set - offer to set this as their location
+		messageText = fmt.Sprintf("📍 Did you want to set *%s* as your location?", text)
+		keyboard = [][]gotgbot.InlineKeyboardButton{
+			{{Text: "✅ Yes, set as my location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(text))}},
+			{{Text: "❌ No, just ignore", CallbackData: "location_ignore"}},
+		}
+	} else {
+		// Location already set - offer to change it
+		messageText = fmt.Sprintf("📍 Did you want to change your location from *%s* to *%s*?", existingLocation, text)
+		keyboard = [][]gotgbot.InlineKeyboardButton{
+			{{Text: "✅ Yes, change location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(text))}},
+			{{Text: "❌ No, keep current", CallbackData: "location_ignore"}},
+		}
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, messageText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	return err
+}
+
+// handleCoordinateInput processes GPS coordinates entered as text
+func (h *CommandHandler) handleCoordinateInput(bot *gotgbot.Bot, ctx *ext.Context, coordinateText string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Parse coordinates from text
+	coordPattern := `^(-?\d+\.?\d*),?\s*(-?\d+\.?\d*)$`
+	re := regexp.MustCompile(coordPattern)
+	matches := re.FindStringSubmatch(coordinateText)
+
+	if len(matches) != 3 {
+		h.logger.Warn().Str("input", coordinateText).Msg("Failed to parse coordinates")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			"❌ Invalid coordinate format. Please use format: 'latitude, longitude' (e.g., '37.7749, -122.4194')", nil)
+		return err
+	}
+
+	lat, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		h.logger.Error().Err(err).Str("lat", matches[1]).Msg("Failed to parse latitude")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid latitude value", nil)
+		return err
+	}
+
+	lon, err := strconv.ParseFloat(matches[2], 64)
+	if err != nil {
+		h.logger.Error().Err(err).Str("lon", matches[2]).Msg("Failed to parse longitude")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid longitude value", nil)
+		return err
+	}
+
+	// Validate coordinate ranges
+	if lat < -90 || lat > 90 {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Latitude must be between -90 and 90", nil)
+		return err
+	}
+	if lon < -180 || lon > 180 {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Longitude must be between -180 and 180", nil)
+		return err
+	}
+
+	h.logger.Info().Float64("lat", lat).Float64("lon", lon).Int64("user_id", userID).Msg("Processing coordinate input")
+
+	// Get location name from coordinates (reverse geocoding)
+	locationName, err := h.services.Weather.GetLocationName(context.Background(), lat, lon)
+	if err != nil {
+		locationName = fmt.Sprintf("Location (%.4f, %.4f)", lat, lon)
+		h.logger.Warn().Err(err).Msg("Failed to get location name from coordinates, using default")
+	}
+
+	// Save the location
+	err = h.services.User.SetUserLocation(context.Background(), userID, locationName, "", "", lat, lon)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to save location from coordinates")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location. Please try again.", nil)
+		return err
+	}
+
+	h.logger.Info().Str("location", locationName).Float64("lat", lat).Float64("lon", lon).Msg("Location saved from coordinates")
+
+	// Send confirmation message
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+		fmt.Sprintf("✅ Location set to *%s*\n📍 Coordinates: %.4f, %.4f", locationName, lat, lon),
+		&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
+
+	return err
 }
 
 // Helper methods for formatting messages
@@ -656,13 +812,13 @@ func (h *CommandHandler) getHealthRecommendation(aqi int) string {
 }
 
 // Additional command handlers
-func (h *CommandHandler) AddLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
+func (h *CommandHandler) SetLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 	locationName := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
 
 	if locationName == "" {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 Please provide a location name:\n\n/addlocation London\nor share your current location",
+			"📍 Please provide a location name:\n\n/setlocation London\nor share your current location",
 			&gotgbot.SendMessageOpts{
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
@@ -747,7 +903,7 @@ func (h *CommandHandler) ListLocations(bot *gotgbot.Bot, ctx *ext.Context) error
 func (h *CommandHandler) Subscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 	subscriptionText := `🔔 *Weather Notifications*
 
-Set up automatic weather updates for your locations:
+Set up automatic weather updates for your location:
 
 *Available Subscription Types:*
 • 🌅 Daily Weather (morning summary)
@@ -757,7 +913,7 @@ Set up automatic weather updates for your locations:
 
 *Notification Schedule:*
 • Choose your preferred time
-• Select specific locations
+• Select notification frequency
 • Configure alert thresholds`
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
@@ -1017,6 +1173,8 @@ func (h *CommandHandler) handleSettingsCallback(bot *gotgbot.Bot, ctx *ext.Conte
 	switch action {
 	case "main":
 		return h.Settings(bot, ctx)
+	case "location":
+		return h.handleLocationSettings(bot, ctx)
 	case "language":
 		if len(params) >= 2 && params[0] == "set" {
 			return h.setUserLanguage(bot, ctx, params[1])
@@ -1042,18 +1200,39 @@ func (h *CommandHandler) handleSettingsCallback(bot *gotgbot.Bot, ctx *ext.Conte
 
 func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
 	switch action {
-	case "add":
+	case "add", "set_name":
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 Please send me a location name or share your current location:",
+			"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
 			&gotgbot.SendMessageOpts{
-				ReplyMarkup: &gotgbot.ReplyKeyboardMarkup{
-					Keyboard: [][]gotgbot.KeyboardButton{
-						{{Text: "📍 Share Location", RequestLocation: true}},
-					},
-					OneTimeKeyboard: true,
-					ResizeKeyboard:  true,
-				},
+				ParseMode: "Markdown",
 			})
+		return err
+	case "set":
+		// Check if this is for coordinates or name based on params
+		if len(params) > 0 && params[0] == "coords" {
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+				"📍 *Set Location by Coordinates*\n\nPlease enter your GPS coordinates in the format:\n`latitude, longitude`\n\nExample: `37.7749, -122.4194`",
+				&gotgbot.SendMessageOpts{
+					ParseMode: "Markdown",
+				})
+			return err
+		} else {
+			// Default set behavior (name-based)
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+				"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
+				&gotgbot.SendMessageOpts{
+					ParseMode: "Markdown",
+				})
+			return err
+		}
+	case "clear":
+		userID := ctx.EffectiveUser.Id
+		err := h.services.User.ClearUserLocation(context.Background(), userID)
+		if err != nil {
+			_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to clear location", nil)
+			return sendErr
+		}
+		_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Location cleared successfully!", nil)
 		return err
 	case "default":
 		// With single location per user, this is no longer needed
@@ -1091,6 +1270,42 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 		} else {
 			h.logger.Warn().Int("params_count", len(params)).Msg("Not enough parameters for location save")
 		}
+	case "confirm":
+		// Handle location confirmation from plain text input
+		if len(params) >= 1 {
+			locationName := strings.Join(params, " ")
+			h.logger.Info().Str("location", locationName).Msg("User confirmed location from text input")
+
+			userID := ctx.EffectiveUser.Id
+
+			// Geocode the location
+			location, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
+			if err != nil {
+				h.logger.Error().Err(err).Str("location", locationName).Msg("Failed to geocode location")
+				_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+					fmt.Sprintf("❌ Sorry, I couldn't find the location '%s'. Please try a different city name.", locationName), nil)
+				return err
+			}
+
+			// Save the location
+			err = h.services.User.SetUserLocation(context.Background(), userID, location.Name, location.Country, location.City, location.Latitude, location.Longitude)
+			if err != nil {
+				h.logger.Error().Err(err).Msg("Failed to save location to database")
+				_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location. Please try again.", nil)
+				return err
+			}
+
+			h.logger.Info().Str("location", location.Name).Msg("Location saved successfully from text input")
+			_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+				fmt.Sprintf("✅ Location set to *%s, %s*\n📍 Coordinates: %.4f, %.4f", location.Name, location.Country, location.Latitude, location.Longitude),
+				&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
+			return err
+		}
+	case "ignore":
+		// Handle ignoring potential location from plain text input
+		h.logger.Info().Msg("User ignored location suggestion from text input")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "👍 Understood, I won't set that as your location.", nil)
+		return err
 	}
 	return nil
 }
@@ -1513,7 +1728,7 @@ func (h *CommandHandler) getAirQualityByCoords(bot *gotgbot.Bot, ctx *ext.Contex
 func (h *CommandHandler) createAlertsSubscription(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 
-	// Get user's default location
+	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
@@ -1672,8 +1887,7 @@ func (h *CommandHandler) showDetailedStats(bot *gotgbot.Bot, ctx *ext.Context) e
 • New (24h): %d
 
 *📍 Locations:*
-• Total: %d
-• Active Monitoring: %d
+• Users with Location: %d
 
 *🔔 Subscriptions & Alerts:*
 • Active Subscriptions: %d
@@ -1783,6 +1997,61 @@ func (h *CommandHandler) handleNotificationSettings(bot *gotgbot.Bot, ctx *ext.C
 	return err
 }
 
+func (h *CommandHandler) handleLocationSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's current location
+	locationName, lat, lon, err := h.services.User.GetUserLocation(context.Background(), userID)
+
+	var locationText string
+	var statusText string
+	if err != nil || locationName == "" {
+		locationText = "Not set"
+		statusText = "You can set your location by:\n• Typing a city name\n• Sharing your current GPS location"
+	} else {
+		locationText = fmt.Sprintf("%s\nCoordinates: %.4f, %.4f", locationName, lat, lon)
+		statusText = "Your location is set. You can update it anytime."
+	}
+
+	settingsText := fmt.Sprintf(`📍 *Location Settings*
+
+*Current Location:*
+%s
+
+%s
+
+*Options:*
+• Set a new location by name
+• Share your GPS location
+• Clear current location`,
+		locationText,
+		statusText)
+
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "📝 Set Location by Name", CallbackData: "location_set_name"}},
+		{{Text: "📍 Set Location by Coordinates", CallbackData: "location_set_coords"}},
+	}
+
+	if locationName != "" {
+		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+			{Text: "🗑️ Clear Location", CallbackData: "location_clear"},
+		})
+	}
+
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: "⬅️ Back to Settings", CallbackData: "settings_main"},
+	})
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, settingsText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	return err
+}
+
 func (h *CommandHandler) handleExportSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "📊 Data export feature will be available soon!", nil)
 	return err
@@ -1792,7 +2061,7 @@ func (h *CommandHandler) handleExportSettings(bot *gotgbot.Bot, ctx *ext.Context
 func (h *CommandHandler) handleTemperatureAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
 	userID := ctx.EffectiveUser.Id
 
-	// Get user's default location
+	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
@@ -1857,7 +2126,7 @@ func (h *CommandHandler) handleTemperatureAlert(bot *gotgbot.Bot, ctx *ext.Conte
 func (h *CommandHandler) handleWindAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
 	userID := ctx.EffectiveUser.Id
 
-	// Get user's default location
+	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
@@ -1913,7 +2182,7 @@ func (h *CommandHandler) handleWindAlert(bot *gotgbot.Bot, ctx *ext.Context, con
 func (h *CommandHandler) handleAirQualityAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
 	userID := ctx.EffectiveUser.Id
 
-	// Get user's default location
+	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
@@ -1978,7 +2247,7 @@ func (h *CommandHandler) handleAirQualityAlert(bot *gotgbot.Bot, ctx *ext.Contex
 func (h *CommandHandler) handleHumidityAlert(bot *gotgbot.Bot, ctx *ext.Context, condition, threshold string) error {
 	userID := ctx.EffectiveUser.Id
 
-	// Get user's default location
+	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
