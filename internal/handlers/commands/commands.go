@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -412,6 +413,8 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleSettingsCallback(bot, ctx, subAction, parts[2:])
 	case "location":
 		return h.handleLocationCallback(bot, ctx, subAction, parts[2:])
+	case "timezone":
+		return h.handleTimezoneCallback(bot, ctx, subAction, parts[2:])
 	case "alert":
 		return h.handleAlertCallback(bot, ctx, subAction, parts[2:])
 	case "alerts":
@@ -538,6 +541,14 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 		return h.handleCoordinateInput(bot, ctx, text)
 	}
 
+	// Check if this looks like a timezone (Region/City or UTC)
+	timezonePattern := `^(UTC|[A-Z][a-zA-Z_]+/[A-Za-z_/]+)$`
+	timezoneMatch, _ := regexp.MatchString(timezonePattern, text)
+	if timezoneMatch {
+		h.logger.Info().Str("input", text).Msg("Detected timezone input from text message")
+		return h.handleTimezoneInput(bot, ctx, text)
+	}
+
 	// Simple heuristics to detect if this might be a location name
 	// - Should be 2-50 characters
 	// - Should contain only letters, spaces, hyphens, apostrophes
@@ -661,6 +672,70 @@ func (h *CommandHandler) handleCoordinateInput(bot *gotgbot.Bot, ctx *ext.Contex
 
 	// Use shared confirmation logic (coordinates will be processed and saved when user confirms)
 	return h.showLocationConfirmation(bot, ctx, locationName)
+}
+
+// handleTimezoneInput processes timezone input entered as text
+func (h *CommandHandler) handleTimezoneInput(bot *gotgbot.Bot, ctx *ext.Context, timezoneText string) error {
+	userID := ctx.EffectiveUser.Id
+
+	h.logger.Info().Str("timezone", timezoneText).Int64("user_id", userID).Msg("Processing timezone input")
+
+	// Validate timezone
+	if !h.isValidTimezone(timezoneText) {
+		h.logger.Warn().Str("timezone", timezoneText).Msg("Invalid timezone")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			fmt.Sprintf("❌ Invalid timezone '%s'. Please use a valid timezone name like 'Europe/Kyiv', 'America/New_York', or 'UTC'.\n\nFind valid timezones at: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones", timezoneText), nil)
+		return err
+	}
+
+	h.logger.Info().Str("timezone", timezoneText).Msg("Valid timezone, showing confirmation")
+
+	// Use shared confirmation logic for timezones
+	return h.showTimezoneConfirmation(bot, ctx, timezoneText)
+}
+
+// isValidTimezone validates if a timezone string is valid by attempting to load it
+func (h *CommandHandler) isValidTimezone(timezone string) bool {
+	_, err := time.LoadLocation(timezone)
+	return err == nil
+}
+
+// showTimezoneConfirmation displays a confirmation dialog for setting/changing timezone
+func (h *CommandHandler) showTimezoneConfirmation(bot *gotgbot.Bot, ctx *ext.Context, timezoneName string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Check if user already has a timezone set (get current user settings)
+	user, err := h.services.User.GetUser(context.Background(), userID)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to get user for timezone confirmation")
+		// Continue with default behavior
+	}
+
+	var messageText string
+	var keyboard [][]gotgbot.InlineKeyboardButton
+
+	if err != nil || user.Timezone == "" || user.Timezone == "UTC" {
+		// No timezone set or using default UTC - offer to set this timezone
+		messageText = fmt.Sprintf("🕐 Did you want to set *%s* as your timezone?", timezoneName)
+		keyboard = [][]gotgbot.InlineKeyboardButton{
+			{{Text: "✅ Yes, set as my timezone", CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
+			{{Text: "❌ No, just ignore", CallbackData: "timezone_ignore"}},
+		}
+	} else {
+		// Timezone already set - offer to change it
+		messageText = fmt.Sprintf("🕐 Did you want to change your timezone from *%s* to *%s*?", user.Timezone, timezoneName)
+		keyboard = [][]gotgbot.InlineKeyboardButton{
+			{{Text: "✅ Yes, change timezone", CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
+			{{Text: "❌ No, keep current", CallbackData: "timezone_ignore"}},
+		}
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, messageText, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{InlineKeyboard: keyboard},
+	})
+
+	return err
 }
 
 // Helper methods for formatting messages
@@ -1388,6 +1463,46 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 	return nil
 }
 
+func (h *CommandHandler) handleTimezoneCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	switch action {
+	case "confirm":
+		// Handle timezone confirmation from text input
+		if len(params) >= 1 {
+			encodedTimezoneName := strings.Join(params, " ")
+			// URL decode the timezone name
+			timezoneName, decodeErr := url.QueryUnescape(encodedTimezoneName)
+			if decodeErr != nil {
+				// If decoding fails, use the encoded name as fallback
+				timezoneName = encodedTimezoneName
+				h.logger.Warn().Err(decodeErr).Str("encoded", encodedTimezoneName).Msg("Failed to decode timezone name")
+			}
+			h.logger.Info().Str("timezone", timezoneName).Msg("User confirmed timezone from text input")
+
+			// Validate timezone again before saving
+			if !h.isValidTimezone(timezoneName) {
+				h.logger.Error().Str("timezone", timezoneName).Msg("Invalid timezone during confirmation")
+				_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid timezone. Please try again.", nil)
+				return err
+			}
+
+			// Save the timezone using existing setUserTimezone method
+			err := h.setUserTimezone(bot, ctx, timezoneName)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		} else {
+			h.logger.Warn().Int("params_count", len(params)).Msg("Not enough parameters for timezone confirmation")
+		}
+	case "ignore":
+		// Handle ignoring timezone setting
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Timezone setting cancelled", nil)
+		return err
+	}
+	return nil
+}
+
 func (h *CommandHandler) handleAlertCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
 	switch action {
 	case "create":
@@ -1504,27 +1619,11 @@ func (h *CommandHandler) handleUnitSettings(bot *gotgbot.Bot, ctx *ext.Context) 
 }
 
 func (h *CommandHandler) handleTimezoneSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
-	text := "🕐 *Select your timezone:*"
-
-	timezones := []string{
-		"UTC", "Europe/London", "Europe/Berlin", "Europe/Kyiv",
-		"America/New_York", "America/Los_Angeles", "Asia/Tokyo",
-	}
-
-	var keyboard [][]gotgbot.InlineKeyboardButton
-	for _, tz := range timezones {
-		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: tz, CallbackData: fmt.Sprintf("settings_timezone_set_%s", tz)},
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+		"🕐 *Set Timezone*\n\nPlease type your timezone name (e.g., \"Europe/Kyiv\", \"America/New_York\", \"Asia/Tokyo\"):\n\nYou can find timezone names at: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
+		&gotgbot.SendMessageOpts{
+			ParseMode: "Markdown",
 		})
-	}
-
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
-		ParseMode: "Markdown",
-		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
-			InlineKeyboard: keyboard,
-		},
-	})
-
 	return err
 }
 
