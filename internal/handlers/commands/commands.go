@@ -153,9 +153,7 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 			Int("args_count", len(ctx.Args())).
 			Msg("CurrentWeather called from command")
 
-		if len(ctx.Args()) > 1 {
-			location = strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
-		}
+		location = h.parseLocationFromArgs(ctx)
 	}
 
 	h.logger.Debug().
@@ -233,7 +231,7 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 		Str("message_text", ctx.Message.Text).
 		Msg("FORECAST_DEBUG: Starting Forecast command")
 
-	location := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
+	location := h.parseLocationFromArgs(ctx)
 
 	h.logger.Info().
 		Str("parsed_location", location).
@@ -276,7 +274,7 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 // Air quality command
 func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
-	location := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
+	location := h.parseLocationFromArgs(ctx)
 
 	if location == "" {
 		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
@@ -596,6 +594,14 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 	})
 
 	return err
+}
+
+// parseLocationFromArgs extracts location from command arguments or returns empty string
+func (h *CommandHandler) parseLocationFromArgs(ctx *ext.Context) string {
+	if len(ctx.Args()) > 1 {
+		return strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
+	}
+	return ""
 }
 
 // handleCoordinateInput processes GPS coordinates entered as text

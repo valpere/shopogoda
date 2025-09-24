@@ -17,10 +17,18 @@ import (
 	"github.com/valpere/shopogoda/pkg/weather"
 )
 
-const (
-	// User-Agent for Nominatim API requests (as required by usage policy)
-	nominatimUserAgent = "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)"
-)
+// NominatimAddress represents the address structure returned by Nominatim API
+type NominatimAddress struct {
+	City          string `json:"city"`
+	Town          string `json:"town"`
+	Village       string `json:"village"`
+	Hamlet        string `json:"hamlet"`
+	County        string `json:"county"`
+	State         string `json:"state"`
+	Country       string `json:"country"`
+	Suburb        string `json:"suburb"`
+	Neighbourhood string `json:"neighbourhood"`
+}
 
 type WeatherService struct {
 	client        *weather.Client
@@ -319,7 +327,7 @@ func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName 
 	}
 
 	// Set User-Agent as required by Nominatim usage policy
-	req.Header.Set("User-Agent", nominatimUserAgent)
+	req.Header.Set("User-Agent", s.config.UserAgent)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -391,7 +399,7 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 	}
 
 	// Set User-Agent as required by Nominatim usage policy
-	req.Header.Set("User-Agent", nominatimUserAgent)
+	req.Header.Set("User-Agent", s.config.UserAgent)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -405,21 +413,11 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 	}
 
 	var result struct {
-		DisplayName string `json:"display_name"`
-		Address     struct {
-			City        string `json:"city"`
-			Town        string `json:"town"`
-			Village     string `json:"village"`
-			Hamlet      string `json:"hamlet"`
-			County      string `json:"county"`
-			State       string `json:"state"`
-			Country     string `json:"country"`
-			Suburb      string `json:"suburb"`
-			Neighbourhood string `json:"neighbourhood"`
-		} `json:"address"`
-		Lat  string `json:"lat"`
-		Lon  string `json:"lon"`
-		Type string `json:"type"`
+		DisplayName string           `json:"display_name"`
+		Address     NominatimAddress `json:"address"`
+		Lat         string           `json:"lat"`
+		Lon         string           `json:"lon"`
+		Type        string           `json:"type"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -431,17 +429,7 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 }
 
 // formatLocationFromAddress formats location name with smart logic for exact vs nearby matches
-func (s *WeatherService) formatLocationFromAddress(address struct {
-	City          string `json:"city"`
-	Town          string `json:"town"`
-	Village       string `json:"village"`
-	Hamlet        string `json:"hamlet"`
-	County        string `json:"county"`
-	State         string `json:"state"`
-	Country       string `json:"country"`
-	Suburb        string `json:"suburb"`
-	Neighbourhood string `json:"neighbourhood"`
-}, lat, lon float64) string {
+func (s *WeatherService) formatLocationFromAddress(address NominatimAddress, lat, lon float64) string {
 
 	// Prioritize location names from most specific to general
 	var locationName string
