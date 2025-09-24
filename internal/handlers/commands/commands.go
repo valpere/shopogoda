@@ -328,12 +328,13 @@ func (h *CommandHandler) Settings(bot *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// Get user's current location
-	locationName, lat, lon, err := h.services.User.GetUserLocation(context.Background(), userID)
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	var locationText string
 	if err != nil || locationName == "" {
 		locationText = "Not set"
 	} else {
-		locationText = fmt.Sprintf("%s (%.4f, %.4f)", locationName, lat, lon)
+		// Location name already includes coordinates from reverse geocoding
+		locationText = locationName
 	}
 
 	settingsText := fmt.Sprintf(`⚙️ *Settings*
@@ -562,6 +563,20 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 		return nil
 	}
 
+	// Use shared confirmation logic
+	return h.showLocationConfirmation(bot, ctx, text)
+}
+
+// parseLocationFromArgs extracts location from command arguments or returns empty string
+func (h *CommandHandler) parseLocationFromArgs(ctx *ext.Context) string {
+	if len(ctx.Args()) > 1 {
+		return strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
+	}
+	return ""
+}
+
+// showLocationConfirmation displays a confirmation dialog for setting/changing location
+func (h *CommandHandler) showLocationConfirmation(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
 	userID := ctx.EffectiveUser.Id
 
 	// Check if user already has a location set
@@ -572,16 +587,16 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 
 	if err != nil || existingLocation == "" {
 		// No location set - offer to set this as their location
-		messageText = fmt.Sprintf("📍 Did you want to set *%s* as your location?", text)
+		messageText = fmt.Sprintf("📍 Did you want to set *%s* as your location?", locationName)
 		keyboard = [][]gotgbot.InlineKeyboardButton{
-			{{Text: "✅ Yes, set as my location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(text))}},
+			{{Text: "✅ Yes, set as my location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(locationName))}},
 			{{Text: "❌ No, just ignore", CallbackData: "location_ignore"}},
 		}
 	} else {
 		// Location already set - offer to change it
-		messageText = fmt.Sprintf("📍 Did you want to change your location from *%s* to *%s*?", existingLocation, text)
+		messageText = fmt.Sprintf("📍 Did you want to change your location from *%s* to *%s*?", existingLocation, locationName)
 		keyboard = [][]gotgbot.InlineKeyboardButton{
-			{{Text: "✅ Yes, change location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(text))}},
+			{{Text: "✅ Yes, change location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(locationName))}},
 			{{Text: "❌ No, keep current", CallbackData: "location_ignore"}},
 		}
 	}
@@ -594,14 +609,6 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 	})
 
 	return err
-}
-
-// parseLocationFromArgs extracts location from command arguments or returns empty string
-func (h *CommandHandler) parseLocationFromArgs(ctx *ext.Context) string {
-	if len(ctx.Args()) > 1 {
-		return strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
-	}
-	return ""
 }
 
 // handleCoordinateInput processes GPS coordinates entered as text
@@ -644,31 +651,16 @@ func (h *CommandHandler) handleCoordinateInput(bot *gotgbot.Bot, ctx *ext.Contex
 		return err
 	}
 
-	h.logger.Info().Float64("lat", lat).Float64("lon", lon).Int64("user_id", userID).Msg("Processing coordinate input")
+	h.logger.Info().Float64("lat", lat).Float64("lon", lon).Int64("user_id", userID).Msg("Received coordinate input")
 
-	// Get location name from coordinates (reverse geocoding)
-	locationName, err := h.services.Weather.GetLocationName(context.Background(), lat, lon)
-	if err != nil {
-		locationName = fmt.Sprintf("Location (%.4f, %.4f)", lat, lon)
-		h.logger.Warn().Err(err).Msg("Failed to get location name from coordinates, using default")
-	}
+	// Create location name with embedded coordinates for confirmation
+	// Don't process/save yet - only do that when user confirms
+	locationName := fmt.Sprintf("coordinates (%.4f, %.4f)", lat, lon)
 
-	// Save the location
-	err = h.services.User.SetUserLocation(context.Background(), userID, locationName, "", "", lat, lon)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("Failed to save location from coordinates")
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location. Please try again.", nil)
-		return err
-	}
+	h.logger.Info().Str("location", locationName).Float64("lat", lat).Float64("lon", lon).Msg("Showing confirmation for coordinates")
 
-	h.logger.Info().Str("location", locationName).Float64("lat", lat).Float64("lon", lon).Msg("Location saved from coordinates")
-
-	// Send confirmation message
-	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
-		fmt.Sprintf("✅ Location set to *%s*\n📍 Coordinates: %.4f, %.4f", locationName, lat, lon),
-		&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
-
-	return err
+	// Use shared confirmation logic (coordinates will be processed and saved when user confirms)
+	return h.showLocationConfirmation(bot, ctx, locationName)
 }
 
 // Helper methods for formatting messages
@@ -1206,7 +1198,7 @@ func (h *CommandHandler) handleSettingsCallback(bot *gotgbot.Bot, ctx *ext.Conte
 
 func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
 	switch action {
-	case "add", "set_name":
+	case "add":
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
 			&gotgbot.SendMessageOpts{
@@ -1222,8 +1214,15 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 					ParseMode: "Markdown",
 				})
 			return err
+		} else if len(params) > 0 && params[0] == "name" {
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+				"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
+				&gotgbot.SendMessageOpts{
+					ParseMode: "Markdown",
+				})
+			return err
 		} else {
-			// Default set behavior (name-based)
+			// Default set behavior (name-based) for "location_set" without params
 			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 				"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
 				&gotgbot.SendMessageOpts{
@@ -1279,33 +1278,106 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 	case "confirm":
 		// Handle location confirmation from plain text input
 		if len(params) >= 1 {
-			locationName := strings.Join(params, " ")
+			encodedLocationName := strings.Join(params, " ")
+			// URL decode the location name
+			locationName, decodeErr := url.QueryUnescape(encodedLocationName)
+			if decodeErr != nil {
+				// If decoding fails, use the encoded name as fallback
+				locationName = encodedLocationName
+				h.logger.Warn().Err(decodeErr).Str("encoded", encodedLocationName).Msg("Failed to decode location name")
+			}
 			h.logger.Info().Str("location", locationName).Msg("User confirmed location from text input")
 
 			userID := ctx.EffectiveUser.Id
 
-			// Geocode the location
-			location, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
-			if err != nil {
-				h.logger.Error().Err(err).Str("location", locationName).Msg("Failed to geocode location")
-				_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-					fmt.Sprintf("❌ Sorry, I couldn't find the location '%s'. Please try a different city name.", locationName), nil)
+			// Check if this is raw coordinates input that needs processing
+			coordPattern := `^coordinates \((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)$`
+			coordRe := regexp.MustCompile(coordPattern)
+			coordMatches := coordRe.FindStringSubmatch(locationName)
+
+			if len(coordMatches) == 3 {
+				// This is raw coordinates input - process it now
+				lat, _ := strconv.ParseFloat(coordMatches[1], 64)
+				lon, _ := strconv.ParseFloat(coordMatches[2], 64)
+
+				h.logger.Info().Float64("lat", lat).Float64("lon", lon).Msg("Processing raw coordinates on confirmation")
+
+				// Get location name from coordinates (reverse geocoding)
+				baseName, err := h.services.Weather.GetLocationName(context.Background(), lat, lon)
+				if err != nil {
+					baseName = "Location"
+					h.logger.Warn().Err(err).Msg("Failed to get location name from coordinates, using default")
+				}
+
+				// Create formatted location name with coordinates
+				finalLocationName := fmt.Sprintf("%s (%.4f, %.4f)", baseName, lat, lon)
+
+				// Save the location with coordinates
+				err = h.services.User.SetUserLocation(context.Background(), userID, finalLocationName, "", "", lat, lon)
+				if err != nil {
+					h.logger.Error().Err(err).Msg("Failed to save location to database")
+					_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location. Please try again.", nil)
+					return err
+				}
+
+				h.logger.Info().Str("location", finalLocationName).Msg("Location with coordinates saved successfully")
+				_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+					fmt.Sprintf("✅ Location set to *%s*", finalLocationName),
+					&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
 				return err
 			}
 
-			// Save the location
-			err = h.services.User.SetUserLocation(context.Background(), userID, location.Name, location.Country, location.City, location.Latitude, location.Longitude)
-			if err != nil {
-				h.logger.Error().Err(err).Msg("Failed to save location to database")
-				_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location. Please try again.", nil)
+			// Check if this location name already contains coordinates (from reverse geocoding)
+			// Pattern: "London (51.5073, -0.1276)" or "near London (51.5073, -0.1276)"
+			coordInNamePattern := `^(.+?)\s*\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)$`
+			re := regexp.MustCompile(coordInNamePattern)
+			matches := re.FindStringSubmatch(locationName)
+
+			if len(matches) == 4 {
+				// Location name already contains coordinates (coordinate-based input)
+				displayName := strings.TrimSpace(matches[1])
+				lat, _ := strconv.ParseFloat(matches[2], 64)
+				lon, _ := strconv.ParseFloat(matches[3], 64)
+
+				h.logger.Info().Str("display_name", displayName).Float64("lat", lat).Float64("lon", lon).Msg("Using coordinates from location name")
+
+				// Save the location with coordinates
+				err := h.services.User.SetUserLocation(context.Background(), userID, locationName, "", "", lat, lon)
+				if err != nil {
+					h.logger.Error().Err(err).Msg("Failed to save location to database")
+					_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location. Please try again.", nil)
+					return err
+				}
+
+				h.logger.Info().Str("location", locationName).Msg("Location with coordinates saved successfully")
+				_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+					fmt.Sprintf("✅ Location set to *%s*", locationName),
+					&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
+				return err
+			} else {
+				// Regular location name (name-based input) - needs geocoding
+				location, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
+				if err != nil {
+					h.logger.Error().Err(err).Str("location", locationName).Msg("Failed to geocode location")
+					_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+						fmt.Sprintf("❌ Sorry, I couldn't find the location '%s'. Please try a different city name.", locationName), nil)
+					return err
+				}
+
+				// Save the location
+				err = h.services.User.SetUserLocation(context.Background(), userID, location.Name, location.Country, location.City, location.Latitude, location.Longitude)
+				if err != nil {
+					h.logger.Error().Err(err).Msg("Failed to save location to database")
+					_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to save location. Please try again.", nil)
+					return err
+				}
+
+				h.logger.Info().Str("location", location.Name).Msg("Location saved successfully from text input")
+				_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+					fmt.Sprintf("✅ Location set to *%s, %s*\n📍 Coordinates: %.4f, %.4f", location.Name, location.Country, location.Latitude, location.Longitude),
+					&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
 				return err
 			}
-
-			h.logger.Info().Str("location", location.Name).Msg("Location saved successfully from text input")
-			_, err = bot.SendMessage(ctx.EffectiveChat.Id,
-				fmt.Sprintf("✅ Location set to *%s, %s*\n📍 Coordinates: %.4f, %.4f", location.Name, location.Country, location.Latitude, location.Longitude),
-				&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
-			return err
 		}
 	case "ignore":
 		// Handle ignoring potential location from plain text input
@@ -2007,7 +2079,7 @@ func (h *CommandHandler) handleLocationSettings(bot *gotgbot.Bot, ctx *ext.Conte
 	userID := ctx.EffectiveUser.Id
 
 	// Get user's current location
-	locationName, lat, lon, err := h.services.User.GetUserLocation(context.Background(), userID)
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 
 	var locationText string
 	var statusText string
@@ -2015,7 +2087,8 @@ func (h *CommandHandler) handleLocationSettings(bot *gotgbot.Bot, ctx *ext.Conte
 		locationText = "Not set"
 		statusText = "You can set your location by:\n• Typing a city name\n• Sharing your current GPS location"
 	} else {
-		locationText = fmt.Sprintf("%s\nCoordinates: %.4f, %.4f", locationName, lat, lon)
+		// Location name already includes coordinates from reverse geocoding
+		locationText = locationName
 		statusText = "Your location is set. You can update it anytime."
 	}
 
