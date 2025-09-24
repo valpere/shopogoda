@@ -17,22 +17,22 @@ type Client struct {
 
 // WeatherData represents current weather information
 type WeatherData struct {
-	Temperature    float64 `json:"temperature"`
-	Humidity       int     `json:"humidity"`
-	Pressure       float64 `json:"pressure"`
-	WindSpeed      float64 `json:"wind_speed"`
-	WindDirection  int     `json:"wind_direction"`
-	Visibility     float64 `json:"visibility"`
-	UVIndex        float64 `json:"uv_index"`
-	Description    string  `json:"description"`
-	Icon           string  `json:"icon"`
-	LocationName   string  `json:"location_name"`
-	Timestamp      time.Time `json:"timestamp"`
+	Temperature   float64   `json:"temperature"`
+	Humidity      int       `json:"humidity"`
+	Pressure      float64   `json:"pressure"`
+	WindSpeed     float64   `json:"wind_speed"`
+	WindDirection int       `json:"wind_direction"`
+	Visibility    float64   `json:"visibility"`
+	UVIndex       float64   `json:"uv_index"`
+	Description   string    `json:"description"`
+	Icon          string    `json:"icon"`
+	LocationName  string    `json:"location_name"`
+	Timestamp     time.Time `json:"timestamp"`
 }
 
 // ForecastData represents weather forecast
 type ForecastData struct {
-	Location  string         `json:"location"`
+	Location  string          `json:"location"`
 	Forecasts []DailyForecast `json:"forecasts"`
 }
 
@@ -49,12 +49,12 @@ type DailyForecast struct {
 
 // AirQualityData represents air quality information
 type AirQualityData struct {
-	AQI       int     `json:"aqi"`
-	CO        float64 `json:"co"`
-	NO2       float64 `json:"no2"`
-	O3        float64 `json:"o3"`
-	PM25      float64 `json:"pm25"`
-	PM10      float64 `json:"pm10"`
+	AQI       int       `json:"aqi"`
+	CO        float64   `json:"co"`
+	NO2       float64   `json:"no2"`
+	O3        float64   `json:"o3"`
+	PM25      float64   `json:"pm25"`
+	PM10      float64   `json:"pm10"`
 	Timestamp time.Time `json:"timestamp"`
 }
 

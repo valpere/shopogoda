@@ -91,17 +91,17 @@ type AlertCondition struct {
 
 // Alert represents a triggered environmental alert
 type Alert struct {
-	ID          string        `json:"id"`
-	Type        AlertType     `json:"type"`
-	Level       AlertLevel    `json:"level"`
-	Title       string        `json:"title"`
-	Description string        `json:"description"`
-	Value       float64       `json:"value"`
-	Threshold   float64       `json:"threshold"`
-	Location    string        `json:"location"`
-	Timestamp   time.Time     `json:"timestamp"`
-	IsResolved  bool          `json:"is_resolved"`
-	ResolvedAt  *time.Time    `json:"resolved_at,omitempty"`
+	ID          string     `json:"id"`
+	Type        AlertType  `json:"type"`
+	Level       AlertLevel `json:"level"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Value       float64    `json:"value"`
+	Threshold   float64    `json:"threshold"`
+	Location    string     `json:"location"`
+	Timestamp   time.Time  `json:"timestamp"`
+	IsResolved  bool       `json:"is_resolved"`
+	ResolvedAt  *time.Time `json:"resolved_at,omitempty"`
 }
 
 // Engine handles alert processing and evaluation

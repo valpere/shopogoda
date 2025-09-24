@@ -49,10 +49,10 @@ func (h *CommandHandler) Unsubscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 	for i, sub := range subscriptions {
 		subTypeText := h.getSubscriptionTypeText(sub.SubscriptionType)
 		text += fmt.Sprintf("%d. %s - %s\n", i+1, subTypeText, sub.User.LocationName)
-		
+
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: fmt.Sprintf("🗑️ Remove %s", subTypeText), 
-			 CallbackData: fmt.Sprintf("unsubscribe_%s", sub.ID)},
+			{Text: fmt.Sprintf("🗑️ Remove %s", subTypeText),
+				CallbackData: fmt.Sprintf("unsubscribe_%s", sub.ID)},
 		})
 	}
 
@@ -77,7 +77,7 @@ func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) e
 
 	if len(subscriptions) == 0 {
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📋 You have no active subscriptions.\n\nUse /subscribe to set up weather notifications!", 
+			"📋 You have no active subscriptions.\n\nUse /subscribe to set up weather notifications!",
 			&gotgbot.SendMessageOpts{
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
@@ -94,13 +94,13 @@ func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) e
 	for i, sub := range subscriptions {
 		subTypeText := h.getSubscriptionTypeText(sub.SubscriptionType)
 		freqText := h.getFrequencyText(sub.Frequency)
-		
+
 		text += fmt.Sprintf("%d. **%s**\n", i+1, subTypeText)
 		text += fmt.Sprintf("   📍 Location: %s\n", sub.User.LocationName)
 		text += fmt.Sprintf("   ⏰ Frequency: %s\n", freqText)
 		text += fmt.Sprintf("   🕐 Time: %s\n", sub.TimeOfDay)
 		text += "\n"
-		
+
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
 			{Text: fmt.Sprintf("⚙️ Edit %s", subTypeText),
 				CallbackData: fmt.Sprintf("sub_edit_%s", sub.ID)},
@@ -213,7 +213,7 @@ func (h *CommandHandler) RemoveAlert(bot *gotgbot.Bot, ctx *ext.Context) error {
 // AdminBroadcast command handler
 func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
-	
+
 	// Check admin permissions
 	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {
@@ -229,7 +229,7 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 	}
 
 	message := strings.Join(args[1:], " ")
-	
+
 	// Get all active users
 	users, err := h.services.User.GetActiveUsers(context.Background())
 	if err != nil {
@@ -251,7 +251,7 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 		_, err := bot.SendMessage(targetUser.ID, broadcastMessage, &gotgbot.SendMessageOpts{
 			ParseMode: "Markdown",
 		})
-		
+
 		if err != nil {
 			failCount++
 		} else {
@@ -272,7 +272,7 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 // AdminListUsers command handler
 func (h *CommandHandler) AdminListUsers(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
-	
+
 	// Check admin permissions
 	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {

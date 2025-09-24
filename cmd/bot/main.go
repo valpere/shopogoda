@@ -46,7 +46,7 @@ func main() {
 
 	log.Println("Shutting down ShoPogoda...")
 	cancel()
-	
+
 	if err := weatherBot.Stop(); err != nil {
 		log.Printf("Error during shutdown: %v", err)
 	}

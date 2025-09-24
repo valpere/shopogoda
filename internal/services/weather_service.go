@@ -13,6 +13,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
+	"github.com/valpere/shopogoda/internal"
+
 	"github.com/valpere/shopogoda/internal/config"
 	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/pkg/weather"
@@ -32,12 +34,12 @@ type NominatimAddress struct {
 }
 
 type WeatherService struct {
-	client        *weather.Client
-	geocoder      *weather.GeocodingClient
-	redis         *redis.Client
-	config        *config.WeatherConfig
-	logger        *zerolog.Logger
-	httpClient    *http.Client
+	client     *weather.Client
+	geocoder   *weather.GeocodingClient
+	redis      *redis.Client
+	config     *config.WeatherConfig
+	logger     *zerolog.Logger
+	httpClient *http.Client
 }
 
 func NewWeatherService(cfg *config.WeatherConfig, redis *redis.Client, logger *zerolog.Logger) *WeatherService {
@@ -66,7 +68,7 @@ func (s *WeatherService) getUserAgent() string {
 	if s.config != nil && s.config.UserAgent != "" {
 		return s.config.UserAgent
 	}
-	return "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)"
+	return internal.DefaultUserAgent
 }
 
 func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64) (*weather.WeatherData, error) {
@@ -307,10 +309,10 @@ func (s *WeatherService) GetCompleteWeatherData(ctx context.Context, lat, lon fl
 	if err != nil {
 		// If air quality fails, still return weather data with empty air quality
 		air = &weather.AirQualityData{
-			AQI: 0,
-			CO:  0,
-			NO2: 0,
-			O3:  0,
+			AQI:  0,
+			CO:   0,
+			NO2:  0,
+			O3:   0,
 			PM25: 0,
 			PM10: 0,
 		}
@@ -449,7 +451,6 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 
 // formatLocationFromAddress formats location name with smart logic for exact vs nearby matches
 func (s *WeatherService) formatLocationFromAddress(address NominatimAddress, lat, lon float64) string {
-
 	// Prioritize location names from most specific to general
 	var locationName string
 	var isExact bool

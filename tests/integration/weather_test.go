@@ -3,93 +3,93 @@
 package integration
 
 import (
-    "context"
-    "os"
-    "testing"
-    "time"
+	"context"
+	"os"
+	"testing"
+	"time"
 
-    "github.com/rs/zerolog"
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
-    "github.com/testcontainers/testcontainers-go"
-    "github.com/testcontainers/testcontainers-go/wait"
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 
-    "github.com/valpere/shopogoda/internal/config"
-    "github.com/valpere/shopogoda/internal/database"
-    "github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/internal/config"
+	"github.com/valpere/shopogoda/internal/database"
+	"github.com/valpere/shopogoda/internal/services"
 )
 
 func TestWeatherServiceIntegration(t *testing.T) {
-    ctx := context.Background()
+	ctx := context.Background()
 
-    // Start Redis container for testing
-    redisContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-        ContainerRequest: testcontainers.ContainerRequest{
-            Image:        "redis:7-alpine",
-            ExposedPorts: []string{"6379/tcp"},
-            WaitingFor:   wait.ForLog("Ready to accept connections"),
-        },
-        Started: true,
-    })
-    require.NoError(t, err)
-    defer redisContainer.Terminate(ctx)
+	// Start Redis container for testing
+	redisContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        "redis:7-alpine",
+			ExposedPorts: []string{"6379/tcp"},
+			WaitingFor:   wait.ForLog("Ready to accept connections"),
+		},
+		Started: true,
+	})
+	require.NoError(t, err)
+	defer redisContainer.Terminate(ctx)
 
-    // Get Redis connection details
-    redisHost, err := redisContainer.Host(ctx)
-    require.NoError(t, err)
-    redisPort, err := redisContainer.MappedPort(ctx, "6379")
-    require.NoError(t, err)
+	// Get Redis connection details
+	redisHost, err := redisContainer.Host(ctx)
+	require.NoError(t, err)
+	redisPort, err := redisContainer.MappedPort(ctx, "6379")
+	require.NoError(t, err)
 
-    // Setup Redis client
-    redisConfig := &config.RedisConfig{
-        Host: redisHost,
-        Port: redisPort.Int(),
-        DB:   0,
-    }
+	// Setup Redis client
+	redisConfig := &config.RedisConfig{
+		Host: redisHost,
+		Port: redisPort.Int(),
+		DB:   0,
+	}
 
-    rdb, err := database.ConnectRedis(redisConfig)
-    require.NoError(t, err)
+	rdb, err := database.ConnectRedis(redisConfig)
+	require.NoError(t, err)
 
-    // Setup logger for testing
-    logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	// Setup logger for testing
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-    // Setup weather service
-    weatherConfig := &config.WeatherConfig{
-        OpenWeatherAPIKey: "test_api_key", // Use a test API key
-        UserAgent:        "ShoPogoda-Weather-Bot/1.0 (test@shopogoda.bot)",
-    }
+	// Setup weather service
+	weatherConfig := &config.WeatherConfig{
+		OpenWeatherAPIKey: "test_api_key", // Use a test API key
+		UserAgent:         "ShoPogoda-Weather-Bot/1.0 (test@shopogoda.bot)",
+	}
 
-    weatherService := services.NewWeatherService(weatherConfig, rdb, &logger)
+	weatherService := services.NewWeatherService(weatherConfig, rdb, &logger)
 
-    // Test getting coordinates (this will use real API)
-    t.Run("GetCoordinates", func(t *testing.T) {
-        if testing.Short() {
-            t.Skip("Skipping API test in short mode")
-        }
+	// Test getting coordinates (this will use real API)
+	t.Run("GetCoordinates", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("Skipping API test in short mode")
+		}
 
-        coords, err := weatherService.GeocodeLocation(ctx, "London")
-        assert.NoError(t, err)
-        assert.NotNil(t, coords)
-        assert.InDelta(t, 51.5074, coords.Latitude, 0.1)
-        assert.InDelta(t, -0.1278, coords.Longitude, 0.1)
-    })
+		coords, err := weatherService.GeocodeLocation(ctx, "London")
+		assert.NoError(t, err)
+		assert.NotNil(t, coords)
+		assert.InDelta(t, 51.5074, coords.Latitude, 0.1)
+		assert.InDelta(t, -0.1278, coords.Longitude, 0.1)
+	})
 
-    t.Run("CacheCoordinates", func(t *testing.T) {
-        // This test verifies caching works
-        location := "TestCity"
+	t.Run("CacheCoordinates", func(t *testing.T) {
+		// This test verifies caching works
+		location := "TestCity"
 
-        // First call should cache
-        _, err := weatherService.GeocodeLocation(ctx, location)
-        if err != nil {
-            t.Skip("Skipping cache test due to API error")
-        }
+		// First call should cache
+		_, err := weatherService.GeocodeLocation(ctx, location)
+		if err != nil {
+			t.Skip("Skipping cache test due to API error")
+		}
 
-        // Second call should be faster (cached)
-        start := time.Now()
-        _, err = weatherService.GeocodeLocation(ctx, location)
-        duration := time.Since(start)
+		// Second call should be faster (cached)
+		start := time.Now()
+		_, err = weatherService.GeocodeLocation(ctx, location)
+		duration := time.Since(start)
 
-        assert.NoError(t, err)
-        assert.Less(t, duration, 100*time.Millisecond, "Cached call should be fast")
-    })
+		assert.NoError(t, err)
+		assert.Less(t, duration, 100*time.Millisecond, "Cached call should be fast")
+	})
 }
