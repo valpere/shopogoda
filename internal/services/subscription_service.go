@@ -23,10 +23,9 @@ func NewSubscriptionService(db *gorm.DB, redis *redis.Client) *SubscriptionServi
 	}
 }
 
-func (s *SubscriptionService) CreateSubscription(ctx context.Context, userID int64, locationID uuid.UUID, subType models.SubscriptionType, frequency models.Frequency, timeOfDay string) (*models.Subscription, error) {
+func (s *SubscriptionService) CreateSubscription(ctx context.Context, userID int64, subType models.SubscriptionType, frequency models.Frequency, timeOfDay string) (*models.Subscription, error) {
 	subscription := &models.Subscription{
 		UserID:           userID,
-		LocationID:       locationID,
 		SubscriptionType: subType,
 		Frequency:        frequency,
 		TimeOfDay:        timeOfDay,
@@ -43,7 +42,6 @@ func (s *SubscriptionService) CreateSubscription(ctx context.Context, userID int
 func (s *SubscriptionService) GetUserSubscriptions(ctx context.Context, userID int64) ([]models.Subscription, error) {
 	var subscriptions []models.Subscription
 	err := s.db.WithContext(ctx).
-		Preload("Location").
 		Where("user_id = ? AND is_active = ?", userID, true).
 		Find(&subscriptions).Error
 
@@ -51,7 +49,7 @@ func (s *SubscriptionService) GetUserSubscriptions(ctx context.Context, userID i
 }
 
 func (s *SubscriptionService) UpdateSubscription(ctx context.Context, userID int64, subscriptionID uuid.UUID, updates map[string]interface{}) error {
-	updates["updated_at"] = time.Now()
+	updates["updated_at"] = time.Now().UTC()
 
 	return s.db.WithContext(ctx).
 		Model(&models.Subscription{}).
@@ -70,7 +68,6 @@ func (s *SubscriptionService) GetActiveSubscriptions(ctx context.Context) ([]mod
 	var subscriptions []models.Subscription
 	err := s.db.WithContext(ctx).
 		Preload("User").
-		Preload("Location").
 		Where("is_active = ?", true).
 		Find(&subscriptions).Error
 
@@ -81,7 +78,6 @@ func (s *SubscriptionService) GetSubscriptionsByType(ctx context.Context, subTyp
 	var subscriptions []models.Subscription
 	err := s.db.WithContext(ctx).
 		Preload("User").
-		Preload("Location").
 		Where("subscription_type = ? AND is_active = ?", subType, true).
 		Find(&subscriptions).Error
 
@@ -89,7 +85,7 @@ func (s *SubscriptionService) GetSubscriptionsByType(ctx context.Context, subTyp
 }
 
 func (s *SubscriptionService) ShouldSendNotification(subscription *models.Subscription) bool {
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// Parse time of day
 	timeOfDay, err := time.Parse("15:04", subscription.TimeOfDay)

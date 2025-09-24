@@ -10,7 +10,7 @@ GREEN=\033[0;32m
 RED=\033[0;31m
 NC=\033[0m # No Color
 
-.PHONY: help build run test clean docker-build docker-up docker-down deps lint typecheck check init migrate dev stop deploy-staging deploy-prod
+.PHONY: help build run test clean docker-build docker-up docker-down deps fmt lint typecheck check init migrate dev stop deploy-staging deploy-prod
 
 help: ## Show this help message
 	@echo "$(CYAN)ShoPogoda (Що Погода) - Development Commands$(NC)"
@@ -49,6 +49,11 @@ test-e2e: ## Run end-to-end tests
 	@echo "$(CYAN)Running E2E tests...$(NC)"
 	@go test -tags=e2e -v ./tests/e2e/...
 
+fmt: ## Format Go code
+	@echo "$(CYAN)Formatting Go code...$(NC)"
+	@gofmt -s -w .
+	@goimports -w .
+
 lint: ## Run linter
 	@echo "$(CYAN)Running linter...$(NC)"
 	@golangci-lint run --timeout=5m
@@ -57,7 +62,7 @@ typecheck: ## Run type check
 	@echo "$(CYAN)Running type check...$(NC)"
 	@go build -o /dev/null ./...
 
-check: lint typecheck test ## Run all checks (lint, typecheck, test)
+check: fmt lint typecheck test ## Run all checks (format, lint, typecheck, test)
 	@echo "$(GREEN)All checks passed!$(NC)"
 
 clean: ## Clean build artifacts
@@ -148,6 +153,7 @@ quick-test: ## Quick test without verbose output
 install-tools: ## Install development tools
 	@echo "$(CYAN)Installing development tools...$(NC)"
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install golang.org/x/tools/cmd/goimports@latest
 	@echo "$(GREEN)Development tools installed$(NC)"
 
 # Database helpers

@@ -1,7 +1,7 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24.6-alpine AS builder
 
 # Install git and ca-certificates
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk update && apk upgrade && apk add --no-cache git ca-certificates tzdata
 
 # Set working directory
 WORKDIR /app
@@ -32,7 +32,7 @@ WORKDIR /app
 COPY --from=builder /app/shopogoda .
 
 # Copy configuration files if they exist
-COPY --from=builder /app/configs ./configs 2>/dev/null || true
+COPY --from=builder /app/configs/ ./configs/ 2>/dev/null || mkdir -p ./configs/
 
 # Change ownership to non-root user
 RUN chown -R shopogoda:shopogoda /app

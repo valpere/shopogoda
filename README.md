@@ -8,7 +8,7 @@ A professional-grade Telegram bot for weather monitoring, environmental alerts, 
 - **Real-time Weather Data**: Current conditions with comprehensive metrics
 - **5-Day Forecasts**: Detailed weather predictions
 - **Air Quality Monitoring**: AQI and pollutant tracking
-- **Location Management**: Multiple saved locations with GPS support
+- **Smart Location Management**: Single location per user with GPS and name-based input
 - **Multi-language Support**: Ukrainian, English, German, French, Spanish
 
 ### Enterprise Features
@@ -53,13 +53,70 @@ make run
 
 ### Configuration
 
-Edit `.env` file with your credentials:
+ShoPogoda supports multiple configuration methods for different deployment scenarios:
 
+#### Quick Setup (Development)
+
+1. Copy the example environment file:
 ```bash
+cp .env.example .env
+```
+
+2. Edit `.env` with your credentials:
+```bash
+# Required
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 OPENWEATHER_API_KEY=your_openweather_api_key
+
+# Optional
 SLACK_WEBHOOK_URL=your_slack_webhook_url
+BOT_DEBUG=true
+LOG_LEVEL=debug
 ```
+
+#### Configuration Methods
+
+ShoPogoda uses a hierarchical configuration system with the following precedence:
+
+1. **Environment Variables** (highest priority)
+2. **.env file** in current directory
+3. **YAML configuration files** (first found):
+   - `./shopogoda.yaml` (current directory)
+   - `~/.shopogoda.yaml` (home directory)
+   - `~/.config/shopogoda.yaml` (user config directory)
+   - `/etc/shopogoda.yaml` (system-wide)
+4. **Built-in defaults** (lowest priority)
+
+#### YAML Configuration
+
+For production deployments, create a `shopogoda.yaml` file:
+
+```yaml
+# Bot configuration
+bot:
+  debug: false
+  webhook_url: "https://yourdomain.com/webhook"
+  webhook_port: 8080
+
+# Database configuration
+database:
+  host: localhost
+  port: 5432
+  user: shopogoda
+  name: shopogoda
+  ssl_mode: require  # Enable for production
+
+# Weather service configuration
+weather:
+  user_agent: "ShoPogoda-Weather-Bot/1.0 (your-contact@example.com)"
+
+# Logging configuration
+logging:
+  level: info
+  format: json
+```
+
+**📖 For complete configuration reference, deployment examples, and troubleshooting:** [Configuration Guide](docs/CONFIGURATION.md)
 
 ## 📊 Monitoring
 

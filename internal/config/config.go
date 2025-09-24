@@ -10,20 +10,20 @@ import (
 )
 
 type Config struct {
-	Bot      BotConfig      `mapstructure:"bot"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Weather  WeatherConfig  `mapstructure:"weather"`
-	Logging  LoggingConfig  `mapstructure:"logging"`
-	Metrics  MetricsConfig  `mapstructure:"metrics"`
+	Bot          BotConfig          `mapstructure:"bot"`
+	Database     DatabaseConfig     `mapstructure:"database"`
+	Redis        RedisConfig        `mapstructure:"redis"`
+	Weather      WeatherConfig      `mapstructure:"weather"`
+	Logging      LoggingConfig      `mapstructure:"logging"`
+	Metrics      MetricsConfig      `mapstructure:"metrics"`
 	Integrations IntegrationsConfig `mapstructure:"integrations"`
 }
 
 type BotConfig struct {
-	Token      string `mapstructure:"token"`
-	Debug      bool   `mapstructure:"debug"`
-	WebhookURL string `mapstructure:"webhook_url"`
-	WebhookPort int   `mapstructure:"webhook_port"`
+	Token       string `mapstructure:"token"`
+	Debug       bool   `mapstructure:"debug"`
+	WebhookURL  string `mapstructure:"webhook_url"`
+	WebhookPort int    `mapstructure:"webhook_port"`
 }
 
 type DatabaseConfig struct {
@@ -45,6 +45,7 @@ type RedisConfig struct {
 type WeatherConfig struct {
 	OpenWeatherAPIKey string `mapstructure:"openweather_api_key"`
 	AirQualityAPIKey  string `mapstructure:"airquality_api_key"`
+	UserAgent         string `mapstructure:"user_agent"`
 }
 
 type LoggingConfig struct {
@@ -71,10 +72,15 @@ func Load() (*Config, error) {
 		}
 	}
 
-	viper.SetConfigName("config")
+	// Configure YAML config file search
+	viper.SetConfigName("shopogoda")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("./configs")
+
+	// Add search paths in order of precedence (first found wins)
+	viper.AddConfigPath(".")             // ./shopogoda.yaml (current directory)
+	viper.AddConfigPath("$HOME")         // ~/.shopogoda.yaml (home directory)
+	viper.AddConfigPath("$HOME/.config") // ~/.config/shopogoda.yaml
+	viper.AddConfigPath("/etc")          // /etc/shopogoda.yaml (system-wide)
 
 	// Environment variables
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -100,6 +106,7 @@ func Load() (*Config, error) {
 
 	viper.BindEnv("weather.openweather_api_key", "OPENWEATHER_API_KEY")
 	viper.BindEnv("weather.airquality_api_key", "AIRQUALITY_API_KEY")
+	viper.BindEnv("weather.user_agent", "WEATHER_USER_AGENT")
 
 	viper.BindEnv("logging.level", "LOG_LEVEL")
 	viper.BindEnv("logging.format", "LOG_FORMAT")
@@ -143,6 +150,9 @@ func setDefaults() {
 	viper.SetDefault("redis.host", "localhost")
 	viper.SetDefault("redis.port", 6379)
 	viper.SetDefault("redis.db", 0)
+
+	// Weather defaults
+	viper.SetDefault("weather.user_agent", "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)")
 
 	// Logging defaults
 	viper.SetDefault("logging.level", "info")
