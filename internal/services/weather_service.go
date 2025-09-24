@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,14 @@ func NewWeatherService(cfg *config.WeatherConfig, redis *redis.Client, logger *z
 		config:   cfg,
 		logger:   logger,
 	}
+}
+
+// getUserAgent safely returns the UserAgent from config with fallback to default
+func (s *WeatherService) getUserAgent() string {
+	if s.config != nil && s.config.UserAgent != "" {
+		return s.config.UserAgent
+	}
+	return "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)"
 }
 
 func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64) (*weather.WeatherData, error) {
@@ -318,16 +327,16 @@ func (s *WeatherService) GetCompleteWeatherData(ctx context.Context, lat, lon fl
 
 // geocodeWithNominatim uses OpenStreetMap's Nominatim service as fallback geocoding
 func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName string) (*weather.Location, error) {
-	url := fmt.Sprintf("https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=1",
-		strings.ReplaceAll(locationName, " ", "+"))
+	requestURL := fmt.Sprintf("https://nominatim.openstreetmap.org/search?q=%s&format=json&limit=1",
+		url.QueryEscape(locationName))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", requestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Nominatim request: %w", err)
 	}
 
 	// Set User-Agent as required by Nominatim usage policy
-	req.Header.Set("User-Agent", s.config.UserAgent)
+	req.Header.Set("User-Agent", s.getUserAgent())
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -399,7 +408,7 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 	}
 
 	// Set User-Agent as required by Nominatim usage policy
-	req.Header.Set("User-Agent", s.config.UserAgent)
+	req.Header.Set("User-Agent", s.getUserAgent())
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

@@ -15,6 +15,15 @@ import (
     "github.com/valpere/shopogoda/internal/models"
 )
 
+// User table column names for upsert operations
+var userUpsertColumns = []string{
+    "username",
+    "first_name",
+    "last_name",
+    "language",
+    "updated_at",
+}
+
 type UserService struct {
     db    *gorm.DB
     redis *redis.Client
@@ -54,7 +63,7 @@ func (s *UserService) RegisterUser(ctx context.Context, tgUser *gotgbot.User) er
     // Use GORM's upsert functionality with proper conflict resolution
     result := s.db.WithContext(ctx).Clauses(clause.OnConflict{
         Columns:   []clause.Column{{Name: "id"}},
-        DoUpdates: clause.AssignmentColumns([]string{"username", "first_name", "last_name", "language", "updated_at"}),
+        DoUpdates: clause.AssignmentColumns(userUpsertColumns),
     }).Create(user)
 
     return result.Error

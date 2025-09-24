@@ -4,9 +4,11 @@ package integration
 
 import (
     "context"
+    "os"
     "testing"
     "time"
 
+    "github.com/rs/zerolog"
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
     "github.com/testcontainers/testcontainers-go"
@@ -48,12 +50,16 @@ func TestWeatherServiceIntegration(t *testing.T) {
     rdb, err := database.ConnectRedis(redisConfig)
     require.NoError(t, err)
 
+    // Setup logger for testing
+    logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
     // Setup weather service
     weatherConfig := &config.WeatherConfig{
         OpenWeatherAPIKey: "test_api_key", // Use a test API key
+        UserAgent:        "ShoPogoda-Weather-Bot/1.0 (test@shopogoda.bot)",
     }
 
-    weatherService := services.NewWeatherService(weatherConfig, rdb)
+    weatherService := services.NewWeatherService(weatherConfig, rdb, &logger)
 
     // Test getting coordinates (this will use real API)
     t.Run("GetCoordinates", func(t *testing.T) {
