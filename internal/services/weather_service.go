@@ -37,15 +37,27 @@ type WeatherService struct {
 	redis         *redis.Client
 	config        *config.WeatherConfig
 	logger        *zerolog.Logger
+	httpClient    *http.Client
 }
 
 func NewWeatherService(cfg *config.WeatherConfig, redis *redis.Client, logger *zerolog.Logger) *WeatherService {
+	// Create a reusable HTTP client with reasonable timeout and connection pooling
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 2,
+			IdleConnTimeout:     30 * time.Second,
+		},
+	}
+
 	return &WeatherService{
-		client:   weather.NewClient(cfg.OpenWeatherAPIKey),
-		geocoder: weather.NewGeocodingClient(cfg.OpenWeatherAPIKey),
-		redis:    redis,
-		config:   cfg,
-		logger:   logger,
+		client:     weather.NewClient(cfg.OpenWeatherAPIKey),
+		geocoder:   weather.NewGeocodingClient(cfg.OpenWeatherAPIKey),
+		redis:      redis,
+		config:     cfg,
+		logger:     logger,
+		httpClient: httpClient,
 	}
 }
 
@@ -338,8 +350,7 @@ func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName 
 	// Set User-Agent as required by Nominatim usage policy
 	req.Header.Set("User-Agent", s.getUserAgent())
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make Nominatim request: %w", err)
 	}
@@ -410,8 +421,7 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 	// Set User-Agent as required by Nominatim usage policy
 	req.Header.Set("User-Agent", s.getUserAgent())
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to make Nominatim reverse request: %w", err)
 	}
