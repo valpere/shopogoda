@@ -541,11 +541,12 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 		return h.handleCoordinateInput(bot, ctx, text)
 	}
 
-	// Check if this looks like a timezone (Region/City or UTC)
-	timezonePattern := `^(UTC|[A-Z][a-zA-Z_]+/[A-Za-z_/]+)$`
-	timezoneMatch, _ := regexp.MatchString(timezonePattern, text)
-	if timezoneMatch {
-		h.logger.Info().Str("input", text).Msg("Detected timezone input from text message")
+	// Check if this looks like a timezone - be permissive, let time.LoadLocation() do the real validation
+	// Match common timezone patterns: UTC, GMT, EST, Europe/London, America/New_York, etc.
+	timezonePattern := `^[A-Za-z0-9][A-Za-z0-9_+-]*(?:/[A-Za-z0-9_+-]+)*$`
+	timezoneRe := regexp.MustCompile(timezonePattern)
+	if timezoneRe.MatchString(text) {
+		h.logger.Info().Str("input", text).Msg("Detected potential timezone input from text message")
 		return h.handleTimezoneInput(bot, ctx, text)
 	}
 
@@ -714,15 +715,15 @@ func (h *CommandHandler) showTimezoneConfirmation(bot *gotgbot.Bot, ctx *ext.Con
 	var messageText string
 	var keyboard [][]gotgbot.InlineKeyboardButton
 
-	if err != nil || user.Timezone == "" || user.Timezone == "UTC" {
-		// No timezone set or using default UTC - offer to set this timezone
+	if err != nil || user.Timezone == "" {
+		// No timezone set - offer to set this timezone
 		messageText = fmt.Sprintf("🕐 Did you want to set *%s* as your timezone?", timezoneName)
 		keyboard = [][]gotgbot.InlineKeyboardButton{
 			{{Text: "✅ Yes, set as my timezone", CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
 			{{Text: "❌ No, just ignore", CallbackData: "timezone_ignore"}},
 		}
 	} else {
-		// Timezone already set - offer to change it
+		// Timezone already set (including UTC) - offer to change it
 		messageText = fmt.Sprintf("🕐 Did you want to change your timezone from *%s* to *%s*?", user.Timezone, timezoneName)
 		keyboard = [][]gotgbot.InlineKeyboardButton{
 			{{Text: "✅ Yes, change timezone", CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
