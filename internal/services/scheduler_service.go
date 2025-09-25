@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -9,6 +11,11 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
+)
+
+const (
+	// NotificationPlatformCount represents the number of notification platforms (Slack + Telegram)
+	NotificationPlatformCount = 2
 )
 
 type SchedulerService struct {
@@ -106,8 +113,39 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
 
 		// Send notifications for triggered alerts
 		for _, alert := range alerts {
+			// Track alert notification errors but don't fail processing
+			var alertErrors []string
+
+			// Send Slack alert
 			if err := s.notification.SendSlackAlert(&alert, &user); err != nil {
 				s.logger.Error().Err(err).Msg("Failed to send Slack alert")
+				alertErrors = append(alertErrors, fmt.Sprintf("Slack: %v", err))
+			}
+
+			// Send Telegram alert
+			if err := s.notification.SendTelegramAlert(&alert, &user); err != nil {
+				s.logger.Error().Err(err).Msg("Failed to send Telegram alert")
+				alertErrors = append(alertErrors, fmt.Sprintf("Telegram: %v", err))
+			}
+
+			// Log alert delivery status
+			if len(alertErrors) == 0 {
+				s.logger.Info().
+					Str("alert_type", alert.AlertType.String()).
+					Int64("user_id", user.ID).
+					Msg("Alert notifications sent successfully to all platforms")
+			} else if len(alertErrors) == NotificationPlatformCount {
+				s.logger.Error().
+					Strs("failed_platforms", alertErrors).
+					Str("alert_type", alert.AlertType.String()).
+					Int64("user_id", user.ID).
+					Msg("Alert notification failed on all platforms")
+			} else {
+				s.logger.Warn().
+					Strs("failed_platforms", alertErrors).
+					Str("alert_type", alert.AlertType.String()).
+					Int64("user_id", user.ID).
+					Msg("Alert notification partially failed but at least one platform succeeded")
 			}
 		}
 
@@ -123,46 +161,143 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
 
 func (s *SchedulerService) processDailyNotifications(ctx context.Context) {
 	now := time.Now().UTC()
+	s.logger.Debug().Time("utc_time", now).Msg("Processing scheduled notifications")
 
-	// Only send daily notifications at 8 AM
-	if now.Hour() != 8 || now.Minute() != 0 {
-		return
-	}
-
-	s.logger.Info().Msg("Processing daily weather notifications")
-
-	// Get users with daily subscriptions who have locations set
+	// Get all active subscriptions with users who have locations set
 	var subscriptions []models.Subscription
 	if err := s.db.WithContext(ctx).
 		Preload("User").
 		Joins("JOIN users ON users.id = subscriptions.user_id").
-		Where("subscriptions.subscription_type = ? AND subscriptions.is_active = ? AND users.location_name != '' AND users.location_name IS NOT NULL", models.SubscriptionDaily, true).
+		Where("subscriptions.is_active = ? AND users.location_name != '' AND users.location_name IS NOT NULL", true).
 		Find(&subscriptions).Error; err != nil {
-		s.logger.Error().Err(err).Msg("Failed to get daily subscriptions")
+		s.logger.Error().Err(err).Msg("Failed to get active subscriptions")
 		return
 	}
 
 	for _, subscription := range subscriptions {
-		// Get weather for user's location
-		weather, err := s.weather.GetCurrentWeatherByCoords(
-			ctx,
-			subscription.User.Latitude,
-			subscription.User.Longitude,
-		)
-		if err != nil {
-			s.logger.Error().Err(err).
-				Str("location", subscription.User.LocationName).
-				Int64("user_id", subscription.UserID).
-				Msg("Failed to get weather for daily notification")
-			continue
+		// Parse user's timezone
+		userTimezone := subscription.User.Timezone
+		if userTimezone == "" {
+			userTimezone = "UTC"
 		}
 
-		// Send notification
-		users := []models.User{subscription.User}
-		if err := s.notification.SendSlackWeatherUpdate(weather, users); err != nil {
-			s.logger.Error().Err(err).
+		location, err := time.LoadLocation(userTimezone)
+		if err != nil {
+			s.logger.Warn().Str("timezone", userTimezone).Err(err).Msg("Invalid timezone, using UTC")
+			location = time.UTC
+		}
+
+		// Convert current time to user's timezone
+		userTime := now.In(location)
+
+		// Check if it's time to send the notification
+		if s.shouldSendNotification(subscription, userTime) {
+			s.logger.Info().
+				Str("type", subscription.SubscriptionType.String()).
+				Str("time", subscription.TimeOfDay).
+				Str("user_timezone", userTimezone).
 				Int64("user_id", subscription.UserID).
-				Msg("Failed to send daily weather notification")
+				Msg("Sending scheduled notification")
+
+			if err := s.sendScheduledNotification(ctx, subscription); err != nil {
+				s.logger.Error().Err(err).
+					Int64("user_id", subscription.UserID).
+					Str("type", subscription.SubscriptionType.String()).
+					Msg("Failed to send scheduled notification")
+			}
 		}
 	}
+}
+
+func (s *SchedulerService) shouldSendNotification(subscription models.Subscription, userTime time.Time) bool {
+	// Parse the time of day (format: HH:MM)
+	targetTime, err := time.Parse("15:04", subscription.TimeOfDay)
+	if err != nil {
+		s.logger.Warn().Str("time_of_day", subscription.TimeOfDay).Err(err).Msg("Invalid time format")
+		return false
+	}
+
+	// Check if current time matches the target time (within 5-minute window)
+	// Create target time for today using user's timezone
+	targetToday := time.Date(
+		userTime.Year(), userTime.Month(), userTime.Day(),
+		targetTime.Hour(), targetTime.Minute(), 0, 0,
+		userTime.Location(),
+	)
+
+	// Calculate time difference and check if within 5-minute window
+	timeDiff := userTime.Sub(targetToday)
+	if timeDiff >= 0 && timeDiff <= 5*time.Minute {
+		switch subscription.SubscriptionType {
+		case models.SubscriptionDaily:
+			// Send daily notifications every day
+			return true
+		case models.SubscriptionWeekly:
+			// Send weekly notifications only on Mondays
+			return userTime.Weekday() == time.Monday
+		case models.SubscriptionAlerts, models.SubscriptionExtreme:
+			// Alert subscriptions are handled by checkAndProcessAlerts
+			return false
+		}
+	}
+
+	return false
+}
+
+func (s *SchedulerService) sendScheduledNotification(ctx context.Context, subscription models.Subscription) error {
+	// Get weather for user's location
+	weather, err := s.weather.GetCurrentWeatherByCoords(
+		ctx,
+		subscription.User.Latitude,
+		subscription.User.Longitude,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get weather for user %d: %w", subscription.UserID, err)
+	}
+
+	switch subscription.SubscriptionType {
+	case models.SubscriptionDaily:
+		// Send daily weather update
+		users := []models.User{subscription.User}
+
+		// Track notification errors but don't fail completely if one platform fails
+		var notificationErrors []string
+
+		// Send Slack notification
+		if err := s.notification.SendSlackWeatherUpdate(weather, users); err != nil {
+			s.logger.Error().Err(err).Msg("Failed to send Slack daily notification")
+			notificationErrors = append(notificationErrors, fmt.Sprintf("Slack: %v", err))
+		}
+
+		// Send Telegram notification
+		if err := s.notification.SendTelegramWeatherUpdate(weather, &subscription.User); err != nil {
+			s.logger.Error().Err(err).Msg("Failed to send Telegram daily notification")
+			notificationErrors = append(notificationErrors, fmt.Sprintf("Telegram: %v", err))
+		}
+
+		// Return error only if all platforms failed
+		if len(notificationErrors) > 0 {
+			if len(notificationErrors) == NotificationPlatformCount {
+				return fmt.Errorf("all notification platforms failed: %v", strings.Join(notificationErrors, "; "))
+			}
+			// Log partial failure but don't return error
+			s.logger.Warn().Strs("failed_platforms", notificationErrors).Msg("Some notification platforms failed but at least one succeeded")
+		}
+
+	case models.SubscriptionWeekly:
+		// Send weekly summary (simplified for now)
+		summary := fmt.Sprintf(`This week's weather overview:
+🌡️ Current temperature: %.1f°C
+💧 Humidity: %d%%
+💨 Wind: %.1f km/h
+🌿 Air quality: AQI %d
+
+Stay weather-aware!`, weather.Temperature, weather.Humidity, weather.WindSpeed, weather.AQI)
+
+		if err := s.notification.SendTelegramWeeklyUpdate(&subscription.User, summary); err != nil {
+			return fmt.Errorf("failed to send weekly notification: %w", err)
+		}
+	}
+
+	return nil
 }

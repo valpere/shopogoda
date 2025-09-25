@@ -12,7 +12,6 @@ bin/
 dist/
 
 shopogoda
-bot
 
 # Test binary, built with `go test -c`
 *.test
@@ -70,6 +69,5 @@ Thumbs.db
 # Config files with secrets
 config.yaml
 config.yml
-
 
 *.diff

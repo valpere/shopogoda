@@ -369,6 +369,7 @@ Status: %s
 		{{Text: "🕐 Timezone", CallbackData: "settings_timezone"}},
 		{{Text: "🔔 Notifications", CallbackData: "settings_notifications"}},
 		{{Text: "📊 Data Export", CallbackData: "settings_export"}},
+		{{Text: "🏠 Back to Start", CallbackData: "settings_start"}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, settingsText, &gotgbot.SendMessageOpts{
@@ -431,6 +432,8 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleShareCallback(bot, ctx, subAction, parts[2:])
 	case "air":
 		return h.handleAirCallback(bot, ctx, subAction, parts[2:])
+	case "notifications":
+		return h.handleNotificationCallback(bot, ctx, subAction, parts[2:])
 	}
 
 	return nil
@@ -541,42 +544,49 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 		return h.handleCoordinateInput(bot, ctx, text)
 	}
 
-	// Check if this looks like a timezone - be permissive, let time.LoadLocation() do the real validation
-	// Match common timezone patterns: UTC, GMT, EST, Europe/London, America/New_York, etc.
-	timezonePattern := `^[A-Za-z0-9][A-Za-z0-9_+-]*(?:/[A-Za-z0-9_+-]+)*$`
+	// Check if this looks like a timezone first - use very specific patterns to avoid conflicts
+	// Only match specific timezone formats that are unlikely to be city names:
+	// 1. Region/City format (Europe/London, America/New_York)
+	// 2. UTC/GMT with offsets (UTC+1, GMT-5)
+	// 3. Common timezone abbreviations (UTC, GMT, EST, PST, etc.)
+	timezonePattern := `^(?:UTC|GMT|[A-Z]{3,4}(?:[+-]\d{1,2})?|[A-Za-z_]+/[A-Za-z_]+|(?:UTC|GMT)[+-]\d{1,2})$`
 	timezoneRe := regexp.MustCompile(timezonePattern)
 	if timezoneRe.MatchString(text) {
-		h.logger.Info().Str("input", text).Msg("Detected potential timezone input from text message")
-		return h.handleTimezoneInput(bot, ctx, text)
+		// Additional check: if it contains a slash, it's likely a timezone (Europe/London)
+		// If it's UTC, GMT, or other timezone abbreviations, it's definitely a timezone
+		if strings.Contains(text, "/") ||
+			strings.HasPrefix(text, "UTC") ||
+			strings.HasPrefix(text, "GMT") ||
+			regexp.MustCompile(`^[A-Z]{3,4}([+-]\d{1,2})?$`).MatchString(text) {
+			h.logger.Info().Str("input", text).Msg("Detected potential timezone input from text message")
+			return h.handleTimezoneInput(bot, ctx, text)
+		}
 	}
 
 	// Simple heuristics to detect if this might be a location name
 	// - Should be 2-50 characters
 	// - Should contain only letters, spaces, hyphens, apostrophes
 	// - Should not be too short (avoid "ok", "yes", etc.)
-	if len(text) < 2 || len(text) > 50 {
-		return nil
+	if len(text) >= 2 && len(text) <= 50 {
+		// Check if text looks like a location name (letters, spaces, hyphens, apostrophes only)
+		locationPattern := `^[a-zA-ZÀ-ÿ\s\-']+$`
+		matched, _ := regexp.MatchString(locationPattern, text)
+		if matched {
+			// Skip common non-location words
+			commonWords := map[string]bool{
+				"ok": true, "yes": true, "no": true, "hi": true, "hello": true,
+				"thanks": true, "thank you": true, "good": true, "bad": true,
+				"help": true, "stop": true, "cancel": true, "back": true,
+			}
+			if !commonWords[strings.ToLower(text)] {
+				h.logger.Info().Str("input", text).Msg("Detected potential location input from text message")
+				// Use shared confirmation logic
+				return h.showLocationConfirmation(bot, ctx, text)
+			}
+		}
 	}
 
-	// Check if text looks like a location name (letters, spaces, hyphens, apostrophes only)
-	locationPattern := `^[a-zA-ZÀ-ÿ\s\-']+$`
-	matched, _ := regexp.MatchString(locationPattern, text)
-	if !matched {
-		return nil
-	}
-
-	// Skip common non-location words
-	commonWords := map[string]bool{
-		"ok": true, "yes": true, "no": true, "hi": true, "hello": true,
-		"thanks": true, "thank you": true, "good": true, "bad": true,
-		"help": true, "stop": true, "cancel": true, "back": true,
-	}
-	if commonWords[strings.ToLower(text)] {
-		return nil
-	}
-
-	// Use shared confirmation logic
-	return h.showLocationConfirmation(bot, ctx, text)
+	return nil
 }
 
 // parseLocationFromArgs extracts location from command arguments or returns empty string
@@ -732,7 +742,7 @@ func (h *CommandHandler) showTimezoneConfirmation(bot *gotgbot.Bot, ctx *ext.Con
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, messageText, &gotgbot.SendMessageOpts{
-		ParseMode: "Markdown",
+		ParseMode:   "Markdown",
 		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{InlineKeyboard: keyboard},
 	})
 
@@ -1247,6 +1257,8 @@ func (h *CommandHandler) handleSettingsCallback(bot *gotgbot.Bot, ctx *ext.Conte
 	switch action {
 	case "main":
 		return h.Settings(bot, ctx)
+	case "start":
+		return h.Start(bot, ctx)
 	case "location":
 		return h.handleLocationSettings(bot, ctx)
 	case "language":
@@ -2171,7 +2183,75 @@ func (h *CommandHandler) setUserTimezone(bot *gotgbot.Bot, ctx *ext.Context, tim
 }
 
 func (h *CommandHandler) handleNotificationSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "🔔 Notification settings will be available soon!", nil)
+	userID := ctx.EffectiveUser.Id
+
+	// Get user's current subscriptions
+	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
+	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user subscriptions")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Error loading your notification settings. Please try again.", nil)
+		return err
+	}
+
+	// Build the notification settings message
+	message := "🔔 *Notification Settings*\n\n"
+
+	if len(subscriptions) == 0 {
+		message += "You don't have any active notifications.\n\n"
+	} else {
+		message += "*Your Active Notifications:*\n"
+		for i, sub := range subscriptions {
+			status := "✅"
+			if !sub.IsActive {
+				status = "❌"
+			}
+			message += fmt.Sprintf("%d. %s %s - %s at %s\n",
+				i+1, status, sub.SubscriptionType.String(), sub.Frequency.String(), sub.TimeOfDay)
+		}
+		message += "\n"
+	}
+
+	message += "_Choose an option below:_"
+
+	// Create keyboard with notification options
+	keyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: "➕ Add Daily Weather", CallbackData: "notifications_add_daily"},
+			},
+			{
+				{Text: "⚡ Add Weather Alerts", CallbackData: "notifications_add_alerts"},
+			},
+			{
+				{Text: "🌪️ Add Extreme Weather", CallbackData: "notifications_add_extreme"},
+			},
+			{
+				{Text: "📅 Add Weekly Summary", CallbackData: "notifications_add_weekly"},
+			},
+		},
+	}
+
+	// Add manage options if user has subscriptions
+	if len(subscriptions) > 0 {
+		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+			[]gotgbot.InlineKeyboardButton{
+				{Text: "⚙️ Manage Existing", CallbackData: "notifications_manage"},
+			},
+		)
+	}
+
+	// Add back button
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
+		[]gotgbot.InlineKeyboardButton{
+			{Text: "🔙 Back to Settings", CallbackData: "settings_main"},
+		},
+	)
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode:   "Markdown",
+		ReplyMarkup: keyboard,
+	})
+
 	return err
 }
 
@@ -2514,4 +2594,350 @@ func (h *CommandHandler) listUserAlerts(bot *gotgbot.Bot, ctx *ext.Context) erro
 			ParseMode: "Markdown",
 		})
 	return err
+}
+
+func (h *CommandHandler) handleNotificationCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	switch action {
+	case "add":
+		if len(params) > 0 {
+			return h.handleAddNotification(bot, ctx, params[0])
+		}
+	case "manage":
+		return h.handleManageNotifications(bot, ctx)
+	case "create":
+		if len(params) >= 3 {
+			return h.createNotification(bot, ctx, params[0], params[1], params[2])
+		}
+	case "toggle":
+		if len(params) > 0 {
+			return h.toggleNotification(bot, ctx, params[0])
+		}
+	case "delete":
+		if len(params) > 0 {
+			return h.deleteNotification(bot, ctx, params[0])
+		}
+	case "info":
+		// Handle info display button - this is just for display, acknowledge the callback
+		if len(params) > 0 && params[0] == "display" {
+			_, err := ctx.CallbackQuery.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
+				Text: "This shows your notification type. Use the buttons next to it to manage this notification.",
+			})
+			return err
+		}
+	}
+	return nil
+}
+
+func (h *CommandHandler) handleAddNotification(bot *gotgbot.Bot, ctx *ext.Context, notificationType string) error {
+	userID := ctx.EffectiveUser.Id
+	h.logger.Info().Str("type", notificationType).Int64("user_id", userID).Msg("Adding notification")
+
+	// Check if user has a location set
+	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
+	if err != nil || locationName == "" {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			"📍 Please set your location first using /setlocation before setting up notifications.",
+			&gotgbot.SendMessageOpts{
+				ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+						{{Text: "📍 Set Location", CallbackData: "settings_location"}},
+						{{Text: "🔙 Back", CallbackData: "notifications_manage"}},
+					},
+				},
+			})
+		return err
+	}
+
+	var description string
+	var emoji string
+
+	switch notificationType {
+	case "daily":
+		description = "daily weather updates"
+		emoji = "☀️"
+	case "weekly":
+		description = "weekly weather summaries"
+		emoji = "📅"
+	case "alerts":
+		description = "weather alerts and warnings"
+		emoji = "⚡"
+	case "extreme":
+		description = "extreme weather notifications"
+		emoji = "🌪️"
+	default:
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid notification type.", nil)
+		return err
+	}
+
+	message := fmt.Sprintf(`%s *Setup %s*
+
+You're setting up %s for *%s*.
+
+Choose your preferred time:`, emoji, description, description, locationName)
+
+	// Determine the frequency based on notification type
+	frequency := getNotificationFrequency(notificationType)
+
+	// Create time selection buttons
+	keyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: "🌅 06:00", CallbackData: fmt.Sprintf("notifications_create_%s_06:00_%s", notificationType, frequency)},
+				{Text: "🌞 08:00", CallbackData: fmt.Sprintf("notifications_create_%s_08:00_%s", notificationType, frequency)},
+			},
+			{
+				{Text: "☀️ 12:00", CallbackData: fmt.Sprintf("notifications_create_%s_12:00_%s", notificationType, frequency)},
+				{Text: "🌅 18:00", CallbackData: fmt.Sprintf("notifications_create_%s_18:00_%s", notificationType, frequency)},
+			},
+			{
+				{Text: "🌙 20:00", CallbackData: fmt.Sprintf("notifications_create_%s_20:00_%s", notificationType, frequency)},
+				{Text: "🌃 22:00", CallbackData: fmt.Sprintf("notifications_create_%s_22:00_%s", notificationType, frequency)},
+			},
+			{
+				{Text: "🔙 Back", CallbackData: "settings_notifications"},
+			},
+		},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode:   "Markdown",
+		ReplyMarkup: keyboard,
+	})
+
+	return err
+}
+
+func (h *CommandHandler) createNotification(bot *gotgbot.Bot, ctx *ext.Context, notificationType, timeOfDay, frequency string) error {
+	userID := ctx.EffectiveUser.Id
+
+	var subscriptionType models.SubscriptionType
+	switch notificationType {
+	case "daily":
+		subscriptionType = models.SubscriptionDaily
+	case "weekly":
+		subscriptionType = models.SubscriptionWeekly
+	case "alerts":
+		subscriptionType = models.SubscriptionAlerts
+	case "extreme":
+		subscriptionType = models.SubscriptionExtreme
+	default:
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid notification type.", nil)
+		return err
+	}
+
+	var freq models.Frequency
+	switch frequency {
+	case "daily":
+		freq = models.FrequencyDaily
+	case "weekly":
+		freq = models.FrequencyWeekly
+	default:
+		freq = models.FrequencyDaily
+	}
+
+	// Create the subscription
+	_, err := h.services.Subscription.CreateSubscription(context.Background(), userID, subscriptionType, freq, timeOfDay)
+	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to create subscription")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Error creating notification. Please try again.", nil)
+		return err
+	}
+
+	message := fmt.Sprintf("✅ *Notification Created!*\n\n%s %s notifications will be sent at %s every day.\n\nYou can manage all your notifications in Settings → Notifications.",
+		getNotificationEmoji(subscriptionType), subscriptionType.String(), timeOfDay)
+
+	keyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{{Text: "🔔 Manage Notifications", CallbackData: "settings_notifications"}},
+			{{Text: "⚙️ Settings", CallbackData: "settings_main"}},
+		},
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode:   "Markdown",
+		ReplyMarkup: keyboard,
+	})
+
+	return err
+}
+
+func (h *CommandHandler) handleManageNotifications(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
+	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user subscriptions")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Error loading your notifications. Please try again.", nil)
+		return err
+	}
+
+	if len(subscriptions) == 0 {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			"🔔 You don't have any active notifications.\n\nUse the buttons below to add some!",
+			&gotgbot.SendMessageOpts{
+				ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+						{{Text: "➕ Add Notifications", CallbackData: "settings_notifications"}},
+					},
+				},
+			})
+		return err
+	}
+
+	message := "⚙️ *Manage Your Notifications*\n\n*Active Notifications:*\n"
+	var keyboard [][]gotgbot.InlineKeyboardButton
+
+	for i, sub := range subscriptions {
+		status := "✅"
+		if !sub.IsActive {
+			status = "❌"
+		}
+		message += fmt.Sprintf("%d. %s %s %s - %s at %s\n",
+			i+1, getNotificationEmoji(sub.SubscriptionType), status,
+			sub.SubscriptionType.String(), sub.Frequency.String(), sub.TimeOfDay)
+
+		// Add toggle button
+		toggleText := "❌ Disable"
+		toggleAction := "toggle"
+		if !sub.IsActive {
+			toggleText = "✅ Enable"
+		}
+
+		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+			{Text: fmt.Sprintf("%s %s", getNotificationEmoji(sub.SubscriptionType), sub.SubscriptionType.String()), CallbackData: "notifications_info_display"},
+			{Text: toggleText, CallbackData: fmt.Sprintf("notifications_%s_%s", toggleAction, sub.ID.String())},
+			{Text: "🗑️", CallbackData: fmt.Sprintf("notifications_delete_%s", sub.ID.String())},
+		})
+	}
+
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: "🔙 Back", CallbackData: "settings_notifications"},
+	})
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	return err
+}
+
+func (h *CommandHandler) toggleNotification(bot *gotgbot.Bot, ctx *ext.Context, subscriptionID string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Parse UUID
+	subID, err := uuid.Parse(subscriptionID)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid subscription ID.", nil)
+		return err
+	}
+
+	// Get current subscription to toggle its state
+	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Error loading subscription.", nil)
+		return err
+	}
+
+	var currentSub *models.Subscription
+	for _, sub := range subscriptions {
+		if sub.ID == subID {
+			currentSub = &sub
+			break
+		}
+	}
+
+	if currentSub == nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Subscription not found.", nil)
+		return err
+	}
+
+	// Toggle the active state
+	newState := !currentSub.IsActive
+	err = h.services.Subscription.UpdateSubscription(context.Background(), userID, subID, map[string]interface{}{
+		"is_active": newState,
+	})
+
+	if err != nil {
+		h.logger.Error().Err(err).Str("subscription_id", subscriptionID).Msg("Failed to toggle subscription")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Error updating subscription.", nil)
+		return err
+	}
+
+	status := "enabled"
+	if !newState {
+		status = "disabled"
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
+		fmt.Sprintf("✅ %s %s notifications %s successfully!",
+			getNotificationEmoji(currentSub.SubscriptionType), currentSub.SubscriptionType.String(), status),
+		&gotgbot.SendMessageOpts{
+			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+					{{Text: "⚙️ Manage Notifications", CallbackData: "notifications_manage"}},
+				},
+			},
+		})
+
+	return err
+}
+
+func (h *CommandHandler) deleteNotification(bot *gotgbot.Bot, ctx *ext.Context, subscriptionID string) error {
+	userID := ctx.EffectiveUser.Id
+
+	subID, err := uuid.Parse(subscriptionID)
+	if err != nil {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid subscription ID.", nil)
+		return err
+	}
+
+	err = h.services.Subscription.DeleteSubscription(context.Background(), userID, subID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("subscription_id", subscriptionID).Msg("Failed to delete subscription")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Error deleting notification.", nil)
+		return err
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Notification deleted successfully!",
+		&gotgbot.SendMessageOpts{
+			ReplyMarkup: gotgbot.InlineKeyboardMarkup{
+				InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+					{{Text: "⚙️ Manage Notifications", CallbackData: "notifications_manage"}},
+				},
+			},
+		})
+
+	return err
+}
+
+func getNotificationEmoji(subscriptionType models.SubscriptionType) string {
+	switch subscriptionType {
+	case models.SubscriptionDaily:
+		return "☀️"
+	case models.SubscriptionWeekly:
+		return "📅"
+	case models.SubscriptionAlerts:
+		return "⚡"
+	case models.SubscriptionExtreme:
+		return "🌪️"
+	default:
+		return "🔔"
+	}
+}
+
+// getNotificationFrequency returns the frequency string for callback data based on notification type
+func getNotificationFrequency(notificationType string) string {
+	switch notificationType {
+	case "daily":
+		return "daily"
+	case "weekly":
+		return "weekly"
+	case "alerts", "extreme":
+		return "alerts" // Alerts don't use frequency but need consistent callback format
+	default:
+		return "daily" // Default to daily for unknown types
+	}
 }
