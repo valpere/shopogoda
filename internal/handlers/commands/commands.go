@@ -369,6 +369,7 @@ Status: %s
 		{{Text: "🕐 Timezone", CallbackData: "settings_timezone"}},
 		{{Text: "🔔 Notifications", CallbackData: "settings_notifications"}},
 		{{Text: "📊 Data Export", CallbackData: "settings_export"}},
+		{{Text: "🏠 Back to Start", CallbackData: "settings_start"}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, settingsText, &gotgbot.SendMessageOpts{
@@ -1249,6 +1250,8 @@ func (h *CommandHandler) handleSettingsCallback(bot *gotgbot.Bot, ctx *ext.Conte
 	switch action {
 	case "main":
 		return h.Settings(bot, ctx)
+	case "start":
+		return h.Start(bot, ctx)
 	case "location":
 		return h.handleLocationSettings(bot, ctx)
 	case "language":
@@ -2233,7 +2236,7 @@ func (h *CommandHandler) handleNotificationSettings(bot *gotgbot.Bot, ctx *ext.C
 	// Add back button
 	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard,
 		[]gotgbot.InlineKeyboardButton{
-			{Text: "🔙 Back to Settings", CallbackData: "settings"},
+			{Text: "🔙 Back to Settings", CallbackData: "settings_main"},
 		},
 	)
 
@@ -2606,6 +2609,14 @@ func (h *CommandHandler) handleNotificationCallback(bot *gotgbot.Bot, ctx *ext.C
 		if len(params) > 0 {
 			return h.deleteNotification(bot, ctx, params[0])
 		}
+	case "info":
+		// Handle info display button - this is just for display, acknowledge the callback
+		if len(params) > 0 && params[0] == "display" {
+			_, err := ctx.CallbackQuery.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
+				Text: "This shows your notification type. Use the buttons next to it to manage this notification.",
+			})
+			return err
+		}
 	}
 	return nil
 }
@@ -2728,7 +2739,7 @@ func (h *CommandHandler) createNotification(bot *gotgbot.Bot, ctx *ext.Context, 
 	keyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{{Text: "🔔 Manage Notifications", CallbackData: "settings_notifications"}},
-			{{Text: "⚙️ Settings", CallbackData: "settings"}},
+			{{Text: "⚙️ Settings", CallbackData: "settings_main"}},
 		},
 	}
 
@@ -2783,7 +2794,7 @@ func (h *CommandHandler) handleManageNotifications(bot *gotgbot.Bot, ctx *ext.Co
 		}
 
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: fmt.Sprintf("%s %s", getNotificationEmoji(sub.SubscriptionType), sub.SubscriptionType.String()), CallbackData: "dummy"},
+			{Text: fmt.Sprintf("%s %s", getNotificationEmoji(sub.SubscriptionType), sub.SubscriptionType.String()), CallbackData: "notifications_info_display"},
 			{Text: toggleText, CallbackData: fmt.Sprintf("notifications_%s_%s", toggleAction, sub.ID.String())},
 			{Text: "🗑️", CallbackData: fmt.Sprintf("notifications_delete_%s", sub.ID.String())},
 		})

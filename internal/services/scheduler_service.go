@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -107,13 +109,39 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
 
 		// Send notifications for triggered alerts
 		for _, alert := range alerts {
+			// Track alert notification errors but don't fail processing
+			var alertErrors []string
+
 			// Send Slack alert
 			if err := s.notification.SendSlackAlert(&alert, &user); err != nil {
 				s.logger.Error().Err(err).Msg("Failed to send Slack alert")
+				alertErrors = append(alertErrors, fmt.Sprintf("Slack: %v", err))
 			}
+
 			// Send Telegram alert
 			if err := s.notification.SendTelegramAlert(&alert, &user); err != nil {
 				s.logger.Error().Err(err).Msg("Failed to send Telegram alert")
+				alertErrors = append(alertErrors, fmt.Sprintf("Telegram: %v", err))
+			}
+
+			// Log alert delivery status
+			if len(alertErrors) == 0 {
+				s.logger.Info().
+					Str("alert_type", alert.AlertType.String()).
+					Int64("user_id", user.ID).
+					Msg("Alert notifications sent successfully to all platforms")
+			} else if len(alertErrors) == 2 {
+				s.logger.Error().
+					Strs("failed_platforms", alertErrors).
+					Str("alert_type", alert.AlertType.String()).
+					Int64("user_id", user.ID).
+					Msg("Alert notification failed on all platforms")
+			} else {
+				s.logger.Warn().
+					Strs("failed_platforms", alertErrors).
+					Str("alert_type", alert.AlertType.String()).
+					Int64("user_id", user.ID).
+					Msg("Alert notification partially failed but at least one platform succeeded")
 			}
 		}
 
@@ -192,7 +220,7 @@ func (s *SchedulerService) shouldSendNotification(subscription models.Subscripti
 	targetMinute := targetTime.Minute()
 
 	// Send if we're within a 5-minute window of the target time
-	if currentHour == targetHour && abs(currentMinute-targetMinute) <= 5 {
+	if currentHour == targetHour && math.Abs(float64(currentMinute-targetMinute)) <= 5 {
 		switch subscription.SubscriptionType {
 		case models.SubscriptionDaily:
 			// Send daily notifications every day
@@ -224,13 +252,29 @@ func (s *SchedulerService) sendScheduledNotification(ctx context.Context, subscr
 	case models.SubscriptionDaily:
 		// Send daily weather update
 		users := []models.User{subscription.User}
+
+		// Track notification errors but don't fail completely if one platform fails
+		var notificationErrors []string
+
 		// Send Slack notification
 		if err := s.notification.SendSlackWeatherUpdate(weather, users); err != nil {
 			s.logger.Error().Err(err).Msg("Failed to send Slack daily notification")
+			notificationErrors = append(notificationErrors, fmt.Sprintf("Slack: %v", err))
 		}
+
 		// Send Telegram notification
 		if err := s.notification.SendTelegramWeatherUpdate(weather, &subscription.User); err != nil {
-			return fmt.Errorf("failed to send Telegram daily notification: %w", err)
+			s.logger.Error().Err(err).Msg("Failed to send Telegram daily notification")
+			notificationErrors = append(notificationErrors, fmt.Sprintf("Telegram: %v", err))
+		}
+
+		// Return error only if both platforms failed
+		if len(notificationErrors) > 0 {
+			if len(notificationErrors) == 2 {
+				return fmt.Errorf("all notification platforms failed: %v", strings.Join(notificationErrors, "; "))
+			}
+			// Log partial failure but don't return error
+			s.logger.Warn().Strs("failed_platforms", notificationErrors).Msg("Some notification platforms failed but at least one succeeded")
 		}
 
 	case models.SubscriptionWeekly:
@@ -251,9 +295,3 @@ Stay weather-aware!`, weather.Temperature, weather.Humidity, weather.WindSpeed, 
 	return nil
 }
 
-func abs(a int) int {
-	if a < 0 {
-		return -a
-	}
-	return a
-}

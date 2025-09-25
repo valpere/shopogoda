@@ -192,16 +192,22 @@ func (s *NotificationService) SendTelegramAlert(alert *models.EnvironmentalAlert
 		alert.Value,
 		alert.Threshold)
 
-	_, err := s.bot.SendMessage(user.ID, message, &gotgbot.SendMessageOpts{
+	// For direct messages to users, chat ID is the same as user ID
+	chatID := user.ID
+	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 	})
 
 	if err != nil {
-		s.logger.Error().Err(err).Int64("user_id", user.ID).Msg("Failed to send Telegram alert")
-		return err
+		s.logger.Error().
+			Err(err).
+			Int64("user_id", user.ID).
+			Int64("chat_id", chatID).
+			Msg("Failed to send Telegram alert - user may have blocked bot or deleted chat")
+		return fmt.Errorf("failed to send Telegram alert to user %d: %w", user.ID, err)
 	}
 
-	s.logger.Info().Int64("user_id", user.ID).Msg("Telegram alert notification sent successfully")
+	s.logger.Info().Int64("user_id", user.ID).Int64("chat_id", chatID).Msg("Telegram alert notification sent successfully")
 	return nil
 }
 
@@ -230,16 +236,22 @@ func (s *NotificationService) SendTelegramWeatherUpdate(weather *WeatherData, us
 		weather.Visibility,
 		weather.Timestamp.Format("15:04 UTC"))
 
-	_, err := s.bot.SendMessage(user.ID, message, &gotgbot.SendMessageOpts{
+	// For direct messages to users, chat ID is the same as user ID
+	chatID := user.ID
+	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 	})
 
 	if err != nil {
-		s.logger.Error().Err(err).Int64("user_id", user.ID).Msg("Failed to send Telegram weather update")
-		return err
+		s.logger.Error().
+			Err(err).
+			Int64("user_id", user.ID).
+			Int64("chat_id", chatID).
+			Msg("Failed to send Telegram weather update - user may have blocked bot or deleted chat")
+		return fmt.Errorf("failed to send Telegram weather update to user %d: %w", user.ID, err)
 	}
 
-	s.logger.Info().Int64("user_id", user.ID).Msg("Telegram weather update sent successfully")
+	s.logger.Info().Int64("user_id", user.ID).Int64("chat_id", chatID).Msg("Telegram weather update sent successfully")
 	return nil
 }
 
@@ -257,16 +269,22 @@ func (s *NotificationService) SendTelegramWeeklyUpdate(user *models.User, summar
 
 Have a great week ahead! 🌟`, user.LocationName, summary)
 
-	_, err := s.bot.SendMessage(user.ID, message, &gotgbot.SendMessageOpts{
+	// For direct messages to users, chat ID is the same as user ID
+	chatID := user.ID
+	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 	})
 
 	if err != nil {
-		s.logger.Error().Err(err).Int64("user_id", user.ID).Msg("Failed to send Telegram weekly update")
-		return err
+		s.logger.Error().
+			Err(err).
+			Int64("user_id", user.ID).
+			Int64("chat_id", chatID).
+			Msg("Failed to send Telegram weekly update - user may have blocked bot or deleted chat")
+		return fmt.Errorf("failed to send Telegram weekly update to user %d: %w", user.ID, err)
 	}
 
-	s.logger.Info().Int64("user_id", user.ID).Msg("Telegram weekly update sent successfully")
+	s.logger.Info().Int64("user_id", user.ID).Int64("chat_id", chatID).Msg("Telegram weekly update sent successfully")
 	return nil
 }
 
