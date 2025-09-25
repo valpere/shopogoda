@@ -544,42 +544,49 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 		return h.handleCoordinateInput(bot, ctx, text)
 	}
 
-	// Check if this looks like a timezone - be permissive, let time.LoadLocation() do the real validation
-	// Match common timezone patterns: UTC, GMT, EST, Europe/London, America/New_York, etc.
-	timezonePattern := `^[A-Za-z0-9][A-Za-z0-9_+-]*(?:/[A-Za-z0-9_+-]+)*$`
+	// Check if this looks like a timezone first - use very specific patterns to avoid conflicts
+	// Only match specific timezone formats that are unlikely to be city names:
+	// 1. Region/City format (Europe/London, America/New_York)
+	// 2. UTC/GMT with offsets (UTC+1, GMT-5)
+	// 3. Common timezone abbreviations (UTC, GMT, EST, PST, etc.)
+	timezonePattern := `^(?:UTC|GMT|[A-Z]{3,4}(?:[+-]\d{1,2})?|[A-Za-z_]+/[A-Za-z_]+|(?:UTC|GMT)[+-]\d{1,2})$`
 	timezoneRe := regexp.MustCompile(timezonePattern)
 	if timezoneRe.MatchString(text) {
-		h.logger.Info().Str("input", text).Msg("Detected potential timezone input from text message")
-		return h.handleTimezoneInput(bot, ctx, text)
+		// Additional check: if it contains a slash, it's likely a timezone (Europe/London)
+		// If it's UTC, GMT, or other timezone abbreviations, it's definitely a timezone
+		if strings.Contains(text, "/") ||
+		   strings.HasPrefix(text, "UTC") ||
+		   strings.HasPrefix(text, "GMT") ||
+		   regexp.MustCompile(`^[A-Z]{3,4}([+-]\d{1,2})?$`).MatchString(text) {
+			h.logger.Info().Str("input", text).Msg("Detected potential timezone input from text message")
+			return h.handleTimezoneInput(bot, ctx, text)
+		}
 	}
 
 	// Simple heuristics to detect if this might be a location name
 	// - Should be 2-50 characters
 	// - Should contain only letters, spaces, hyphens, apostrophes
 	// - Should not be too short (avoid "ok", "yes", etc.)
-	if len(text) < 2 || len(text) > 50 {
-		return nil
+	if len(text) >= 2 && len(text) <= 50 {
+		// Check if text looks like a location name (letters, spaces, hyphens, apostrophes only)
+		locationPattern := `^[a-zA-ZÀ-ÿ\s\-']+$`
+		matched, _ := regexp.MatchString(locationPattern, text)
+		if matched {
+			// Skip common non-location words
+			commonWords := map[string]bool{
+				"ok": true, "yes": true, "no": true, "hi": true, "hello": true,
+				"thanks": true, "thank you": true, "good": true, "bad": true,
+				"help": true, "stop": true, "cancel": true, "back": true,
+			}
+			if !commonWords[strings.ToLower(text)] {
+				h.logger.Info().Str("input", text).Msg("Detected potential location input from text message")
+				// Use shared confirmation logic
+				return h.showLocationConfirmation(bot, ctx, text)
+			}
+		}
 	}
 
-	// Check if text looks like a location name (letters, spaces, hyphens, apostrophes only)
-	locationPattern := `^[a-zA-ZÀ-ÿ\s\-']+$`
-	matched, _ := regexp.MatchString(locationPattern, text)
-	if !matched {
-		return nil
-	}
-
-	// Skip common non-location words
-	commonWords := map[string]bool{
-		"ok": true, "yes": true, "no": true, "hi": true, "hello": true,
-		"thanks": true, "thank you": true, "good": true, "bad": true,
-		"help": true, "stop": true, "cancel": true, "back": true,
-	}
-	if commonWords[strings.ToLower(text)] {
-		return nil
-	}
-
-	// Use shared confirmation logic
-	return h.showLocationConfirmation(bot, ctx, text)
+	return nil
 }
 
 // parseLocationFromArgs extracts location from command arguments or returns empty string
@@ -2668,20 +2675,23 @@ You're setting up %s for *%s*.
 
 Choose your preferred time:`, emoji, description, description, locationName)
 
+	// Determine the frequency based on notification type
+	frequency := getNotificationFrequency(notificationType)
+
 	// Create time selection buttons
 	keyboard := gotgbot.InlineKeyboardMarkup{
 		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
 			{
-				{Text: "🌅 06:00", CallbackData: fmt.Sprintf("notifications_create_%s_06:00_daily", notificationType)},
-				{Text: "🌞 08:00", CallbackData: fmt.Sprintf("notifications_create_%s_08:00_daily", notificationType)},
+				{Text: "🌅 06:00", CallbackData: fmt.Sprintf("notifications_create_%s_06:00_%s", notificationType, frequency)},
+				{Text: "🌞 08:00", CallbackData: fmt.Sprintf("notifications_create_%s_08:00_%s", notificationType, frequency)},
 			},
 			{
-				{Text: "☀️ 12:00", CallbackData: fmt.Sprintf("notifications_create_%s_12:00_daily", notificationType)},
-				{Text: "🌅 18:00", CallbackData: fmt.Sprintf("notifications_create_%s_18:00_daily", notificationType)},
+				{Text: "☀️ 12:00", CallbackData: fmt.Sprintf("notifications_create_%s_12:00_%s", notificationType, frequency)},
+				{Text: "🌅 18:00", CallbackData: fmt.Sprintf("notifications_create_%s_18:00_%s", notificationType, frequency)},
 			},
 			{
-				{Text: "🌙 20:00", CallbackData: fmt.Sprintf("notifications_create_%s_20:00_daily", notificationType)},
-				{Text: "🌃 22:00", CallbackData: fmt.Sprintf("notifications_create_%s_22:00_daily", notificationType)},
+				{Text: "🌙 20:00", CallbackData: fmt.Sprintf("notifications_create_%s_20:00_%s", notificationType, frequency)},
+				{Text: "🌃 22:00", CallbackData: fmt.Sprintf("notifications_create_%s_22:00_%s", notificationType, frequency)},
 			},
 			{
 				{Text: "🔙 Back", CallbackData: "settings_notifications"},
@@ -2915,5 +2925,19 @@ func getNotificationEmoji(subscriptionType models.SubscriptionType) string {
 		return "🌪️"
 	default:
 		return "🔔"
+	}
+}
+
+// getNotificationFrequency returns the frequency string for callback data based on notification type
+func getNotificationFrequency(notificationType string) string {
+	switch notificationType {
+	case "daily":
+		return "daily"
+	case "weekly":
+		return "weekly"
+	case "alerts", "extreme":
+		return "alerts" // Alerts don't use frequency but need consistent callback format
+	default:
+		return "daily" // Default to daily for unknown types
 	}
 }

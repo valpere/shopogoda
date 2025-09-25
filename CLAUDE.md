@@ -104,9 +104,12 @@ Key models with GORM relationships:
 - `User` contains embedded location fields: `location_name`, `latitude`, `longitude`, `country`, `city`
 - int64 for User (Telegram user ID), UUIDs for Weather/Alert entities
 
-**UTC Timezone Handling**:
+**Location and Timezone Separation**:
+- Location and timezone are completely independent entities
+- Location operations (set/clear) do not modify timezone settings
+- Timezone operations do not modify location settings
 - All timestamps stored in UTC in the database
-- User timezone defaults to 'UTC' when no location is set
+- User timezone defaults to 'UTC' when not explicitly set
 - Timezone conversion handled on-demand via `UserService` helper methods
 
 Migration: `models.Migrate(db)` handles all schema changes.
@@ -131,7 +134,8 @@ Redis caching with TTL:
 ### Enterprise Features
 
 - **Alerts**: Custom thresholds with severity calculation and cooldown
-- **Notifications**: Slack/Teams webhooks with retry logic
+- **Notifications**: Dual-platform delivery (Slack + Telegram) with robust error handling
+- **Scheduled Notifications**: Timezone-aware daily/weekly weather updates with user preferences
 - **Roles**: User/Moderator/Admin with command-level authorization
 - **Monitoring**: Prometheus metrics, structured logging, health checks
 
@@ -152,22 +156,82 @@ The bot has been refactored from a complex multi-location system to a simplified
 - Single command: `/setlocation` replaces all location management
 - Simplified database queries and reduced join complexity
 
-### UTC-First Design
+### Location and Timezone Separation
+
+**Complete Independence**:
+- Location and timezone are separate entities with no cross-dependencies
+- Setting/changing location does NOT reset or modify timezone
+- Setting/changing timezone does NOT affect location
+- Users can have location without timezone, timezone without location, or both independently
 
 **Time Storage**:
 - All database timestamps stored in UTC
-- User timezone defaults to 'UTC' when no location set
+- User timezone defaults to 'UTC' when not explicitly set (not based on location)
 - Time conversion handled on-demand via service layer
 
 **Service Methods**:
 ```go
+// UserService methods for location handling
+SetUserLocation(ctx, userID, name, country, city, lat, lon) error    // Does NOT modify timezone
+ClearUserLocation(ctx, userID) error                                 // Does NOT modify timezone
+GetUserLocation(ctx, userID) (string, float64, float64, error)
+
 // UserService methods for timezone handling
-GetUserTimezone(ctx, userID) string
+GetUserTimezone(ctx, userID) string                                  // Independent of location status
 ConvertToUserTime(ctx, userID, utcTime) time.Time
 ConvertToUTC(ctx, userID, localTime) time.Time
-SetUserLocation(ctx, userID, name, country, city, lat, lon) error
-ClearUserLocation(ctx, userID) error
+
+// Handler methods for timezone setting
+setUserTimezone(bot, ctx, timezone) error                            // Does NOT modify location
 ```
+
+**Fixed Issues**:
+- Removed automatic timezone reset to UTC when setting location
+- Removed timezone dependency on location status in `GetUserTimezone`
+- Eliminated location checks in timezone operations
+
+### Notification System Implementation
+
+**Comprehensive Notification Management**:
+- Full notification preferences UI in bot settings
+- Support for multiple notification types: Daily, Weekly, Alerts, Extreme Weather
+- Timezone-aware scheduling respects user's local time preferences
+- Dual-platform delivery: Telegram (primary) + Slack (enterprise)
+
+**Robust Error Handling**:
+- Platform-independent error tracking
+- Partial failure tolerance (success if one platform succeeds)
+- Detailed logging for notification delivery status
+- No complete failure unless both platforms fail
+
+**User Experience**:
+- Intuitive UI with add/manage/toggle/delete operations
+- UUID-based subscription tracking for security
+- Real-time subscription status display
+- Seamless integration with Settings menu
+
+**Technical Architecture**:
+```go
+// NotificationService handles dual-platform delivery
+type NotificationService struct {
+    config *config.IntegrationsConfig
+    logger *zerolog.Logger
+    client *http.Client
+    bot    *gotgbot.Bot  // Telegram bot instance injection
+}
+
+// Key methods for notification delivery
+SendTelegramAlert(alert *models.EnvironmentalAlert, user *models.User) error
+SendTelegramWeatherUpdate(weather *WeatherData, user *models.User) error
+SendSlackAlert(alert *models.EnvironmentalAlert, user *models.User) error
+SendSlackWeatherUpdate(weather *WeatherData, subscribers []models.User) error
+```
+
+**Scheduler Integration**:
+- `SchedulerService` handles timezone-aware notification timing
+- Separate processing for alerts (every 10 minutes) and scheduled notifications (hourly check)
+- User timezone conversion for accurate local time delivery
+- Efficient batching and error handling
 
 ### Benefits
 
@@ -176,6 +240,7 @@ ClearUserLocation(ctx, userID) error
 - **Clearer UX**: Single `/setlocation` command vs multiple location commands
 - **UTC Consistency**: All times stored uniformly, converted on display
 - **Simplified Logic**: User-centric model easier to reason about
+- **Independent Settings**: Location and timezone operate independently without side effects
 
 ## Testing Approach
 

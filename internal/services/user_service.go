@@ -196,11 +196,7 @@ func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locatio
 		"city":          city,
 	}
 
-	// For now, keep timezone as UTC - could be enhanced later with timezone inference
-	// based on coordinates using external timezone API
-	if locationName != "" {
-		updates["timezone"] = "UTC" // Could be inferred from coordinates in future
-	}
+	// Do not modify timezone when setting location - they are separate entities
 
 	err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
 	if err != nil {
@@ -214,7 +210,7 @@ func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locatio
 	return nil
 }
 
-// ClearUserLocation clears the user's location and sets timezone to UTC
+// ClearUserLocation clears the user's location without affecting timezone
 func (s *UserService) ClearUserLocation(ctx context.Context, userID int64) error {
 	updates := map[string]interface{}{
 		"location_name": "",
@@ -222,7 +218,6 @@ func (s *UserService) ClearUserLocation(ctx context.Context, userID int64) error
 		"longitude":     0,
 		"country":       "",
 		"city":          "",
-		"timezone":      "UTC",
 	}
 
 	err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
@@ -251,10 +246,10 @@ func (s *UserService) GetUserLocation(ctx context.Context, userID int64) (string
 	return user.LocationName, user.Latitude, user.Longitude, nil
 }
 
-// GetUserTimezone returns the user's timezone, defaulting to UTC if location not set
+// GetUserTimezone returns the user's timezone, defaulting to UTC if not set
 func (s *UserService) GetUserTimezone(ctx context.Context, userID int64) string {
 	user, err := s.GetUser(ctx, userID)
-	if err != nil || user.LocationName == "" {
+	if err != nil {
 		return "UTC"
 	}
 

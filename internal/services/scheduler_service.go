@@ -14,6 +14,11 @@ import (
 	"github.com/valpere/shopogoda/internal/models"
 )
 
+const (
+	// NotificationPlatformCount represents the number of notification platforms (Slack + Telegram)
+	NotificationPlatformCount = 2
+)
+
 type SchedulerService struct {
 	db           *gorm.DB
 	redis        *redis.Client
@@ -130,7 +135,7 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
 					Str("alert_type", alert.AlertType.String()).
 					Int64("user_id", user.ID).
 					Msg("Alert notifications sent successfully to all platforms")
-			} else if len(alertErrors) == 2 {
+			} else if len(alertErrors) == NotificationPlatformCount {
 				s.logger.Error().
 					Strs("failed_platforms", alertErrors).
 					Str("alert_type", alert.AlertType.String()).
@@ -268,9 +273,9 @@ func (s *SchedulerService) sendScheduledNotification(ctx context.Context, subscr
 			notificationErrors = append(notificationErrors, fmt.Sprintf("Telegram: %v", err))
 		}
 
-		// Return error only if both platforms failed
+		// Return error only if all platforms failed
 		if len(notificationErrors) > 0 {
-			if len(notificationErrors) == 2 {
+			if len(notificationErrors) == NotificationPlatformCount {
 				return fmt.Errorf("all notification platforms failed: %v", strings.Join(notificationErrors, "; "))
 			}
 			// Log partial failure but don't return error

@@ -51,6 +51,13 @@ func (s *NotificationService) SetBot(bot *gotgbot.Bot) {
 	s.bot = bot
 }
 
+// getTelegramChatID returns the chat ID for sending direct messages to a user
+// For direct messages to users, chat ID is the same as user ID
+// See: https://core.telegram.org/bots/api#chat
+func (s *NotificationService) getTelegramChatID(user *models.User) int64 {
+	return user.ID
+}
+
 func (s *NotificationService) SendSlackAlert(alert *models.EnvironmentalAlert, user *models.User) error {
 	if s.config.SlackWebhookURL == "" {
 		return nil // Slack not configured
@@ -196,7 +203,7 @@ func (s *NotificationService) SendTelegramAlert(alert *models.EnvironmentalAlert
 	// This is only valid if the user has already started a private chat with the bot.
 	// If the user has not started a chat, this will fail with "bot was blocked by the user" or "chat not found".
 	// See: https://core.telegram.org/bots/api#chat
-	chatID := user.ID
+	chatID := s.getTelegramChatID(user)
 	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 	})
@@ -239,8 +246,7 @@ func (s *NotificationService) SendTelegramWeatherUpdate(weather *WeatherData, us
 		weather.Visibility,
 		weather.Timestamp.Format("15:04 UTC"))
 
-	// For direct messages to users, chat ID is the same as user ID
-	chatID := user.ID
+	chatID := s.getTelegramChatID(user)
 	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 	})
@@ -272,8 +278,7 @@ func (s *NotificationService) SendTelegramWeeklyUpdate(user *models.User, summar
 
 Have a great week ahead! 🌟`, user.LocationName, summary)
 
-	// For direct messages to users, chat ID is the same as user ID
-	chatID := user.ID
+	chatID := s.getTelegramChatID(user)
 	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 	})
