@@ -555,9 +555,9 @@ func (h *CommandHandler) HandleTextMessage(bot *gotgbot.Bot, ctx *ext.Context) e
 		// Additional check: if it contains a slash, it's likely a timezone (Europe/London)
 		// If it's UTC, GMT, or other timezone abbreviations, it's definitely a timezone
 		if strings.Contains(text, "/") ||
-		   strings.HasPrefix(text, "UTC") ||
-		   strings.HasPrefix(text, "GMT") ||
-		   regexp.MustCompile(`^[A-Z]{3,4}([+-]\d{1,2})?$`).MatchString(text) {
+			strings.HasPrefix(text, "UTC") ||
+			strings.HasPrefix(text, "GMT") ||
+			regexp.MustCompile(`^[A-Z]{3,4}([+-]\d{1,2})?$`).MatchString(text) {
 			h.logger.Info().Str("input", text).Msg("Detected potential timezone input from text message")
 			return h.handleTimezoneInput(bot, ctx, text)
 		}
@@ -742,7 +742,7 @@ func (h *CommandHandler) showTimezoneConfirmation(bot *gotgbot.Bot, ctx *ext.Con
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, messageText, &gotgbot.SendMessageOpts{
-		ParseMode: "Markdown",
+		ParseMode:   "Markdown",
 		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{InlineKeyboard: keyboard},
 	})
 

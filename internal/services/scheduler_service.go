@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -218,14 +217,17 @@ func (s *SchedulerService) shouldSendNotification(subscription models.Subscripti
 		return false
 	}
 
-	// Check if current time matches the target time (within 1 hour window to avoid missing)
-	currentHour := userTime.Hour()
-	currentMinute := userTime.Minute()
-	targetHour := targetTime.Hour()
-	targetMinute := targetTime.Minute()
+	// Check if current time matches the target time (within 5-minute window)
+	// Create target time for today using user's timezone
+	targetToday := time.Date(
+		userTime.Year(), userTime.Month(), userTime.Day(),
+		targetTime.Hour(), targetTime.Minute(), 0, 0,
+		userTime.Location(),
+	)
 
-	// Send if we're within a 5-minute window of the target time
-	if currentHour == targetHour && math.Abs(float64(currentMinute-targetMinute)) <= 5 {
+	// Calculate time difference and check if within 5-minute window
+	timeDiff := userTime.Sub(targetToday)
+	if timeDiff >= 0 && timeDiff <= 5*time.Minute {
 		switch subscription.SubscriptionType {
 		case models.SubscriptionDaily:
 			// Send daily notifications every day
@@ -299,4 +301,3 @@ Stay weather-aware!`, weather.Temperature, weather.Humidity, weather.WindSpeed, 
 
 	return nil
 }
-
