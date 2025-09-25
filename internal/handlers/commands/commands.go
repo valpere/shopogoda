@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -88,43 +89,53 @@ Ready to get started? Try /weather to see current conditions!`,
 
 // Help command handler
 func (h *CommandHandler) Help(bot *gotgbot.Bot, ctx *ext.Context) error {
-	helpText := `🌤️ *Enterprise Weather Bot - Commands*
+	helpText := `🌤️ *ShoPogoda - Enterprise Weather Bot*
 
 *🏠 Basic Commands:*
-/weather \[location\] - Current weather conditions
-/forecast \[location\] - 5-day weather forecast
-/air \[location\] - Air quality index and pollutants
+/weather \[location] - Current weather conditions
+/forecast \[location] - 5-day weather forecast
+/air \[location] - Air quality index and pollutants
 
 *📍 Location Management:*
-/setlocation - Set your location
+/setlocation - Set your location (text, coordinates, or share location)
 
-*🔔 Notifications:*
+*🔔 Notifications & Subscriptions:*
 /subscribe - Set up weather notifications
 /unsubscribe - Remove notifications
 /subscriptions - View active subscriptions
 
-*⚠️ Alert System:*
-/addalert - Create weather alert
-/alerts - View active alerts
-/removealert \<id\> - Remove specific alert
+*⚠️ Smart Alert System:*
+/addalert - Create custom weather alerts
+/alerts - View and manage active alerts
+/removealert <id> - Remove specific alert
 
-*⚙️ Settings:*
-/settings - Open settings menu
-Language, units, timezone configuration
+*⚙️ Settings & Configuration:*
+/settings - Open comprehensive settings menu
+• Language, units, timezone settings
+• Notification preferences management
+• 📊 *Data Export* - Export your data in JSON/CSV/TXT formats
+
+*📊 Data Export Features:*
+Export your complete weather history, alerts, and preferences:
+• 🌤️ Weather data (last 30 days)
+• ⚠️ Alert configurations & history
+• 📋 Notification subscriptions
+• 📦 Complete data export
 
 *👨‍💼 Admin Commands:*
 /stats - Bot usage statistics
 /broadcast - Send message to all users
 /users - User management
 
-*💡 Tips:*
+*💡 Pro Tips:*
 • Share your location for instant weather
-• Use inline queries: @weatherbot London
 • Set multiple alerts for different conditions
-• Export data for compliance reporting
+• Export data regularly for backup/compliance
+• Use timezone settings for accurate notifications
+• Separate location and timezone management
 
 *🆘 Support:*
-For enterprise support, contact: support@weatherbot.com`
+For enterprise support: https://github.com/valpere/shopogoda/issues`
 
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, helpText, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
@@ -434,6 +445,8 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleAirCallback(bot, ctx, subAction, parts[2:])
 	case "notifications":
 		return h.handleNotificationCallback(bot, ctx, subAction, parts[2:])
+	case "export":
+		return h.handleExportCallback(bot, ctx, subAction, parts[2:])
 	}
 
 	return nil
@@ -2312,7 +2325,35 @@ func (h *CommandHandler) handleLocationSettings(bot *gotgbot.Bot, ctx *ext.Conte
 }
 
 func (h *CommandHandler) handleExportSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "📊 Data export feature will be available soon!", nil)
+	keyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: "🌤️ Weather Data", CallbackData: "export_weather"},
+				{Text: "⚠️ Alerts", CallbackData: "export_alerts"},
+			},
+			{
+				{Text: "📋 Subscriptions", CallbackData: "export_subscriptions"},
+				{Text: "📦 All Data", CallbackData: "export_all"},
+			},
+			{
+				{Text: "🔙 Back to Settings", CallbackData: "settings_main"},
+			},
+		},
+	}
+
+	text := "📊 *Data Export*\n\n" +
+		"Choose what data you want to export:\n\n" +
+		"🌤️ *Weather Data* - Last 30 days of weather records\n" +
+		"⚠️ *Alerts* - Your alert configurations and triggered alerts\n" +
+		"📋 *Subscriptions* - Your notification preferences\n" +
+		"📦 *All Data* - Complete export of all your data\n\n" +
+		"Exported data will be sent to you as a file."
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+		ParseMode:   "Markdown",
+		ReplyMarkup: keyboard,
+	})
+
 	return err
 }
 
@@ -2909,6 +2950,187 @@ func (h *CommandHandler) deleteNotification(bot *gotgbot.Bot, ctx *ext.Context, 
 				},
 			},
 		})
+
+	return err
+}
+
+// Export callback handler
+func (h *CommandHandler) handleExportCallback(bot *gotgbot.Bot, ctx *ext.Context, subAction string, parts []string) error {
+	switch subAction {
+	case "weather", "alerts", "subscriptions", "all":
+		return h.showExportFormatOptions(bot, ctx, subAction)
+	case "format":
+		if len(parts) < 2 {
+			return fmt.Errorf("invalid export format callback: missing parameters")
+		}
+		exportType := parts[0]
+		format := parts[1]
+		return h.processExportRequest(bot, ctx, exportType, format)
+	default:
+		h.logger.Warn().Str("sub_action", subAction).Msg("Unknown export callback subaction")
+		return nil
+	}
+}
+
+func (h *CommandHandler) showExportFormatOptions(bot *gotgbot.Bot, ctx *ext.Context, exportType string) error {
+	keyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: "📄 JSON", CallbackData: fmt.Sprintf("export_format_%s_json", exportType)},
+				{Text: "📊 CSV", CallbackData: fmt.Sprintf("export_format_%s_csv", exportType)},
+			},
+			{
+				{Text: "📝 TXT", CallbackData: fmt.Sprintf("export_format_%s_txt", exportType)},
+			},
+			{
+				{Text: "🔙 Back", CallbackData: "settings_export"},
+			},
+		},
+	}
+
+	var dataTypeText string
+	switch exportType {
+	case "weather":
+		dataTypeText = "🌤️ Weather Data"
+	case "alerts":
+		dataTypeText = "⚠️ Alerts"
+	case "subscriptions":
+		dataTypeText = "📋 Subscriptions"
+	case "all":
+		dataTypeText = "📦 All Data"
+	default:
+		dataTypeText = "Data"
+	}
+
+	text := fmt.Sprintf("📊 *Export %s*\n\n"+
+		"Choose the export format:\n\n"+
+		"📄 *JSON* - Machine-readable format for technical use\n"+
+		"📊 *CSV* - Spreadsheet-compatible format\n"+
+		"📝 *TXT* - Human-readable text format\n\n"+
+		"The exported file will be sent to you via Telegram.", dataTypeText)
+
+	_, _, err := bot.EditMessageText(text, &gotgbot.EditMessageTextOpts{
+		ChatId:      ctx.EffectiveChat.Id,
+		MessageId:   ctx.CallbackQuery.Message.GetMessageId(),
+		ParseMode:   "Markdown",
+		ReplyMarkup: keyboard,
+	})
+
+	return err
+}
+
+func (h *CommandHandler) processExportRequest(bot *gotgbot.Bot, ctx *ext.Context, exportType, format string) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Show processing message
+	_, _, err := bot.EditMessageText("🔄 *Preparing your data export...*\n\nThis may take a few moments.", &gotgbot.EditMessageTextOpts{
+		ChatId:    ctx.EffectiveChat.Id,
+		MessageId: ctx.CallbackQuery.Message.GetMessageId(),
+		ParseMode: "Markdown",
+	})
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to show processing message")
+	}
+
+	// Map export type string to service enum
+	var serviceExportType services.ExportType
+	switch exportType {
+	case "weather":
+		serviceExportType = services.ExportTypeWeatherData
+	case "alerts":
+		serviceExportType = services.ExportTypeAlerts
+	case "subscriptions":
+		serviceExportType = services.ExportTypeSubscriptions
+	case "all":
+		serviceExportType = services.ExportTypeAll
+	default:
+		return fmt.Errorf("invalid export type: %s", exportType)
+	}
+
+	// Map format string to service enum
+	var serviceFormat services.ExportFormat
+	switch format {
+	case "json":
+		serviceFormat = services.ExportFormatJSON
+	case "csv":
+		serviceFormat = services.ExportFormatCSV
+	case "txt":
+		serviceFormat = services.ExportFormatTXT
+	default:
+		return fmt.Errorf("invalid export format: %s", format)
+	}
+
+	// Generate export
+	buffer, filename, err := h.services.Export.ExportUserData(context.Background(), userID, serviceExportType, serviceFormat)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to export user data")
+
+		_, _, editErr := bot.EditMessageText("❌ *Export Failed*\n\nSorry, there was an error generating your export. Please try again later.", &gotgbot.EditMessageTextOpts{
+			ChatId:    ctx.EffectiveChat.Id,
+			MessageId: ctx.CallbackQuery.Message.GetMessageId(),
+			ParseMode: "Markdown",
+		})
+		if editErr != nil {
+			h.logger.Error().Err(editErr).Msg("Failed to update error message")
+		}
+		return err
+	}
+
+	// Create a temporary file for sending
+	tempFile, err := os.CreateTemp("", filename)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to create temporary file for export")
+		return fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
+
+	// Write buffer to temporary file
+	if _, err := buffer.WriteTo(tempFile); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to write export data to temporary file")
+		return fmt.Errorf("failed to write to temporary file: %w", err)
+	}
+
+	// Reset file pointer to beginning
+	if _, err := tempFile.Seek(0, 0); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to reset file pointer")
+		return fmt.Errorf("failed to reset file pointer: %w", err)
+	}
+
+	// Send the file
+	_, err = bot.SendDocument(ctx.EffectiveChat.Id, tempFile.Name(), &gotgbot.SendDocumentOpts{
+		Caption:   fmt.Sprintf("📊 Your %s export in %s format", exportType, format),
+		ParseMode: "Markdown",
+	})
+
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to send export file")
+
+		_, _, editErr := bot.EditMessageText("❌ *Export Failed*\n\nSorry, there was an error sending your export file. Please try again later.", &gotgbot.EditMessageTextOpts{
+			ChatId:    ctx.EffectiveChat.Id,
+			MessageId: ctx.CallbackQuery.Message.GetMessageId(),
+			ParseMode: "Markdown",
+		})
+		if editErr != nil {
+			h.logger.Error().Err(editErr).Msg("Failed to update error message")
+		}
+		return err
+	}
+
+	// Update the message to show success
+	_, _, err = bot.EditMessageText("✅ *Export Complete*\n\nYour data export has been sent as a file above.", &gotgbot.EditMessageTextOpts{
+		ChatId:    ctx.EffectiveChat.Id,
+		MessageId: ctx.CallbackQuery.Message.GetMessageId(),
+		ParseMode: "Markdown",
+	})
+
+	h.logger.Info().
+		Int64("user_id", userID).
+		Str("export_type", exportType).
+		Str("format", format).
+		Str("filename", filename).
+		Int("file_size", buffer.Len()).
+		Msg("Data export completed successfully")
 
 	return err
 }

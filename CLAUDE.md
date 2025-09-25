@@ -79,6 +79,7 @@ type Services struct {
     Subscription *SubscriptionService
     Notification *NotificationService
     Scheduler    *SchedulerService
+    Export       *ExportService
 }
 ```
 
@@ -241,6 +242,63 @@ SendSlackWeatherUpdate(weather *WeatherData, subscribers []models.User) error
 - **UTC Consistency**: All times stored uniformly, converted on display
 - **Simplified Logic**: User-centric model easier to reason about
 - **Independent Settings**: Location and timezone operate independently without side effects
+
+### Data Export System
+
+The bot provides comprehensive data export functionality for compliance, backup, and data portability:
+
+**Export Service Architecture** (`internal/services/export_service.go`):
+```go
+type ExportService struct {
+    db     *gorm.DB
+    logger *zerolog.Logger
+}
+
+type ExportFormat string
+const (
+    ExportFormatJSON ExportFormat = "json"
+    ExportFormatCSV  ExportFormat = "csv"
+    ExportFormatTXT  ExportFormat = "txt"
+)
+
+type ExportType string
+const (
+    ExportTypeWeatherData    ExportType = "weather"
+    ExportTypeAlerts         ExportType = "alerts"
+    ExportTypeSubscriptions  ExportType = "subscriptions"
+    ExportTypeAll            ExportType = "all"
+)
+```
+
+**Export Data Coverage**:
+- **Weather Data**: Last 30 days of weather records (temperature, humidity, pressure, wind, AQI, pollutants)
+- **Alerts**: Alert configurations + triggered alerts history (last 90 days)
+- **Subscriptions**: Notification preferences, schedules, and settings
+- **All Data**: Complete user profile + all above data types
+
+**Export Formats**:
+- **JSON**: Machine-readable format with complete data structure for technical use/backup
+- **CSV**: Spreadsheet-compatible with separate sections for each data type
+- **TXT**: Human-readable format with formatted output for review/reporting
+
+**UI Navigation Flow**:
+```
+/settings → 📊 Data Export → Choose Data Type → Choose Format → File Delivered
+```
+
+**Implementation Features**:
+- Temporary file management for secure file transfer
+- Comprehensive error handling with user feedback
+- Progress indicators during export processing
+- Descriptive filenames: `shopogoda_datatype_username_date.ext`
+- Professional callback-driven UI with inline keyboards
+- Export logging for audit trails
+
+**Security & Performance**:
+- Data filtered by user ownership (no cross-user data leakage)
+- Reasonable limits: 1000 weather records, 90-day alert history
+- Temporary files auto-cleaned after delivery
+- Export process isolated from main bot operations
 
 ## Testing Approach
 
