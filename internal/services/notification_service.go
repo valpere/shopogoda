@@ -203,6 +203,11 @@ func (s *NotificationService) SendTelegramAlert(alert *models.EnvironmentalAlert
 	// This is only valid if the user has already started a private chat with the bot.
 	// If the user has not started a chat, this will fail with "bot was blocked by the user" or "chat not found".
 	// See: https://core.telegram.org/bots/api#chat
+	// 
+	// Error handling: Callers of this function should expect and handle errors returned here,
+	// as they may indicate that the user has not started a chat with the bot or has blocked the bot.
+	// Possible recovery mechanisms include notifying the user through another channel,
+	// prompting the user to start a chat with the bot, or logging the incident for further review.
 	chatID := s.getTelegramChatID(user)
 	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
