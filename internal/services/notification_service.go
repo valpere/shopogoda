@@ -192,7 +192,10 @@ func (s *NotificationService) SendTelegramAlert(alert *models.EnvironmentalAlert
 		alert.Value,
 		alert.Threshold)
 
-	// For direct messages to users, chat ID is the same as user ID
+	// Assumption: For direct messages to users, chat ID is the same as user ID.
+	// This is only valid if the user has already started a private chat with the bot.
+	// If the user has not started a chat, this will fail with "bot was blocked by the user" or "chat not found".
+	// See: https://core.telegram.org/bots/api#chat
 	chatID := user.ID
 	_, err := s.bot.SendMessage(chatID, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
