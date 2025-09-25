@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/rs/zerolog"
 
 	"github.com/valpere/shopogoda/internal/config"
@@ -16,6 +17,7 @@ type NotificationService struct {
 	config *config.IntegrationsConfig
 	logger *zerolog.Logger
 	client *http.Client
+	bot    *gotgbot.Bot // Telegram bot instance for sending notifications
 }
 
 type SlackMessage struct {
@@ -42,6 +44,11 @@ func NewNotificationService(config *config.IntegrationsConfig, logger *zerolog.L
 		logger: logger,
 		client: &http.Client{},
 	}
+}
+
+// SetBot sets the Telegram bot instance for sending notifications
+func (s *NotificationService) SetBot(bot *gotgbot.Bot) {
+	s.bot = bot
 }
 
 func (s *NotificationService) SendSlackAlert(alert *models.EnvironmentalAlert, user *models.User) error {
@@ -148,5 +155,132 @@ func (s *NotificationService) getSeverityText(severity models.Severity) string {
 		return "Critical"
 	default:
 		return "Unknown"
+	}
+}
+
+// Telegram notification methods
+
+// SendTelegramAlert sends a Telegram alert notification to a user
+func (s *NotificationService) SendTelegramAlert(alert *models.EnvironmentalAlert, user *models.User) error {
+	if s.bot == nil {
+		s.logger.Debug().Msg("Telegram bot not configured for notifications")
+		return nil
+	}
+
+	severityEmoji := s.getSeverityEmoji(alert.Severity)
+	locationName := user.LocationName
+	if locationName == "" {
+		locationName = "Unknown Location"
+	}
+
+	message := fmt.Sprintf(`%s *Weather Alert*
+
+*%s*
+%s
+
+📍 *Location:* %s
+👤 *User:* %s
+🚨 *Severity:* %s
+📊 *Current Value:* %.1f
+⚠️ *Threshold:* %.1f`,
+		severityEmoji,
+		alert.Title,
+		alert.Description,
+		locationName,
+		user.GetDisplayName(),
+		s.getSeverityText(alert.Severity),
+		alert.Value,
+		alert.Threshold)
+
+	_, err := s.bot.SendMessage(user.ID, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+
+	if err != nil {
+		s.logger.Error().Err(err).Int64("user_id", user.ID).Msg("Failed to send Telegram alert")
+		return err
+	}
+
+	s.logger.Info().Int64("user_id", user.ID).Msg("Telegram alert notification sent successfully")
+	return nil
+}
+
+// SendTelegramWeatherUpdate sends a daily weather update to users via Telegram
+func (s *NotificationService) SendTelegramWeatherUpdate(weather *WeatherData, user *models.User) error {
+	if s.bot == nil {
+		s.logger.Debug().Msg("Telegram bot not configured for notifications")
+		return nil
+	}
+
+	message := fmt.Sprintf(`☀️ *Daily Weather Update*
+📍 *%s*
+
+🌡️ *Temperature:* %.1f°C
+💧 *Humidity:* %d%%
+💨 *Wind:* %.1f km/h %d°
+🌿 *Air Quality:* AQI %d
+👁️ *Visibility:* %.1f km
+📅 *Updated:* %s`,
+		weather.LocationName,
+		weather.Temperature,
+		weather.Humidity,
+		weather.WindSpeed,
+		weather.WindDirection,
+		weather.AQI,
+		weather.Visibility,
+		weather.Timestamp.Format("15:04 UTC"))
+
+	_, err := s.bot.SendMessage(user.ID, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+
+	if err != nil {
+		s.logger.Error().Err(err).Int64("user_id", user.ID).Msg("Failed to send Telegram weather update")
+		return err
+	}
+
+	s.logger.Info().Int64("user_id", user.ID).Msg("Telegram weather update sent successfully")
+	return nil
+}
+
+// SendTelegramWeeklyUpdate sends a weekly weather summary to users via Telegram
+func (s *NotificationService) SendTelegramWeeklyUpdate(user *models.User, summary string) error {
+	if s.bot == nil {
+		s.logger.Debug().Msg("Telegram bot not configured for notifications")
+		return nil
+	}
+
+	message := fmt.Sprintf(`📅 *Weekly Weather Summary*
+📍 *%s*
+
+%s
+
+Have a great week ahead! 🌟`, user.LocationName, summary)
+
+	_, err := s.bot.SendMessage(user.ID, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+
+	if err != nil {
+		s.logger.Error().Err(err).Int64("user_id", user.ID).Msg("Failed to send Telegram weekly update")
+		return err
+	}
+
+	s.logger.Info().Int64("user_id", user.ID).Msg("Telegram weekly update sent successfully")
+	return nil
+}
+
+func (s *NotificationService) getSeverityEmoji(severity models.Severity) string {
+	switch severity {
+	case models.SeverityLow:
+		return "⚠️"
+	case models.SeverityMedium:
+		return "🔶"
+	case models.SeverityHigh:
+		return "🚨"
+	case models.SeverityCritical:
+		return "🆘"
+	default:
+		return "ℹ️"
 	}
 }

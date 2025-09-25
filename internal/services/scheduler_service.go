@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -106,8 +107,13 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
 
 		// Send notifications for triggered alerts
 		for _, alert := range alerts {
+			// Send Slack alert
 			if err := s.notification.SendSlackAlert(&alert, &user); err != nil {
 				s.logger.Error().Err(err).Msg("Failed to send Slack alert")
+			}
+			// Send Telegram alert
+			if err := s.notification.SendTelegramAlert(&alert, &user); err != nil {
+				s.logger.Error().Err(err).Msg("Failed to send Telegram alert")
 			}
 		}
 
@@ -123,46 +129,131 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
 
 func (s *SchedulerService) processDailyNotifications(ctx context.Context) {
 	now := time.Now().UTC()
+	s.logger.Debug().Time("utc_time", now).Msg("Processing scheduled notifications")
 
-	// Only send daily notifications at 8 AM
-	if now.Hour() != 8 || now.Minute() != 0 {
-		return
-	}
-
-	s.logger.Info().Msg("Processing daily weather notifications")
-
-	// Get users with daily subscriptions who have locations set
+	// Get all active subscriptions with users who have locations set
 	var subscriptions []models.Subscription
 	if err := s.db.WithContext(ctx).
 		Preload("User").
 		Joins("JOIN users ON users.id = subscriptions.user_id").
-		Where("subscriptions.subscription_type = ? AND subscriptions.is_active = ? AND users.location_name != '' AND users.location_name IS NOT NULL", models.SubscriptionDaily, true).
+		Where("subscriptions.is_active = ? AND users.location_name != '' AND users.location_name IS NOT NULL", true).
 		Find(&subscriptions).Error; err != nil {
-		s.logger.Error().Err(err).Msg("Failed to get daily subscriptions")
+		s.logger.Error().Err(err).Msg("Failed to get active subscriptions")
 		return
 	}
 
 	for _, subscription := range subscriptions {
-		// Get weather for user's location
-		weather, err := s.weather.GetCurrentWeatherByCoords(
-			ctx,
-			subscription.User.Latitude,
-			subscription.User.Longitude,
-		)
-		if err != nil {
-			s.logger.Error().Err(err).
-				Str("location", subscription.User.LocationName).
-				Int64("user_id", subscription.UserID).
-				Msg("Failed to get weather for daily notification")
-			continue
+		// Parse user's timezone
+		userTimezone := subscription.User.Timezone
+		if userTimezone == "" {
+			userTimezone = "UTC"
 		}
 
-		// Send notification
-		users := []models.User{subscription.User}
-		if err := s.notification.SendSlackWeatherUpdate(weather, users); err != nil {
-			s.logger.Error().Err(err).
+		location, err := time.LoadLocation(userTimezone)
+		if err != nil {
+			s.logger.Warn().Str("timezone", userTimezone).Err(err).Msg("Invalid timezone, using UTC")
+			location = time.UTC
+		}
+
+		// Convert current time to user's timezone
+		userTime := now.In(location)
+
+		// Check if it's time to send the notification
+		if s.shouldSendNotification(subscription, userTime) {
+			s.logger.Info().
+				Str("type", subscription.SubscriptionType.String()).
+				Str("time", subscription.TimeOfDay).
+				Str("user_timezone", userTimezone).
 				Int64("user_id", subscription.UserID).
-				Msg("Failed to send daily weather notification")
+				Msg("Sending scheduled notification")
+
+			if err := s.sendScheduledNotification(ctx, subscription); err != nil {
+				s.logger.Error().Err(err).
+					Int64("user_id", subscription.UserID).
+					Str("type", subscription.SubscriptionType.String()).
+					Msg("Failed to send scheduled notification")
+			}
 		}
 	}
+}
+
+func (s *SchedulerService) shouldSendNotification(subscription models.Subscription, userTime time.Time) bool {
+	// Parse the time of day (format: HH:MM)
+	targetTime, err := time.Parse("15:04", subscription.TimeOfDay)
+	if err != nil {
+		s.logger.Warn().Str("time_of_day", subscription.TimeOfDay).Err(err).Msg("Invalid time format")
+		return false
+	}
+
+	// Check if current time matches the target time (within 1 hour window to avoid missing)
+	currentHour := userTime.Hour()
+	currentMinute := userTime.Minute()
+	targetHour := targetTime.Hour()
+	targetMinute := targetTime.Minute()
+
+	// Send if we're within a 5-minute window of the target time
+	if currentHour == targetHour && abs(currentMinute-targetMinute) <= 5 {
+		switch subscription.SubscriptionType {
+		case models.SubscriptionDaily:
+			// Send daily notifications every day
+			return true
+		case models.SubscriptionWeekly:
+			// Send weekly notifications only on Mondays
+			return userTime.Weekday() == time.Monday
+		case models.SubscriptionAlerts, models.SubscriptionExtreme:
+			// Alert subscriptions are handled by checkAndProcessAlerts
+			return false
+		}
+	}
+
+	return false
+}
+
+func (s *SchedulerService) sendScheduledNotification(ctx context.Context, subscription models.Subscription) error {
+	// Get weather for user's location
+	weather, err := s.weather.GetCurrentWeatherByCoords(
+		ctx,
+		subscription.User.Latitude,
+		subscription.User.Longitude,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get weather for user %d: %w", subscription.UserID, err)
+	}
+
+	switch subscription.SubscriptionType {
+	case models.SubscriptionDaily:
+		// Send daily weather update
+		users := []models.User{subscription.User}
+		// Send Slack notification
+		if err := s.notification.SendSlackWeatherUpdate(weather, users); err != nil {
+			s.logger.Error().Err(err).Msg("Failed to send Slack daily notification")
+		}
+		// Send Telegram notification
+		if err := s.notification.SendTelegramWeatherUpdate(weather, &subscription.User); err != nil {
+			return fmt.Errorf("failed to send Telegram daily notification: %w", err)
+		}
+
+	case models.SubscriptionWeekly:
+		// Send weekly summary (simplified for now)
+		summary := fmt.Sprintf(`This week's weather overview:
+🌡️ Current temperature: %.1f°C
+💧 Humidity: %d%%
+💨 Wind: %.1f km/h
+🌿 Air quality: AQI %d
+
+Stay weather-aware!`, weather.Temperature, weather.Humidity, weather.WindSpeed, weather.AQI)
+
+		if err := s.notification.SendTelegramWeeklyUpdate(&subscription.User, summary); err != nil {
+			return fmt.Errorf("failed to send weekly notification: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func abs(a int) int {
+	if a < 0 {
+		return -a
+	}
+	return a
 }

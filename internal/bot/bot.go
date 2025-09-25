@@ -71,6 +71,9 @@ func New(cfg *config.Config) (*Bot, error) {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
 
+	// Set the bot instance for notifications
+	services.Notification.SetBot(botInstance)
+
 	// Create updater and dispatcher
 	dispatcher := ext.NewDispatcher(&ext.DispatcherOpts{})
 	updater := ext.NewUpdater(dispatcher, &ext.UpdaterOpts{})
