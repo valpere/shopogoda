@@ -80,22 +80,42 @@ func (s *ExportService) ExportUserData(ctx context.Context, userID int64, export
 	switch exportType {
 	case ExportTypeWeatherData:
 		exportData.WeatherData, err = s.getWeatherData(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get weather data: %w", err)
+		}
 	case ExportTypeAlerts:
 		exportData.AlertConfigs, err = s.getAlertConfigs(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get alert configs: %w", err)
+		}
 		exportData.TriggeredAlerts, err = s.getTriggeredAlerts(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get triggered alerts: %w", err)
+		}
 	case ExportTypeSubscriptions:
 		exportData.Subscriptions, err = s.getSubscriptions(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get subscriptions: %w", err)
+		}
 	case ExportTypeAll:
-		exportData.WeatherData, _ = s.getWeatherData(ctx, userID)
-		exportData.AlertConfigs, _ = s.getAlertConfigs(ctx, userID)
-		exportData.TriggeredAlerts, _ = s.getTriggeredAlerts(ctx, userID)
-		exportData.Subscriptions, _ = s.getSubscriptions(ctx, userID)
+		exportData.WeatherData, err = s.getWeatherData(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get weather data: %w", err)
+		}
+		exportData.AlertConfigs, err = s.getAlertConfigs(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get alert configs: %w", err)
+		}
+		exportData.TriggeredAlerts, err = s.getTriggeredAlerts(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get triggered alerts: %w", err)
+		}
+		exportData.Subscriptions, err = s.getSubscriptions(ctx, userID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to get subscriptions: %w", err)
+		}
 	default:
 		return nil, "", fmt.Errorf("unsupported export type: %s", exportType)
-	}
-
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to get %s data: %w", exportType, err)
 	}
 
 	// Generate export based on format
