@@ -18,6 +18,7 @@ import (
 	"github.com/valpere/shopogoda/internal/config"
 	"github.com/valpere/shopogoda/internal/database"
 	"github.com/valpere/shopogoda/internal/handlers/commands"
+	"github.com/valpere/shopogoda/internal/locales"
 
 	// "github.com/valpere/shopogoda/internal/middleware" // Not used yet
 	"github.com/valpere/shopogoda/internal/services"
@@ -60,6 +61,11 @@ func New(cfg *config.Config) (*Bot, error) {
 
 	// Initialize services
 	services := services.New(db, rdb, cfg, &logger)
+
+	// Load translations
+	if err := services.Localization.LoadTranslations(locales.LocalesFS); err != nil {
+		logger.Error().Err(err).Msg("Failed to load translations, continuing with fallback")
+	}
 
 	// Create bot
 	botInstance, err := gotgbot.NewBot(cfg.Bot.Token, &gotgbot.BotOpts{
@@ -114,6 +120,7 @@ func (b *Bot) setupHandlers() error {
 	b.dispatcher.AddHandler(handlers.NewCommand("start", cmdHandler.Start))
 	b.dispatcher.AddHandler(handlers.NewCommand("help", cmdHandler.Help))
 	b.dispatcher.AddHandler(handlers.NewCommand("settings", cmdHandler.Settings))
+	b.dispatcher.AddHandler(handlers.NewCommand("language", cmdHandler.Language))
 
 	// Weather commands
 	b.dispatcher.AddHandler(handlers.NewCommand("weather", cmdHandler.CurrentWeather))

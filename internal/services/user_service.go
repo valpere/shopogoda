@@ -20,7 +20,6 @@ var userUpsertColumns = []string{
 	"username",
 	"first_name",
 	"last_name",
-	"language",
 	"updated_at",
 }
 
@@ -285,4 +284,11 @@ func (s *UserService) ConvertToUTC(ctx context.Context, userID int64, localTime 
 
 	// Convert to the user's timezone first, then to UTC
 	return localTime.In(loc).UTC()
+}
+
+// UpdateUserLanguage updates a user's language preference
+func (s *UserService) UpdateUserLanguage(ctx context.Context, userID int64, language string) error {
+	return s.UpdateUserSettings(ctx, userID, map[string]interface{}{
+		"language": language,
+	})
 }

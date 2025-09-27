@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"github.com/valpere/shopogoda/internal"
 	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/internal/services"
 	"github.com/valpere/shopogoda/pkg/weather"
@@ -32,6 +33,15 @@ func New(services *services.Services, logger *zerolog.Logger) *CommandHandler {
 	}
 }
 
+// getUserLanguage gets the user's language preference or returns default
+func (h *CommandHandler) getUserLanguage(ctx context.Context, userID int64) string {
+	user, err := h.services.User.GetUser(ctx, userID)
+	if err != nil || user == nil || user.Language == "" {
+		return internal.DefaultLanguage // default to English
+	}
+	return user.Language
+}
+
 // Start command handler
 func (h *CommandHandler) Start(bot *gotgbot.Bot, ctx *ext.Context) error {
 	user := ctx.EffectiveUser
@@ -47,34 +57,19 @@ func (h *CommandHandler) Start(bot *gotgbot.Bot, ctx *ext.Context) error {
 		h.logger.Error().Err(err).Int64("user_id", user.Id).Msg("Failed to register user")
 	}
 
-	welcomeText := fmt.Sprintf(`🌤️ *Welcome to Enterprise Weather Bot*
+	// Get user's language preference
+	userLang := h.getUserLanguage(context.Background(), user.Id)
 
-Hello %s! I'm your professional weather and environmental monitoring assistant.
+	// Get localized welcome message
+	welcomeText := h.services.Localization.T(context.Background(), userLang, "welcome_message")
 
-*Available Commands:*
-🏠 /weather - Get current weather
-📊 /forecast - 5-day weather forecast
-🌬️ /air - Air quality information
-📍 /setlocation - Set your location
-⚙️ /settings - Configure preferences
-🔔 /subscribe - Set up notifications
-⚠️ /addalert - Create weather alerts
-📋 /help - Show all commands
-
-*Enterprise Features:*
-• Real-time environmental monitoring
-• Custom alert thresholds
-• Multi-location tracking
-• Integration with Slack/Teams
-• Compliance reporting
-• Role-based access control
-
-Ready to get started? Try /weather to see current conditions!`,
-		user.FirstName)
+	// Get localized button texts
+	weatherBtn := h.services.Localization.T(context.Background(), userLang, "button_current_weather")
+	settingsBtn := h.services.Localization.T(context.Background(), userLang, "button_settings")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌤️ Current Weather", CallbackData: "weather_current"}},
-		{{Text: "⚙️ Settings", CallbackData: "settings_main"}},
+		{{Text: weatherBtn, CallbackData: "weather_current"}},
+		{{Text: settingsBtn, CallbackData: "settings_main"}},
 	}
 
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, welcomeText, &gotgbot.SendMessageOpts{
@@ -89,53 +84,109 @@ Ready to get started? Try /weather to see current conditions!`,
 
 // Help command handler
 func (h *CommandHandler) Help(bot *gotgbot.Bot, ctx *ext.Context) error {
-	helpText := `🌤️ *ShoPogoda - Enterprise Weather Bot*
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
-*🏠 Basic Commands:*
-/weather \[location] - Current weather conditions
-/forecast \[location] - 5-day weather forecast
-/air \[location] - Air quality index and pollutants
+	// Get localized help text components
+	title := h.services.Localization.T(context.Background(), userLang, "help_title")
+	basicCmd := h.services.Localization.T(context.Background(), userLang, "help_basic_commands")
+	weather := h.services.Localization.T(context.Background(), userLang, "help_weather")
+	forecast := h.services.Localization.T(context.Background(), userLang, "help_forecast")
+	air := h.services.Localization.T(context.Background(), userLang, "help_air")
 
-*📍 Location Management:*
-/setlocation - Set your location (text, coordinates, or share location)
+	locationMgmt := h.services.Localization.T(context.Background(), userLang, "help_location_management")
+	setLocation := h.services.Localization.T(context.Background(), userLang, "help_setlocation")
 
-*🔔 Notifications & Subscriptions:*
-/subscribe - Set up weather notifications
-/unsubscribe - Remove notifications
-/subscriptions - View active subscriptions
+	notifications := h.services.Localization.T(context.Background(), userLang, "help_notifications")
+	subscribe := h.services.Localization.T(context.Background(), userLang, "help_subscribe")
+	unsubscribe := h.services.Localization.T(context.Background(), userLang, "help_unsubscribe")
+	subscriptions := h.services.Localization.T(context.Background(), userLang, "help_subscriptions")
 
-*⚠️ Smart Alert System:*
-/addalert - Create custom weather alerts
-/alerts - View and manage active alerts
-/removealert <id> - Remove specific alert
+	alerts := h.services.Localization.T(context.Background(), userLang, "help_alerts")
+	addAlert := h.services.Localization.T(context.Background(), userLang, "help_addalert")
+	viewAlerts := h.services.Localization.T(context.Background(), userLang, "help_view_alerts")
+	removeAlert := h.services.Localization.T(context.Background(), userLang, "help_removealert")
 
-*⚙️ Settings & Configuration:*
-/settings - Open comprehensive settings menu
-• Language, units, timezone settings
-• Notification preferences management
-• 📊 *Data Export* - Export your data in JSON/CSV/TXT formats
+	settings := h.services.Localization.T(context.Background(), userLang, "help_settings")
+	settingsDesc := h.services.Localization.T(context.Background(), userLang, "help_settings_desc")
+	dataExport := h.services.Localization.T(context.Background(), userLang, "help_data_export")
 
-*📊 Data Export Features:*
-Export your complete weather history, alerts, and preferences:
-• 🌤️ Weather data (last 30 days)
-• ⚠️ Alert configurations & history
-• 📋 Notification subscriptions
-• 📦 Complete data export
+	exportFeatures := h.services.Localization.T(context.Background(), userLang, "help_export_features")
+	weatherData := h.services.Localization.T(context.Background(), userLang, "help_export_weather")
+	alertHistory := h.services.Localization.T(context.Background(), userLang, "help_export_alerts")
+	notifSubs := h.services.Localization.T(context.Background(), userLang, "help_export_subscriptions")
+	completeExport := h.services.Localization.T(context.Background(), userLang, "help_export_complete")
 
-*👨‍💼 Admin Commands:*
-/stats - Bot usage statistics
-/broadcast - Send message to all users
-/users - User management
+	adminCmd := h.services.Localization.T(context.Background(), userLang, "help_admin_commands")
+	stats := h.services.Localization.T(context.Background(), userLang, "help_stats")
+	broadcast := h.services.Localization.T(context.Background(), userLang, "help_broadcast")
+	users := h.services.Localization.T(context.Background(), userLang, "help_users")
 
-*💡 Pro Tips:*
-• Share your location for instant weather
-• Set multiple alerts for different conditions
-• Export data regularly for backup/compliance
-• Use timezone settings for accurate notifications
-• Separate location and timezone management
+	proTips := h.services.Localization.T(context.Background(), userLang, "help_pro_tips")
+	tip1 := h.services.Localization.T(context.Background(), userLang, "help_tip_location")
+	tip2 := h.services.Localization.T(context.Background(), userLang, "help_tip_alerts")
+	tip3 := h.services.Localization.T(context.Background(), userLang, "help_tip_export")
+	tip4 := h.services.Localization.T(context.Background(), userLang, "help_tip_timezone")
+	tip5 := h.services.Localization.T(context.Background(), userLang, "help_tip_separation")
 
-*🆘 Support:*
-For enterprise support: https://github.com/valpere/shopogoda/issues`
+	support := h.services.Localization.T(context.Background(), userLang, "help_support")
+
+	// Build help text with localized content
+	helpText := fmt.Sprintf(`🌤️ *%s*
+
+*🏠 %s:*
+/weather \[location] - %s
+/forecast \[location] - %s
+/air \[location] - %s
+
+*📍 %s:*
+/setlocation - %s
+
+*🔔 %s:*
+/subscribe - %s
+/unsubscribe - %s
+/subscriptions - %s
+
+*⚠️ %s:*
+/addalert - %s
+/alerts - %s
+/removealert <id> - %s
+
+*⚙️ %s:*
+/settings - %s
+• %s
+
+*📊 %s:*
+%s:
+• 🌤️ %s
+• ⚠️ %s
+• 📋 %s
+• 📦 %s
+
+*👨‍💼 %s:*
+/stats - %s
+/broadcast - %s
+/users - %s
+
+*💡 %s:*
+• %s
+• %s
+• %s
+• %s
+• %s
+
+*🆘 %s:*
+https://github.com/valpere/shopogoda/issues`,
+		title, basicCmd, weather, forecast, air,
+		locationMgmt, setLocation,
+		notifications, subscribe, unsubscribe, subscriptions,
+		alerts, addAlert, viewAlerts, removeAlert,
+		settings, settingsDesc, dataExport,
+		exportFeatures, exportFeatures,
+		weatherData, alertHistory, notifSubs, completeExport,
+		adminCmd, stats, broadcast, users,
+		proTips, tip1, tip2, tip3, tip4, tip5,
+		support)
 
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, helpText, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
@@ -176,13 +227,18 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 	if location == "" {
 		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 		if err != nil || locationName == "" {
+			userLang := h.getUserLanguage(context.Background(), userID)
+			message := h.services.Localization.T(context.Background(), userLang, "weather_location_needed")
+			shareBtn := h.services.Localization.T(context.Background(), userLang, "button_share_location")
+			setBtn := h.services.Localization.T(context.Background(), userLang, "button_set_location")
+
 			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-				"📍 Please provide a location or set your location:\n\n/weather London\nor\n/setlocation to set your location",
+				message,
 				&gotgbot.SendMessageOpts{
 					ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 						InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-							{{Text: "📍 Share Location", CallbackData: "share_location"}},
-							{{Text: "📍 Set Location", CallbackData: "location_set"}},
+							{{Text: shareBtn, CallbackData: "share_location"}},
+							{{Text: setBtn, CallbackData: "location_set"}},
 						},
 					},
 				})
@@ -203,8 +259,10 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 			Str("location", location).
 			Msg("Failed to get weather data")
 
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to get weather for '%s'. Please check the location name.", location), nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "weather_error", location)
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
@@ -252,8 +310,10 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 	if location == "" {
 		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 		if err != nil || locationName == "" {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-				"📍 Please provide a location: /forecast London", nil)
+			userLang := h.getUserLanguage(context.Background(), userID)
+			message := h.services.Localization.T(context.Background(), userLang, "forecast_location_needed")
+
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id, message, nil)
 			return err
 		}
 		location = locationName
@@ -262,15 +322,19 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Get coordinates first for forecast
 	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), location)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to find location '%s'", location), nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_not_found", location)
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	forecast, err := h.services.Weather.GetForecast(context.Background(), locationData.Latitude, locationData.Longitude, 5)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to get forecast for '%s'", location), nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "forecast_error", location)
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
@@ -287,12 +351,14 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 	location := h.parseLocationFromArgs(ctx)
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	if location == "" {
 		locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 		if err != nil || locationName == "" {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-				"📍 Please provide a location: /air London", nil)
+			message := h.services.Localization.T(context.Background(), userLang, "air_location_needed")
+
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id, message, nil)
 			return err
 		}
 		location = locationName
@@ -301,23 +367,29 @@ func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Get coordinates first for air quality
 	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), location)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to find location '%s'", location), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_not_found", location)
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	airData, err := h.services.Weather.GetAirQuality(context.Background(), locationData.Latitude, locationData.Longitude)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to get air quality for '%s'", location), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "air_quality_error", location)
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	airText := h.formatAirQualityMessage(airData)
 
+	// Get localized button texts
+	weatherBtn := h.services.Localization.T(context.Background(), userLang, "button_current_weather")
+	alertBtn := h.services.Localization.T(context.Background(), userLang, "button_set_air_alert")
+
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_%s", location)}},
-		{{Text: "⚠️ Set Air Alert", CallbackData: fmt.Sprintf("air_alert_%s", location)}},
+		{{Text: weatherBtn, CallbackData: fmt.Sprintf("weather_%s", location)}},
+		{{Text: alertBtn, CallbackData: fmt.Sprintf("air_alert_%s", location)}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, airText, &gotgbot.SendMessageOpts{
@@ -339,48 +411,85 @@ func (h *CommandHandler) Settings(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	// Get user's current location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	var locationText string
 	if err != nil || locationName == "" {
-		locationText = "Not set"
+		locationText = h.services.Localization.T(context.Background(), userLang, "settings_not_set")
 	} else {
-		// Location name already includes coordinates from reverse geocoding
 		locationText = locationName
 	}
 
-	settingsText := fmt.Sprintf(`⚙️ *Settings*
+	// Get localized strings
+	title := h.services.Localization.T(context.Background(), userLang, "settings_title")
+	currentConfig := h.services.Localization.T(context.Background(), userLang, "settings_current_config")
+	location := h.services.Localization.T(context.Background(), userLang, "settings_location")
+	language := h.services.Localization.T(context.Background(), userLang, "settings_language")
+	units := h.services.Localization.T(context.Background(), userLang, "settings_units")
+	timezone := h.services.Localization.T(context.Background(), userLang, "settings_timezone")
+	role := h.services.Localization.T(context.Background(), userLang, "settings_role")
+	status := h.services.Localization.T(context.Background(), userLang, "settings_status")
 
-*Current Configuration:*
-Location: %s
-Language: %s
-Units: %s
-Timezone: %s
-Role: %s
-Status: %s
+	availableSettings := h.services.Localization.T(context.Background(), userLang, "settings_available")
+	locationMgmt := h.services.Localization.T(context.Background(), userLang, "settings_location_mgmt")
+	langPrefs := h.services.Localization.T(context.Background(), userLang, "settings_lang_prefs")
+	unitSystem := h.services.Localization.T(context.Background(), userLang, "settings_unit_system")
+	timezoneSettings := h.services.Localization.T(context.Background(), userLang, "settings_timezone_settings")
+	notifPrefs := h.services.Localization.T(context.Background(), userLang, "settings_notif_prefs")
+	dataExport := h.services.Localization.T(context.Background(), userLang, "settings_data_export")
 
-*Available Settings:*
-• Location management
-• Language preferences
-• Unit system (Metric/Imperial)
-• Timezone settings
-• Notification preferences
-• Data export options`,
-		locationText,
-		user.Language,
-		h.getUnitsText(user.Units),
-		user.Timezone,
-		h.getRoleName(user.Role),
-		h.getStatusText(user.IsActive))
+	// Get localized values
+	unitsText := h.getLocalizedUnitsText(context.Background(), userLang, user.Units)
+	roleText := h.getLocalizedRoleName(context.Background(), userLang, user.Role)
+	statusText := h.getLocalizedStatusText(context.Background(), userLang, user.IsActive)
+
+	settingsText := fmt.Sprintf(`⚙️ *%s*
+
+*%s:*
+%s: %s
+%s: %s
+%s: %s
+%s: %s
+%s: %s
+%s: %s
+
+*%s:*
+• %s
+• %s
+• %s
+• %s
+• %s
+• %s`,
+		title,
+		currentConfig,
+		location, locationText,
+		language, user.Language,
+		units, unitsText,
+		timezone, user.Timezone,
+		role, roleText,
+		status, statusText,
+		availableSettings,
+		locationMgmt, langPrefs, unitSystem, timezoneSettings, notifPrefs, dataExport)
+
+	// Get localized button texts
+	setLocationBtn := h.services.Localization.T(context.Background(), userLang, "button_set_location")
+	languageBtn := h.services.Localization.T(context.Background(), userLang, "button_language")
+	unitsBtn := h.services.Localization.T(context.Background(), userLang, "button_units")
+	timezoneBtn := h.services.Localization.T(context.Background(), userLang, "button_timezone")
+	notificationsBtn := h.services.Localization.T(context.Background(), userLang, "button_notifications")
+	exportBtn := h.services.Localization.T(context.Background(), userLang, "button_data_export")
+	backBtn := h.services.Localization.T(context.Background(), userLang, "button_back_to_start")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "📍 Set Location", CallbackData: "settings_location"}},
-		{{Text: "🌐 Language", CallbackData: "settings_language"}},
-		{{Text: "📏 Units", CallbackData: "settings_units"}},
-		{{Text: "🕐 Timezone", CallbackData: "settings_timezone"}},
-		{{Text: "🔔 Notifications", CallbackData: "settings_notifications"}},
-		{{Text: "📊 Data Export", CallbackData: "settings_export"}},
-		{{Text: "🏠 Back to Start", CallbackData: "settings_start"}},
+		{{Text: setLocationBtn, CallbackData: "settings_location"}},
+		{{Text: languageBtn, CallbackData: "settings_language"}},
+		{{Text: unitsBtn, CallbackData: "settings_units"}},
+		{{Text: timezoneBtn, CallbackData: "settings_timezone"}},
+		{{Text: notificationsBtn, CallbackData: "settings_notifications"}},
+		{{Text: exportBtn, CallbackData: "settings_export"}},
+		{{Text: backBtn, CallbackData: "settings_start"}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, settingsText, &gotgbot.SendMessageOpts{
@@ -427,6 +536,8 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleLocationCallback(bot, ctx, subAction, parts[2:])
 	case "timezone":
 		return h.handleTimezoneCallback(bot, ctx, subAction, parts[2:])
+	case "language":
+		return h.handleLanguageCallback(bot, ctx, subAction, parts[2:])
 	case "alert":
 		return h.handleAlertCallback(bot, ctx, subAction, parts[2:])
 	case "alerts":
@@ -613,6 +724,7 @@ func (h *CommandHandler) parseLocationFromArgs(ctx *ext.Context) string {
 // showLocationConfirmation displays a confirmation dialog for setting/changing location
 func (h *CommandHandler) showLocationConfirmation(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	// Check if user already has a location set
 	existingLocation, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
@@ -620,19 +732,27 @@ func (h *CommandHandler) showLocationConfirmation(bot *gotgbot.Bot, ctx *ext.Con
 	var messageText string
 	var keyboard [][]gotgbot.InlineKeyboardButton
 
+	backText := h.services.Localization.T(context.Background(), userLang, "button_back_to_settings")
+
 	if err != nil || existingLocation == "" {
 		// No location set - offer to set this as their location
-		messageText = fmt.Sprintf("📍 Did you want to set *%s* as your location?", locationName)
+		messageText = h.services.Localization.T(context.Background(), userLang, "location_confirm_set", locationName)
+		yesText := h.services.Localization.T(context.Background(), userLang, "location_confirm_yes_set")
+		noText := h.services.Localization.T(context.Background(), userLang, "location_confirm_no_ignore")
 		keyboard = [][]gotgbot.InlineKeyboardButton{
-			{{Text: "✅ Yes, set as my location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(locationName))}},
-			{{Text: "❌ No, just ignore", CallbackData: "location_ignore"}},
+			{{Text: yesText, CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(locationName))}},
+			{{Text: noText, CallbackData: "location_ignore"}},
+			{{Text: backText, CallbackData: "settings_main"}},
 		}
 	} else {
 		// Location already set - offer to change it
-		messageText = fmt.Sprintf("📍 Did you want to change your location from *%s* to *%s*?", existingLocation, locationName)
+		messageText = h.services.Localization.T(context.Background(), userLang, "location_confirm_change", existingLocation, locationName)
+		yesText := h.services.Localization.T(context.Background(), userLang, "location_confirm_yes_change")
+		noText := h.services.Localization.T(context.Background(), userLang, "location_confirm_no_keep")
 		keyboard = [][]gotgbot.InlineKeyboardButton{
-			{{Text: "✅ Yes, change location", CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(locationName))}},
-			{{Text: "❌ No, keep current", CallbackData: "location_ignore"}},
+			{{Text: yesText, CallbackData: fmt.Sprintf("location_confirm_%s", url.QueryEscape(locationName))}},
+			{{Text: noText, CallbackData: "location_ignore"}},
+			{{Text: backText, CallbackData: "settings_main"}},
 		}
 	}
 
@@ -727,6 +847,7 @@ func (h *CommandHandler) isValidTimezone(timezone string) bool {
 // showTimezoneConfirmation displays a confirmation dialog for setting/changing timezone
 func (h *CommandHandler) showTimezoneConfirmation(bot *gotgbot.Bot, ctx *ext.Context, timezoneName string) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	// Check if user already has a timezone set (get current user settings)
 	user, err := h.services.User.GetUser(context.Background(), userID)
@@ -738,19 +859,27 @@ func (h *CommandHandler) showTimezoneConfirmation(bot *gotgbot.Bot, ctx *ext.Con
 	var messageText string
 	var keyboard [][]gotgbot.InlineKeyboardButton
 
+	backText := h.services.Localization.T(context.Background(), userLang, "button_back_to_settings")
+
 	if err != nil || user.Timezone == "" {
 		// No timezone set - offer to set this timezone
-		messageText = fmt.Sprintf("🕐 Did you want to set *%s* as your timezone?", timezoneName)
+		messageText = h.services.Localization.T(context.Background(), userLang, "timezone_confirm_set", timezoneName)
+		yesText := h.services.Localization.T(context.Background(), userLang, "timezone_confirm_yes_set")
+		noText := h.services.Localization.T(context.Background(), userLang, "timezone_confirm_no_ignore")
 		keyboard = [][]gotgbot.InlineKeyboardButton{
-			{{Text: "✅ Yes, set as my timezone", CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
-			{{Text: "❌ No, just ignore", CallbackData: "timezone_ignore"}},
+			{{Text: yesText, CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
+			{{Text: noText, CallbackData: "timezone_ignore"}},
+			{{Text: backText, CallbackData: "settings_main"}},
 		}
 	} else {
 		// Timezone already set (including UTC) - offer to change it
-		messageText = fmt.Sprintf("🕐 Did you want to change your timezone from *%s* to *%s*?", user.Timezone, timezoneName)
+		messageText = h.services.Localization.T(context.Background(), userLang, "timezone_confirm_change", user.Timezone, timezoneName)
+		yesText := h.services.Localization.T(context.Background(), userLang, "timezone_confirm_yes_change")
+		noText := h.services.Localization.T(context.Background(), userLang, "timezone_confirm_no_keep")
 		keyboard = [][]gotgbot.InlineKeyboardButton{
-			{{Text: "✅ Yes, change timezone", CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
-			{{Text: "❌ No, keep current", CallbackData: "timezone_ignore"}},
+			{{Text: yesText, CallbackData: fmt.Sprintf("timezone_confirm_%s", url.QueryEscape(timezoneName))}},
+			{{Text: noText, CallbackData: "timezone_ignore"}},
+			{{Text: backText, CallbackData: "settings_main"}},
 		}
 	}
 
@@ -911,15 +1040,19 @@ func (h *CommandHandler) getHealthRecommendation(aqi int) string {
 // Additional command handlers
 func (h *CommandHandler) SetLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 	locationName := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
 
 	if locationName == "" {
+		promptText := h.services.Localization.T(context.Background(), userLang, "setlocation_prompt")
+		shareButtonText := h.services.Localization.T(context.Background(), userLang, "button_share_location")
+
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 Please provide a location name:\n\n/setlocation London\nor share your current location",
+			promptText,
 			&gotgbot.SendMessageOpts{
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-						{{Text: "📍 Share Current Location", CallbackData: "share_location"}},
+						{{Text: shareButtonText, CallbackData: "share_location"}},
 					},
 				},
 			})
@@ -929,27 +1062,30 @@ func (h *CommandHandler) SetLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 	// Validate location
 	coords, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Could not find location '%s'. Please check the spelling.", locationName), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "setlocation_not_found", locationName)
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	// Save location as user's location
 	err = h.services.User.SetUserLocation(context.Background(), userID, locationName, coords.Country, "", coords.Latitude, coords.Longitude)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"❌ Failed to save location. Please try again.", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "setlocation_save_failed")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
+	weatherButtonText := h.services.Localization.T(context.Background(), userLang, "button_get_weather")
+	alertButtonText := h.services.Localization.T(context.Background(), userLang, "button_add_alert")
+
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌤️ Get Weather", CallbackData: fmt.Sprintf("weather_%s", locationName)}},
-		{{Text: "🔔 Add Alert", CallbackData: fmt.Sprintf("alert_%s", locationName)}},
+		{{Text: weatherButtonText, CallbackData: fmt.Sprintf("weather_%s", locationName)}},
+		{{Text: alertButtonText, CallbackData: fmt.Sprintf("alert_%s", locationName)}},
 	}
 
-	message := fmt.Sprintf("✅ Location '%s' saved successfully!\n📍 This is now your current location", locationName)
+	successMsg := h.services.Localization.T(context.Background(), userLang, "setlocation_success", locationName)
 
-	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message,
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, successMsg,
 		&gotgbot.SendMessageOpts{
 			ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 				InlineKeyboard: keyboard,
@@ -998,27 +1134,23 @@ func (h *CommandHandler) ListLocations(bot *gotgbot.Bot, ctx *ext.Context) error
 }
 
 func (h *CommandHandler) Subscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
-	subscriptionText := `🔔 *Weather Notifications*
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
-Set up automatic weather updates for your location:
+	subscriptionText := h.services.Localization.T(context.Background(), userLang, "subscribe_text")
 
-*Available Subscription Types:*
-• 🌅 Daily Weather (morning summary)
-• 📊 Weekly Forecast (Sunday overview)
-• ⚠️ Weather Alerts (extreme conditions)
-• 🌬️ Air Quality Alerts (pollution levels)
-
-*Notification Schedule:*
-• Choose your preferred time
-• Select notification frequency
-• Configure alert thresholds`
+	dailyBtn := h.services.Localization.T(context.Background(), userLang, "subscribe_daily_btn")
+	weeklyBtn := h.services.Localization.T(context.Background(), userLang, "subscribe_weekly_btn")
+	alertsBtn := h.services.Localization.T(context.Background(), userLang, "subscribe_alerts_btn")
+	airBtn := h.services.Localization.T(context.Background(), userLang, "subscribe_air_btn")
+	mySubsBtn := h.services.Localization.T(context.Background(), userLang, "subscribe_my_subs_btn")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌅 Daily Weather", CallbackData: "subscribe_daily"}},
-		{{Text: "📊 Weekly Forecast", CallbackData: "subscribe_weekly"}},
-		{{Text: "⚠️ Weather Alerts", CallbackData: "subscribe_alerts"}},
-		{{Text: "🌬️ Air Quality", CallbackData: "subscribe_air"}},
-		{{Text: "📋 My Subscriptions", CallbackData: "subscriptions_list"}},
+		{{Text: dailyBtn, CallbackData: "subscribe_daily"}},
+		{{Text: weeklyBtn, CallbackData: "subscribe_weekly"}},
+		{{Text: alertsBtn, CallbackData: "subscribe_alerts"}},
+		{{Text: airBtn, CallbackData: "subscribe_air"}},
+		{{Text: mySubsBtn, CallbackData: "subscriptions_list"}},
 	}
 
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, subscriptionText, &gotgbot.SendMessageOpts{
@@ -1032,30 +1164,23 @@ Set up automatic weather updates for your location:
 }
 
 func (h *CommandHandler) AddAlert(bot *gotgbot.Bot, ctx *ext.Context) error {
-	alertText := `⚠️ *Weather Alert System*
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
-Create custom alerts for weather conditions:
+	alertText := h.services.Localization.T(context.Background(), userLang, "addalert_text")
 
-*Alert Types:*
-• 🌡️ Temperature (high/low thresholds)
-• 💧 Humidity levels
-• 🌬️ Wind speed warnings
-• ☀️ UV index alerts
-• 🌫️ Air quality notifications
-• 🌧️ Precipitation alerts
-
-*Enterprise Features:*
-• Slack/Teams integration
-• Email notifications
-• Escalation procedures
-• Compliance reporting`
+	tempBtn := h.services.Localization.T(context.Background(), userLang, "addalert_temp_btn")
+	windBtn := h.services.Localization.T(context.Background(), userLang, "addalert_wind_btn")
+	airBtn := h.services.Localization.T(context.Background(), userLang, "addalert_air_btn")
+	rainBtn := h.services.Localization.T(context.Background(), userLang, "addalert_rain_btn")
+	myAlertsBtn := h.services.Localization.T(context.Background(), userLang, "addalert_my_alerts_btn")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌡️ Temperature Alert", CallbackData: "alert_create_temperature"}},
-		{{Text: "🌬️ Wind Alert", CallbackData: "alert_create_wind"}},
-		{{Text: "🌫️ Air Quality Alert", CallbackData: "alert_create_air"}},
-		{{Text: "🌧️ Rain Alert", CallbackData: "alert_create_rain"}},
-		{{Text: "📋 My Alerts", CallbackData: "alerts_list"}},
+		{{Text: tempBtn, CallbackData: "alert_create_temperature"}},
+		{{Text: windBtn, CallbackData: "alert_create_wind"}},
+		{{Text: airBtn, CallbackData: "alert_create_air"}},
+		{{Text: rainBtn, CallbackData: "alert_create_rain"}},
+		{{Text: myAlertsBtn, CallbackData: "alerts_list"}},
 	}
 
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, alertText, &gotgbot.SendMessageOpts{
@@ -1072,10 +1197,13 @@ Create custom alerts for weather conditions:
 func (h *CommandHandler) AdminStats(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
 
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	// Check admin permissions
 	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Insufficient permissions", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "unauthorized")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
@@ -1298,47 +1426,48 @@ func (h *CommandHandler) handleSettingsCallback(bot *gotgbot.Bot, ctx *ext.Conte
 }
 
 func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	switch action {
 	case "add":
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
-			&gotgbot.SendMessageOpts{
-				ParseMode: "Markdown",
-			})
+		promptText := h.services.Localization.T(context.Background(), userLang, "location_input_name_prompt")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, promptText, &gotgbot.SendMessageOpts{
+			ParseMode: "Markdown",
+		})
 		return err
 	case "set":
 		// Check if this is for coordinates or name based on params
 		if len(params) > 0 && params[0] == "coords" {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-				"📍 *Set Location by Coordinates*\n\nPlease enter your GPS coordinates in the format:\n`latitude, longitude`\n\nExample: `37.7749, -122.4194`",
-				&gotgbot.SendMessageOpts{
-					ParseMode: "Markdown",
-				})
+			promptText := h.services.Localization.T(context.Background(), userLang, "location_input_coords_prompt")
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id, promptText, &gotgbot.SendMessageOpts{
+				ParseMode: "Markdown",
+			})
 			return err
 		} else if len(params) > 0 && params[0] == "name" {
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-				"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
-				&gotgbot.SendMessageOpts{
-					ParseMode: "Markdown",
-				})
+			promptText := h.services.Localization.T(context.Background(), userLang, "location_input_name_prompt")
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id, promptText, &gotgbot.SendMessageOpts{
+				ParseMode: "Markdown",
+			})
 			return err
 		} else {
 			// Default set behavior (name-based) for "location_set" without params
-			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-				"📝 *Set Location by Name*\n\nPlease type your city name (e.g., \"London\", \"New York\", \"Kyiv\"):",
-				&gotgbot.SendMessageOpts{
-					ParseMode: "Markdown",
-				})
+			promptText := h.services.Localization.T(context.Background(), userLang, "location_input_name_prompt")
+			_, err := bot.SendMessage(ctx.EffectiveChat.Id, promptText, &gotgbot.SendMessageOpts{
+				ParseMode: "Markdown",
+			})
 			return err
 		}
 	case "clear":
 		userID := ctx.EffectiveUser.Id
 		err := h.services.User.ClearUserLocation(context.Background(), userID)
 		if err != nil {
-			_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to clear location", nil)
+			errorText := h.services.Localization.T(context.Background(), userLang, "location_clear_failed")
+			_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorText, nil)
 			return sendErr
 		}
-		_, err = bot.SendMessage(ctx.EffectiveChat.Id, "✅ Location cleared successfully!", nil)
+		successText := h.services.Localization.T(context.Background(), userLang, "location_clear_success")
+		_, err = bot.SendMessage(ctx.EffectiveChat.Id, successText, nil)
 		return err
 	case "default":
 		// With single location per user, this is no longer needed
@@ -1390,6 +1519,7 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 			h.logger.Info().Str("location", locationName).Msg("User confirmed location from text input")
 
 			userID := ctx.EffectiveUser.Id
+			userLang := h.getUserLanguage(context.Background(), userID)
 
 			// Check if this is raw coordinates input that needs processing
 			coordPattern := `^coordinates \((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)$`
@@ -1474,9 +1604,8 @@ func (h *CommandHandler) handleLocationCallback(bot *gotgbot.Bot, ctx *ext.Conte
 				}
 
 				h.logger.Info().Str("location", location.Name).Msg("Location saved successfully from text input")
-				_, err = bot.SendMessage(ctx.EffectiveChat.Id,
-					fmt.Sprintf("✅ Location set to *%s, %s*\n📍 Coordinates: %.4f, %.4f", location.Name, location.Country, location.Latitude, location.Longitude),
-					&gotgbot.SendMessageOpts{ParseMode: "Markdown"})
+				successText := h.services.Localization.T(context.Background(), userLang, "location_save_success_with_coords", location.Name, location.Country, location.Latitude, location.Longitude)
+				_, err = bot.SendMessage(ctx.EffectiveChat.Id, successText, &gotgbot.SendMessageOpts{ParseMode: "Markdown"})
 				return err
 			}
 		}
@@ -1527,6 +1656,62 @@ func (h *CommandHandler) handleTimezoneCallback(bot *gotgbot.Bot, ctx *ext.Conte
 		return err
 	}
 	return nil
+}
+
+func (h *CommandHandler) handleLanguageCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
+	userID := ctx.EffectiveUser.Id
+
+	switch action {
+	case "set":
+		if len(params) < 1 {
+			return fmt.Errorf("language code not provided")
+		}
+
+		languageCode := params[0]
+
+		// Validate language code
+		if !h.services.Localization.IsLanguageSupported(languageCode) {
+			h.logger.Error().Str("language", languageCode).Msg("Invalid language code")
+			return fmt.Errorf("unsupported language: %s", languageCode)
+		}
+
+		// Update user language preference
+		err := h.services.User.UpdateUserLanguage(context.Background(), userID, languageCode)
+		if err != nil {
+			h.logger.Error().Err(err).Int64("user_id", userID).Str("language", languageCode).Msg("Failed to update user language")
+			errorMsg := h.services.Localization.T(context.Background(), languageCode, "language_set_error")
+			_, _, sendErr := bot.EditMessageText(errorMsg, &gotgbot.EditMessageTextOpts{
+				ChatId:    ctx.EffectiveChat.Id,
+				MessageId: ctx.CallbackQuery.Message.GetMessageId(),
+				ParseMode: "Markdown",
+			})
+			if sendErr != nil {
+				h.logger.Error().Err(sendErr).Msg("Failed to send error message")
+			}
+			return err
+		}
+
+		// Get language info for confirmation
+		langInfo, _ := h.services.Localization.GetLanguageByCode(languageCode)
+
+		// Send success message in the new language
+		successMsg := h.services.Localization.T(context.Background(), languageCode, "language_set_success", langInfo.Flag, langInfo.Name)
+
+		_, _, err = bot.EditMessageText(successMsg, &gotgbot.EditMessageTextOpts{
+			ChatId:    ctx.EffectiveChat.Id,
+			MessageId: ctx.CallbackQuery.Message.GetMessageId(),
+			ParseMode: "Markdown",
+		})
+
+		if err != nil {
+			h.logger.Error().Err(err).Msg("Failed to send success message")
+		}
+
+		return err
+
+	default:
+		return fmt.Errorf("unknown language action: %s", action)
+	}
 }
 
 func (h *CommandHandler) handleAlertCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
@@ -1627,11 +1812,17 @@ func (h *CommandHandler) handleLanguageSettings(bot *gotgbot.Bot, ctx *ext.Conte
 }
 
 func (h *CommandHandler) handleUnitSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
-	text := "📏 *Choose your preferred units:*"
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	text := h.services.Localization.T(context.Background(), userLang, "units_choose_prompt")
+
+	metricText := h.services.Localization.T(context.Background(), userLang, "units_metric")
+	imperialText := h.services.Localization.T(context.Background(), userLang, "units_imperial")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌡️ Metric (°C, km/h, km)", CallbackData: "settings_units_set_metric"}},
-		{{Text: "🌡️ Imperial (°F, mph, miles)", CallbackData: "settings_units_set_imperial"}},
+		{{Text: metricText, CallbackData: "settings_units_set_metric"}},
+		{{Text: imperialText, CallbackData: "settings_units_set_imperial"}},
 	}
 
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
@@ -1645,11 +1836,13 @@ func (h *CommandHandler) handleUnitSettings(bot *gotgbot.Bot, ctx *ext.Context) 
 }
 
 func (h *CommandHandler) handleTimezoneSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-		"🕐 *Set Timezone*\n\nPlease type your timezone name (e.g., \"Europe/Kyiv\", \"America/New_York\", \"Asia/Tokyo\"):\n\nYou can find timezone names at: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
-		&gotgbot.SendMessageOpts{
-			ParseMode: "Markdown",
-		})
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	text := h.services.Localization.T(context.Background(), userLang, "timezone_input_prompt")
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
 	return err
 }
 
@@ -1797,7 +1990,9 @@ func (h *CommandHandler) createDailySubscription(bot *gotgbot.Bot, ctx *ext.Cont
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -1824,7 +2019,9 @@ func (h *CommandHandler) createWeeklySubscription(bot *gotgbot.Bot, ctx *ext.Con
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -1934,7 +2131,9 @@ func (h *CommandHandler) createAlertsSubscription(bot *gotgbot.Bot, ctx *ext.Con
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -1961,7 +2160,9 @@ func (h *CommandHandler) createAirQualitySubscription(bot *gotgbot.Bot, ctx *ext
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -2153,45 +2354,41 @@ func (h *CommandHandler) setUserLanguage(bot *gotgbot.Bot, ctx *ext.Context, lan
 
 func (h *CommandHandler) setUserUnits(bot *gotgbot.Bot, ctx *ext.Context, units string) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	err := h.services.User.UpdateUserSettings(context.Background(), userID, map[string]interface{}{
 		"units": units,
 	})
 
 	if err != nil {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to update units setting. Please try again.", nil)
+		errorText := h.services.Localization.T(context.Background(), userLang, "units_update_failed")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorText, nil)
 		return sendErr
 	}
 
-	unitNames := map[string]string{
-		"metric":   "🌡️ Metric (°C, km/h, km)",
-		"imperial": "🌡️ Imperial (°F, mph, miles)",
-	}
+	unitName := h.getLocalizedUnitsText(context.Background(), userLang, units)
+	successText := h.services.Localization.T(context.Background(), userLang, "units_update_success", unitName)
 
-	unitName := unitNames[units]
-	if unitName == "" {
-		unitName = units
-	}
-
-	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
-		fmt.Sprintf("✅ Units updated to %s", unitName), nil)
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, successText, nil)
 	return err
 }
 
 func (h *CommandHandler) setUserTimezone(bot *gotgbot.Bot, ctx *ext.Context, timezone string) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	err := h.services.User.UpdateUserSettings(context.Background(), userID, map[string]interface{}{
 		"timezone": timezone,
 	})
 
 	if err != nil {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to update timezone setting. Please try again.", nil)
+		errorText := h.services.Localization.T(context.Background(), userLang, "timezone_update_failed")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorText, nil)
 		return sendErr
 	}
 
-	_, err = bot.SendMessage(ctx.EffectiveChat.Id,
-		fmt.Sprintf("✅ Timezone updated to %s", timezone), nil)
+	successText := h.services.Localization.T(context.Background(), userLang, "timezone_update_success", timezone)
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, successText, nil)
 	return err
 }
 
@@ -2270,6 +2467,7 @@ func (h *CommandHandler) handleNotificationSettings(bot *gotgbot.Bot, ctx *ext.C
 
 func (h *CommandHandler) handleLocationSettings(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	// Get user's current location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
@@ -2277,41 +2475,59 @@ func (h *CommandHandler) handleLocationSettings(bot *gotgbot.Bot, ctx *ext.Conte
 	var locationText string
 	var statusText string
 	if err != nil || locationName == "" {
-		locationText = "Not set"
-		statusText = "You can set your location by:\n• Typing a city name\n• Sharing your current GPS location"
+		locationText = h.services.Localization.T(context.Background(), userLang, "settings_not_set")
+		statusText = h.services.Localization.T(context.Background(), userLang, "location_settings_not_set_help")
 	} else {
 		// Location name already includes coordinates from reverse geocoding
 		locationText = locationName
-		statusText = "Your location is set. You can update it anytime."
+		statusText = h.services.Localization.T(context.Background(), userLang, "location_settings_is_set")
 	}
 
-	settingsText := fmt.Sprintf(`📍 *Location Settings*
+	title := h.services.Localization.T(context.Background(), userLang, "location_settings_title")
+	currentLabel := h.services.Localization.T(context.Background(), userLang, "location_settings_current")
+	optionsLabel := h.services.Localization.T(context.Background(), userLang, "location_settings_options")
+	optionName := h.services.Localization.T(context.Background(), userLang, "location_settings_option_name")
+	optionGPS := h.services.Localization.T(context.Background(), userLang, "location_settings_option_gps")
+	optionClear := h.services.Localization.T(context.Background(), userLang, "location_settings_option_clear")
 
-*Current Location:*
+	settingsText := fmt.Sprintf(`📍 *%s*
+
+*%s:*
 %s
 
 %s
 
-*Options:*
-• Set a new location by name
-• Share your GPS location
-• Clear current location`,
+*%s:*
+• %s
+• %s
+• %s`,
+		title,
+		currentLabel,
 		locationText,
-		statusText)
+		statusText,
+		optionsLabel,
+		optionName,
+		optionGPS,
+		optionClear)
+
+	setByNameBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_set_name")
+	setCoordsBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_set_coords")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "📝 Set Location by Name", CallbackData: "location_set_name"}},
-		{{Text: "📍 Set Location by Coordinates", CallbackData: "location_set_coords"}},
+		{{Text: setByNameBtn, CallbackData: "location_set_name"}},
+		{{Text: setCoordsBtn, CallbackData: "location_set_coords"}},
 	}
 
 	if locationName != "" {
+		clearBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_clear")
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: "🗑️ Clear Location", CallbackData: "location_clear"},
+			{Text: clearBtn, CallbackData: "location_clear"},
 		})
 	}
 
+	backBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_back")
 	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-		{Text: "⬅️ Back to Settings", CallbackData: "settings_main"},
+		{Text: backBtn, CallbackData: "settings_main"},
 	})
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, settingsText, &gotgbot.SendMessageOpts{
@@ -2364,7 +2580,9 @@ func (h *CommandHandler) handleTemperatureAlert(bot *gotgbot.Bot, ctx *ext.Conte
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -2429,7 +2647,9 @@ func (h *CommandHandler) handleWindAlert(bot *gotgbot.Bot, ctx *ext.Context, con
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -2485,7 +2705,9 @@ func (h *CommandHandler) handleAirQualityAlert(bot *gotgbot.Bot, ctx *ext.Contex
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -2550,7 +2772,9 @@ func (h *CommandHandler) handleHumidityAlert(bot *gotgbot.Bot, ctx *ext.Context,
 	// Get user's location
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
-		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Please set a location first using /setlocation", nil)
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_setlocation")
+		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return sendErr
 	}
 
@@ -2676,8 +2900,10 @@ func (h *CommandHandler) handleAddNotification(bot *gotgbot.Bot, ctx *ext.Contex
 	// Check if user has a location set
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil || locationName == "" {
+		userLang := h.getUserLanguage(context.Background(), userID)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "location_required_notifications")
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 Please set your location first using /setlocation before setting up notifications.",
+			errorMsg,
 			&gotgbot.SendMessageOpts{
 				ReplyMarkup: gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
@@ -3166,4 +3392,34 @@ func getNotificationFrequency(notificationType string) string {
 	default:
 		return "daily" // Default to daily for unknown types
 	}
+}
+
+// Localized helper methods
+func (h *CommandHandler) getLocalizedUnitsText(ctx context.Context, language, units string) string {
+	switch units {
+	case "metric":
+		return h.services.Localization.T(ctx, language, "units_metric")
+	case "imperial":
+		return h.services.Localization.T(ctx, language, "units_imperial")
+	default:
+		return units
+	}
+}
+
+func (h *CommandHandler) getLocalizedRoleName(ctx context.Context, language string, role models.UserRole) string {
+	switch role {
+	case models.RoleAdmin:
+		return h.services.Localization.T(ctx, language, "role_admin")
+	case models.RoleModerator:
+		return h.services.Localization.T(ctx, language, "role_moderator")
+	default:
+		return h.services.Localization.T(ctx, language, "role_user")
+	}
+}
+
+func (h *CommandHandler) getLocalizedStatusText(ctx context.Context, language string, isActive bool) string {
+	if isActive {
+		return h.services.Localization.T(ctx, language, "status_active")
+	}
+	return h.services.Localization.T(ctx, language, "status_inactive")
 }
