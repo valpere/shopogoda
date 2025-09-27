@@ -1,0 +1,27 @@
+{
+    "en": {
+        "code": "en",
+        "name": "English",
+        "flag": "🇺🇸"
+    },
+    "uk": {
+        "code": "uk",
+        "name": "Українська",
+        "flag": "🇺🇦"
+    },
+    "de": {
+        "code": "de",
+        "name": "Deutsch",
+        "flag": "🇩🇪"
+    },
+    "fr": {
+        "code": "fr",
+        "name": "Français",
+        "flag": "🇫🇷"
+    },
+    "es": {
+        "code": "es",
+        "name": "Español",
+        "flag": "🇪🇸"
+    }
+}

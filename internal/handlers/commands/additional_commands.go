@@ -9,6 +9,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/google/uuid"
 
+	"github.com/valpere/shopogoda/internal"
 	"github.com/valpere/shopogoda/internal/models"
 )
 
@@ -389,4 +390,55 @@ func (h *CommandHandler) getAlertStatusText(isActive bool) string {
 		return "Active"
 	}
 	return "Inactive"
+}
+
+// Language command handler
+func (h *CommandHandler) Language(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+
+	// Get current user language
+	user, err := h.services.User.GetUser(context.Background(), userID)
+	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user")
+		return err
+	}
+
+	currentLang := internal.DefaultLanguage // default
+	if user != nil && user.Language != "" {
+		currentLang = user.Language
+	}
+
+	// Get current language info
+	langInfo, _ := h.services.Localization.GetLanguageByCode(currentLang)
+
+	// Translate messages using current language
+	title := h.services.Localization.T(context.Background(), currentLang, "language_select")
+	currentText := h.services.Localization.T(context.Background(), currentLang, "language_current", langInfo.Flag, langInfo.Name)
+
+	message := fmt.Sprintf("%s\n\n%s", title, currentText)
+
+	// Create language selection keyboard
+	supportedLanguages := h.services.Localization.GetSupportedLanguages()
+	var keyboard [][]gotgbot.InlineKeyboardButton
+
+	for _, lang := range supportedLanguages {
+		// Add checkmark if this is the current language
+		text := fmt.Sprintf("%s %s", lang.Flag, lang.Name)
+		if lang.Code == currentLang {
+			text += " ✅"
+		}
+
+		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+			{Text: text, CallbackData: fmt.Sprintf("language_set_%s", lang.Code)},
+		})
+	}
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	return err
 }
