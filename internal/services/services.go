@@ -28,8 +28,8 @@ func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.L
 	subscriptionService := NewSubscriptionService(db, redis)
 	notificationService := NewNotificationService(&cfg.Integrations, logger)
 	schedulerService := NewSchedulerService(db, redis, weatherService, alertService, notificationService, logger)
-	exportService := NewExportService(db, logger)
 	localizationService := NewLocalizationService(logger)
+	exportService := NewExportService(db, logger, localizationService)
 
 	return &Services{
 		User:         userService,

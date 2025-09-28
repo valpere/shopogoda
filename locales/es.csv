@@ -21,70 +21,244 @@ Crea alertas personalizadas para condiciones climáticas:
 • Procedimientos de escalación
 • Reportes de cumplimiento"
 addalert_wind_btn,"🌬️ Alerta de viento"
+admin_broadcast_failed_get_users,"❌ Error al obtener la lista de usuarios"
+admin_broadcast_insufficient_permissions,"❌ Permisos insuficientes"
+admin_broadcast_message_header,"📢 *Difusión del Administrador*
+
+%s"
+admin_broadcast_results,"📊 *Resultados de la Difusión*
+
+✅ Exitosos: %d
+❌ Fallos: %d
+👥 Total: %d"
+admin_broadcast_usage,"Uso: /broadcast <mensaje>
+
+Envía un mensaje a todos los usuarios activos"
+admin_stats_active_subscriptions,Suscripciones activas: %d
+admin_stats_active_users,Usuarios activos: %d
+admin_stats_alerts_configured,Alertas configuradas: %d
+admin_stats_api_section,"🌐 *Uso de API:*"
+admin_stats_avg_response_time,Tiempo de respuesta promedio: %dms
+admin_stats_cache_hit_rate,Tasa de aciertos de caché: %.1f%%
+admin_stats_messages_sent,Mensajes enviados (24h): %d
+admin_stats_new_users,Nuevos usuarios (24h): %d
+admin_stats_notifications_section,"🔔 *Notificaciones:*"
+admin_stats_performance_section,"📈 *Rendimiento:*"
+admin_stats_title,"📊 *Estadísticas del Sistema*"
+admin_stats_total_users,Total de usuarios: %d
+admin_stats_uptime,Tiempo de actividad: %.2f%%
+admin_stats_users_section,"👥 *Usuarios:*"
+admin_stats_users_with_location,Usuarios con ubicación: %d
+admin_stats_weather_requests,Consultas meteorológicas (24h): %d
+admin_users_active_alerts,Alertas activas: %d
+admin_users_active_users,Usuarios activos: %d
+admin_users_activity_section,"📈 *Actividad:*"
+admin_users_admins,Administradores: %d
+admin_users_detailed_stats_btn,"📊 Estadísticas detalladas"
+admin_users_locations_saved,Ubicaciones guardadas: %d
+admin_users_messages,Mensajes (24h): %d
+admin_users_moderators,Moderadores: %d
+admin_users_new_users,Nuevos usuarios (24h): %d
+admin_users_recent_btn,"👤 Usuarios recientes"
+admin_users_roles_btn,"🔒 Gestionar roles"
+admin_users_statistics_section,"📊 *Estadísticas:*"
+admin_users_title,"👥 *Gestión de Usuarios*"
+admin_users_total_users,Total de usuarios: %d
+admin_users_weather_requests,Consultas meteorológicas: %d
 air_location_needed,"📍 Por favor proporcione una ubicación o establezca su ubicación:
 
 /air Londres
 o
 /setlocation para establecer su ubicación"
+air_quality_co,"🏭 CO (Monóxido de carbono)"
 air_quality_error,"❌ **Error del Servicio de Calidad del Aire**
 
 Lo sentimos, no pudimos obtener datos de calidad del aire en este momento. Inténtelo de nuevo en unos minutos."
+air_quality_health_recommendations,*Recomendaciones de salud:*
+air_quality_no2,"🚗 NO₂ (Dióxido de nitrógeno)"
+air_quality_o3,"☀️ O₃ (Ozono)"
+air_quality_overall_aqi,"🌿 *ICA general: %d (%s)*"
+air_quality_pm10,"🌫️ PM10"
+air_quality_pm25,"🏭 PM2.5"
+air_quality_pollutants,*Niveles de contaminantes:*
+air_quality_title,"🌬️ *Calidad del aire - %s*"
+air_quality_updated,"📅 Actualizado"
+alert_air_created_moderate,"✅ Alerta de calidad del aire creada para niveles moderados (51-100) en %s."
+alert_air_created_unhealthy,"✅ Alerta de calidad del aire creada para niveles no saludables (101+) en %s."
+alert_air_custom,"📝 Personalizada (ICA > %d)"
+alert_air_moderate,"🟡 Moderada (ICA 51-100)"
+alert_air_unhealthy,"🔴 No Saludable (ICA 101+)"
+alert_created,"✅ Alerta creada exitosamente"
+alert_setup_title,"🔔 *Configurar alerta para %s*
+
+Elige el tipo de alerta que quieres crear:"
+alert_temp_created_high,"✅ Alerta de temperatura alta creada para %.1f°C en %s."
+alert_temp_created_low,"✅ Alerta de temperatura baja creada para %.1f°C en %s."
+alert_temp_custom,"📝 Personalizada"
+alert_temp_high,"🔥 Alta Temperatura (>30°C)"
+alert_temp_low,"🧊 Baja Temperatura (<0°C)"
+alert_wind_created,"✅ Alerta de viento creada para velocidades >%.1f km/h en %s."
+alert_wind_custom,"📝 Personalizada"
+alert_wind_strong,"💨 Viento Fuerte (>40 km/h)"
+alert_wind_very_strong,"🌪️ Viento Muy Fuerte (>70 km/h)"
+aqi_good,Bueno
+aqi_hazardous,Peligroso
+aqi_moderate,Moderado
+aqi_unhealthy,No saludable
+aqi_unhealthy_sensitive,No saludable para grupos sensibles
+aqi_very_unhealthy,Muy no saludable
 button_add_alert,"🔔 Agregar alerta"
+button_add_subscription,"🔔 Agregar Suscripción"
+button_air_quality,"🌫️ Calidad del Aire"
 button_back_to_settings,"🔙 Volver a configuraciones"
 button_back_to_start,"🏠 Volver al Inicio"
+button_change_location,"📍 Cambiar Ubicación"
 button_current_weather,"🌤️ Clima actual"
 button_data_export,"📊 Exportar Datos"
+button_forecast,"📅 Pronóstico"
 button_get_weather,"🌤️ Obtener clima"
 button_language,"🌐 Idioma"
 button_notifications,"🔔 Notificaciones"
 button_set_air_alert,"🌫️ Establecer Alerta de Aire"
+button_set_alert,"🔔 Establecer Alerta"
 button_set_location,"📍 Establecer Ubicación"
 button_settings,"⚙️ Configuraciones"
 button_share_location,"📍 Compartir Ubicación"
 button_timezone,"🕐 Zona Horaria"
 button_units,"📏 Unidades"
+error_alert_create_failed,"❌ Error al crear la alerta. Por favor inténtalo de nuevo."
+error_coordinate_format,"❌ Formato de coordenadas inválido. Usa: latitud, longitud (ej: 40.7128, -74.0060)"
+error_forecast_get_failed,"❌ Error al obtener el pronóstico del tiempo. Por favor inténtalo de nuevo más tarde."
+error_latitude_invalid,"❌ Latitud inválida. Debe ser un número."
+error_latitude_range,"❌ Latitud fuera del rango válido (-90 a 90)."
+error_location_not_found,"❌ Ubicación no encontrada. Por favor verifica el nombre e inténtalo de nuevo."
+error_longitude_invalid,"❌ Longitud inválida. Debe ser un número."
+error_longitude_range,"❌ Longitud fuera del rango válido (-180 a 180)."
+error_subscription_create_failed,"❌ Error al crear la suscripción. Por favor inténtalo de nuevo."
+error_subscription_remove_failed,"❌ Error al eliminar la suscripción. Por favor inténtalo de nuevo."
+error_timezone_invalid,"❌ Zona horaria inválida '%s'. Usa nombres como 'Europe/Madrid', 'America/Mexico_City', etc."
+error_timezone_invalid_simple,"❌ Zona horaria inválida. Por favor usa un nombre de zona horaria válido."
+error_weather_get_failed,"❌ Error al obtener datos del clima. Por favor inténtalo de nuevo más tarde."
+error_weather_location_failed,"❌ Error al obtener el clima para la ubicación. Por favor verifica la ubicación e inténtalo de nuevo."
+export_alert,Alerta
+export_alert_configs_configured,Configuraciones de alerta configuradas
+export_alert_configurations,Configuraciones de Alerta
+export_alert_type,Tipo de Alerta
+export_alerts_data_type,Alertas
+export_all_data_type,Todos los Datos
+export_aqi,ICA
+export_complete,"✅ *Exportación completa*
+
+Tu exportación de datos ha sido enviada en el archivo de arriba."
+export_condition,Condición
+export_coordinates,Coordenadas
+export_created_at,Creado en
+export_data_export_header,Exportación de Datos - ShoPogoda
+export_date,Fecha
+export_description,Descripción
+export_end,Fin
+export_exported_at,Exportado en
+export_failed,"❌ Error en la exportación. Por favor inténtalo de nuevo."
+export_format_csv,CSV (Hoja de cálculo)
+export_format_json,JSON (Legible por máquina)
+export_format_txt,TXT (Legible por humanos)
+export_frequency,Frecuencia
+export_humidity,Humedad
+export_is_active,Está Activo
+export_is_resolved,Está Resuelto
+export_language,Idioma
+export_location,Ubicación
+export_name,Nombre
+export_preparing,"⏳ Preparando tu exportación..."
+export_pressure,Presión
+export_resolved,Resuelto
+export_severity,Severidad
+export_subscriptions,Suscripciones
+export_subscriptions_active,Suscripciones activas
+export_subscriptions_data_type,Suscripciones
+export_temperature,Temperatura
+export_threshold,Umbral
+export_time_of_day,Hora del Día
+export_timestamp,Marca de tiempo
+export_timezone,Zona Horaria
+export_title,Título
+export_triggered,Activado
+export_triggered_alerts,Alertas activadas
+export_triggered_alerts_count,Número de alertas activadas
+export_type,Tipo
+export_type_label,Tipo
+export_units,Unidades
+export_user_id,ID de Usuario
+export_user_information,Información del Usuario
+export_username,Nombre de Usuario
+export_uv_index,"Índice UV"
+export_value,Valor
+export_visibility,Visibilidad
+export_weather_data,Datos del Clima
+export_weather_data_type,Datos del Clima
+export_weather_records,Registros meteorológicos
+export_wind_degree,Dirección del Viento
+export_wind_speed,Velocidad del Viento
 forecast_error,"❌ **Error del Servicio de Pronóstico**
 
 Lo sentimos, no pudimos obtener datos de pronóstico en este momento. Inténtelo de nuevo en unos minutos."
+forecast_humidity,"💧 Humedad"
 forecast_location_needed,"📍 Por favor proporcione una ubicación o establezca su ubicación:
 
 /forecast Londres
 o
 /setlocation para establecer su ubicación"
-help_addalert,"Crear alertas meteorológicas personalizadas"
-help_admin_commands,"Comandos de Administrador"
+forecast_title,"📊 *Pronóstico de 5 días para %s*"
+forecast_wind,"🌬️ Viento"
+frequency_daily,Diario
+frequency_every_3_hours,Cada 3 horas
+frequency_every_6_hours,Cada 6 horas
+frequency_hourly,Cada hora
+frequency_unknown,Desconocido
+frequency_weekly,Semanal
+health_good,"✅ La calidad del aire es satisfactoria. ¡Disfrute de actividades al aire libre!"
+health_hazardous,"🆘 ¡Emergencia de salud! Quédese en casa y evite todas las actividades al aire libre."
+health_moderate,"⚠️ Aceptable para la mayoría de las personas. Los individuos sensibles deben limitar el esfuerzo prolongado al aire libre."
+health_unhealthy,"❌ Todos deben limitar las actividades al aire libre."
+health_unhealthy_sensitive,"🚨 Los grupos sensibles deben reducir las actividades al aire libre."
+health_very_unhealthy,"🔴 Evite las actividades al aire libre. Use una mascarilla si debe salir."
+help_addalert,Crear alertas meteorológicas personalizadas
+help_admin_commands,Comandos de Administrador
 help_air,"Índice de calidad del aire y contaminantes"
-help_alerts,"Sistema de Alertas Inteligente"
-help_basic_commands,"Comandos Básicos"
-help_broadcast,"Enviar mensaje a todos los usuarios"
-help_data_export,"Exportar Datos - Exporte sus datos en formatos JSON/CSV/TXT"
-help_export_alerts,"Configuraciones de alertas e historial"
-help_export_complete,"Exportación completa de datos"
-help_export_features,"Funciones de Exportación de Datos"
-help_export_subscriptions,"Suscripciones de notificaciones"
-help_export_weather,"Datos meteorológicos (últimos 30 días)"
-help_forecast,"Pronóstico del tiempo de 5 días"
-help_location_management,"Gestión de Ubicación"
+help_alerts,Sistema de Alertas Inteligente
+help_basic_commands,Comandos Básicos
+help_broadcast,Enviar mensaje a todos los usuarios
+help_data_export,Exportar Datos - Exporte sus datos en formatos JSON/CSV/TXT
+help_export_alerts,Configuraciones de alertas e historial
+help_export_complete,Exportación completa de datos
+help_export_features,Funciones de Exportación de Datos
+help_export_subscriptions,Suscripciones de notificaciones
+help_export_weather,Datos meteorológicos (últimos 30 días)
+help_forecast,Pronóstico del tiempo de 5 días
+help_location_management,Gestión de Ubicación
 help_notifications,"**🔔 Notificaciones y alertas:**"
-help_pro_tips,"Consejos Profesionales"
-help_removealert,"Eliminar alerta específica"
+help_pro_tips,Consejos Profesionales
+help_removealert,Eliminar alerta específica
 help_setlocation,"Establecer su ubicación (texto, coordenadas o compartir ubicación)"
 help_settings,"**⚙️ Configuración y preferencias:**"
 help_settings_desc,"Abrir menú de configuración completo\n• Idioma, unidades, configuración de zona horaria\n• Gestión de preferencias de notificación"
-help_stats,"Estadísticas de uso del bot"
-help_subscribe,"Configurar notificaciones meteorológicas"
-help_subscriptions,"Ver suscripciones activas"
+help_stats,Estadísticas de uso del bot
+help_subscribe,Configurar notificaciones meteorológicas
+help_subscriptions,Ver suscripciones activas
 help_support,"**💬 ¿Necesitas ayuda?**"
-help_tip_alerts,"Establecer múltiples alertas para diferentes condiciones"
-help_tip_export,"Exportar datos regularmente para respaldo/cumplimiento"
-help_tip_location,"Comparta su ubicación para clima instantáneo"
-help_tip_separation,"Gestión separada de ubicación y zona horaria"
-help_tip_timezone,"Usar configuración de zona horaria para notificaciones precisas"
+help_tip_alerts,Establecer múltiples alertas para diferentes condiciones
+help_tip_export,Exportar datos regularmente para respaldo/cumplimiento
+help_tip_location,Comparta su ubicación para clima instantáneo
+help_tip_separation,Gestión separada de ubicación y zona horaria
+help_tip_timezone,Usar configuración de zona horaria para notificaciones precisas
 help_title,"🤖 **Bot ShoPogoda - Comandos disponibles**"
-help_unsubscribe,"Eliminar notificaciones"
-help_users,"Gestión de usuarios"
-help_view_alerts,"Ver y gestionar alertas activas"
+help_unsubscribe,Eliminar notificaciones
+help_users,Gestión de usuarios
+help_view_alerts,Ver y gestionar alertas activas
 help_weather,"**🌤️ Comandos meteorológicos:**"
+language_choose,"🌐 *Elegir Idioma*
+
+Selecciona tu idioma preferido:"
 language_current,"🌍 **Idioma actual:** %s %s"
 language_select,"🌍 **Selecciona tu idioma**
 
@@ -97,6 +271,15 @@ language_set_success,"✅ **Idioma actualizado**
 🌍 Idioma establecido en: %s %s
 
 ¡Todos los mensajes del bot aparecerán ahora en tu idioma seleccionado!"
+listlocations_change_location_btn,"📍 Cambiar ubicación"
+listlocations_current_weather_btn,"🌤️ Clima actual"
+listlocations_no_location,"📍 No hay ubicación establecida.
+
+¡Usa /setlocation para establecer tu ubicación!"
+listlocations_set_location_btn,"📍 Establecer ubicación"
+listlocations_title,"📍 *Tu ubicación actual:*
+
+🏠 %s"
 location_clear_failed,"❌ Error al limpiar ubicación"
 location_clear_success,"✅ ¡Ubicación limpiada exitosamente!"
 location_confirm_change,"📍 ¿Quieres cambiar tu ubicación de *%s* a *%s*?"
@@ -105,6 +288,7 @@ location_confirm_no_keep,"❌ No, mantener actual"
 location_confirm_set,"📍 ¿Quieres establecer *%s* como tu ubicación?"
 location_confirm_yes_change,"✅ Sí, cambiar ubicación"
 location_confirm_yes_set,"✅ Sí, establecer como mi ubicación"
+location_current_location,"📍 Ubicación Actual"
 location_input_coords_prompt,"📍 *Establecer ubicación por coordenadas*
 
 Por favor ingresa tus coordenadas GPS en el formato:
@@ -114,6 +298,9 @@ Ejemplo: `37.7749, -122.4194`"
 location_input_name_prompt,"📝 *Establecer ubicación por nombre*
 
 Por favor escribe el nombre de tu ciudad (ej. ""Londres"", ""Nueva York"", ""Madrid""):"
+location_no_location_set,"📍 No se ha establecido ubicación.
+
+Usa /setlocation para establecer tu ubicación."
 location_not_found,"❌ **Ubicación No Encontrada**
 
 No se pudieron encontrar datos para ""%s"". Verifique la ortografía o intente una ubicación diferente."
@@ -125,16 +312,17 @@ location_settings_btn_back,"⬅️ Volver a configuraciones"
 location_settings_btn_clear,"🗑️ Limpiar ubicación"
 location_settings_btn_set_coords,"📍 Establecer ubicación por coordenadas"
 location_settings_btn_set_name,"📝 Establecer ubicación por nombre"
-location_settings_current,"Ubicación actual"
-location_settings_is_set,"Tu ubicación está configurada. Puedes actualizarla en cualquier momento."
+location_settings_current,Ubicación actual
+location_settings_is_set,Tu ubicación está configurada. Puedes actualizarla en cualquier momento.
 location_settings_not_set_help,"Puedes establecer tu ubicación:
 • Escribiendo un nombre de ciudad
 • Compartiendo tu ubicación GPS actual"
-location_settings_option_clear,"Limpiar ubicación actual"
-location_settings_option_gps,"Compartir tu ubicación GPS"
-location_settings_option_name,"Establecer nueva ubicación por nombre"
+location_settings_option_clear,Limpiar ubicación actual
+location_settings_option_gps,Compartir tu ubicación GPS
+location_settings_option_name,Establecer nueva ubicación por nombre
 location_settings_options,Opciones
-location_settings_title,"Configuraciones de ubicación"
+location_settings_title,Configuraciones de ubicación
+location_share_prompt,"📍 Comparte tu ubicación actual usando el botón de abajo, o escribe el nombre de una ciudad:"
 role_admin,Administrador
 role_moderator,Moderador
 role_user,Usuario
@@ -146,14 +334,14 @@ o comparte tu ubicación actual"
 setlocation_save_failed,"❌ Error al guardar ubicación. Por favor inténtalo de nuevo."
 setlocation_success,"✅ ¡Ubicación '%s' guardada exitosamente!
 📍 Esta es ahora tu ubicación actual"
-settings_available,"Configuraciones disponibles"
-settings_current_config,"Configuración actual"
+settings_available,Configuraciones disponibles
+settings_current_config,Configuración actual
 settings_data_export,"📊 Exportar Datos"
 settings_lang_prefs,"🌐 Preferencias de Idioma"
 settings_language,"🌍 Idioma"
 settings_location,"📍 Ubicación"
 settings_location_mgmt,"📍 Gestión de Ubicación"
-settings_not_set,"No configurado"
+settings_not_set,No configurado
 settings_notif_prefs,"🔔 Preferencias de Notificación"
 settings_role,Rol
 settings_status,Estado
@@ -183,6 +371,21 @@ Configura actualizaciones automáticas del clima para tu ubicación:
 • Selecciona frecuencia de notificación
 • Configura umbrales de alerta"
 subscribe_weekly_btn,"📊 Pronóstico semanal"
+subscription_air_created,"✅ Suscripción de calidad del aire creada. Recibirás alertas cuando la calidad del aire cambie."
+subscription_alerts_created,"✅ Suscripción de alertas creada. Recibirás notificaciones de alertas importantes."
+subscription_daily_created,"✅ Suscripción meteorológica diaria creada. Recibirás actualizaciones matutinas a las 8:00 AM."
+subscription_invalid_id,"❌ ID de suscripción inválido."
+subscription_removed,"✅ Suscripción eliminada exitosamente."
+subscription_type_alerts,Alertas meteorológicas
+subscription_type_daily,Clima diario
+subscription_type_extreme,Clima extremo
+subscription_type_unknown,Desconocido
+subscription_type_weekly,Pronóstico semanal
+subscription_weekly_created,"✅ Suscripción de pronóstico semanal creada. Recibirás pronósticos los lunes a las 9:00 AM."
+subscriptions_active,Suscripciones Activas
+subscriptions_none,"📋 No tienes suscripciones activas.
+
+Usa /subscribe para configurar notificaciones meteorológicas."
 timezone_confirm_change,"🕐 ¿Quieres cambiar tu zona horaria de *%s* a *%s*?"
 timezone_confirm_no_ignore,"❌ No, ignorar"
 timezone_confirm_no_keep,"❌ No, mantener actual"
@@ -201,11 +404,33 @@ unauthorized,"❌ **Acceso denegado**
 No tienes permiso para usar este comando."
 units_choose_prompt,"📏 *Elige tus unidades preferidas:*"
 units_imperial,"🌡️ Imperial (°F, mph, millas)"
+units_imperial_text,"🌡️ Imperial (°F, mph, millas)"
 units_metric,"🌡️ Métrico (°C, km/h, km)"
+units_metric_text,"🌡️ Métrico (°C, km/h, km)"
 units_update_failed,"❌ Error al actualizar configuración de unidades. Por favor inténtalo de nuevo."
 units_update_success,"✅ Unidades actualizadas a %s"
+weather_air_quality,Calidad del Aire
+weather_aqi,"🌿 ICA"
+weather_current_format,"🌤️ *Clima actual en %s*
+
+🌡️ *Temperatura:* %.1f°C
+💨 *Viento:* %.1f km/h
+💧 *Humedad:* %d%%
+🏗️ *Presión:* %.0f hPa
+👁️ *Visibilidad:* %.1f km
+☀️ *Índice UV:* %.0f
+☁️ *Descripción:* %s"
+weather_current_title,"🌤️ *Clima actual en %s*"
 weather_error,"❌ **Error del Servicio Meteorológico**\n\nLo sentimos, no pudimos obtener datos meteorológicos en este momento. Inténtelo de nuevo en unos minutos."
+weather_feels_like,se siente como
+weather_humidity,"💧 Humedad"
 weather_location_needed,"📍 Por favor proporcione una ubicación o establezca su ubicación:\n\n/weather Londres\no\n/setlocation para establecer su ubicación"
+weather_pressure,"🏢 Presión"
+weather_temperature,"🌡️ Temperatura"
+weather_updated,"📅 Actualizado"
+weather_uv_index,"☀️ Índice UV"
+weather_visibility,"👁️ Visibilidad"
+weather_wind,"🌬️ Viento"
 welcome_message,"🌤️ ¡Bienvenido a **ShoPogoda**!
 
 Tu asistente meteorológico personal para pronósticos precisos, monitoreo de calidad del aire y alertas meteorológicas personalizadas.

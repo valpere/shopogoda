@@ -32,6 +32,7 @@ func (h *CommandHandler) SetDefaultLocation(bot *gotgbot.Bot, ctx *ext.Context) 
 // Unsubscribe command handler
 func (h *CommandHandler) Unsubscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
 	if err != nil {
@@ -48,7 +49,7 @@ func (h *CommandHandler) Unsubscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 	var keyboard [][]gotgbot.InlineKeyboardButton
 
 	for i, sub := range subscriptions {
-		subTypeText := h.getSubscriptionTypeText(sub.SubscriptionType)
+		subTypeText := h.getSubscriptionTypeText(sub.SubscriptionType, userLang)
 		text += fmt.Sprintf("%d. %s - %s\n", i+1, subTypeText, sub.User.LocationName)
 
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
@@ -70,6 +71,7 @@ func (h *CommandHandler) Unsubscribe(bot *gotgbot.Bot, ctx *ext.Context) error {
 // ListSubscriptions command handler
 func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	subscriptions, err := h.services.Subscription.GetUserSubscriptions(context.Background(), userID)
 	if err != nil {
@@ -93,8 +95,8 @@ func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) e
 	var keyboard [][]gotgbot.InlineKeyboardButton
 
 	for i, sub := range subscriptions {
-		subTypeText := h.getSubscriptionTypeText(sub.SubscriptionType)
-		freqText := h.getFrequencyText(sub.Frequency)
+		subTypeText := h.getSubscriptionTypeText(sub.SubscriptionType, userLang)
+		freqText := h.getFrequencyText(sub.Frequency, userLang)
 
 		text += fmt.Sprintf("%d. **%s**\n", i+1, subTypeText)
 		text += fmt.Sprintf("   📍 Location: %s\n", sub.User.LocationName)
@@ -214,18 +216,20 @@ func (h *CommandHandler) RemoveAlert(bot *gotgbot.Bot, ctx *ext.Context) error {
 // AdminBroadcast command handler
 func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	// Check admin permissions
 	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Insufficient permissions", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "admin_broadcast_insufficient_permissions")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	args := ctx.Args()
 	if len(args) < 2 {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"Usage: /broadcast <message>\n\nSends a message to all active users", nil)
+		usageMsg := h.services.Localization.T(context.Background(), userLang, "admin_broadcast_usage")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, usageMsg, nil)
 		return err
 	}
 
@@ -234,8 +238,8 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 	// Get all active users
 	users, err := h.services.User.GetActiveUsers(context.Background())
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"❌ Failed to get user list", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "admin_broadcast_failed_get_users")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
@@ -248,8 +252,8 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 			continue // Skip sender
 		}
 
-		broadcastMessage := fmt.Sprintf("📢 *Admin Broadcast*\n\n%s", message)
-		_, err := bot.SendMessage(targetUser.ID, broadcastMessage, &gotgbot.SendMessageOpts{
+		broadcastHeader := h.services.Localization.T(context.Background(), userLang, "admin_broadcast_message_header", message)
+		_, err := bot.SendMessage(targetUser.ID, broadcastHeader, &gotgbot.SendMessageOpts{
 			ParseMode: "Markdown",
 		})
 
@@ -260,8 +264,7 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 		}
 	}
 
-	resultMessage := fmt.Sprintf("📊 *Broadcast Results*\n\n✅ Successful: %d\n❌ Failed: %d\n👥 Total: %d",
-		successCount, failCount, len(users)-1)
+	resultMessage := h.services.Localization.T(context.Background(), userLang, "admin_broadcast_results", successCount, failCount, len(users)-1)
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, resultMessage, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
@@ -273,11 +276,13 @@ func (h *CommandHandler) AdminBroadcast(bot *gotgbot.Bot, ctx *ext.Context) erro
 // AdminListUsers command handler
 func (h *CommandHandler) AdminListUsers(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	// Check admin permissions
 	user, err := h.services.User.GetUser(context.Background(), userID)
 	if err != nil || user.Role != models.RoleAdmin {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Insufficient permissions", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "admin_broadcast_insufficient_permissions")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
@@ -287,34 +292,46 @@ func (h *CommandHandler) AdminListUsers(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return err
 	}
 
-	statsText := fmt.Sprintf(`👥 *User Management*
+	title := h.services.Localization.T(context.Background(), userLang, "admin_users_title")
+	statisticsSection := h.services.Localization.T(context.Background(), userLang, "admin_users_statistics_section")
+	totalUsers := h.services.Localization.T(context.Background(), userLang, "admin_users_total_users", stats.TotalUsers)
+	activeUsers := h.services.Localization.T(context.Background(), userLang, "admin_users_active_users", stats.ActiveUsers)
+	newUsers := h.services.Localization.T(context.Background(), userLang, "admin_users_new_users", stats.NewUsers24h)
+	admins := h.services.Localization.T(context.Background(), userLang, "admin_users_admins", stats.AdminCount)
+	moderators := h.services.Localization.T(context.Background(), userLang, "admin_users_moderators", stats.ModeratorCount)
 
-📊 *Statistics:*
-Total Users: %d
-Active Users: %d
-New Users (24h): %d
-Admins: %d
-Moderators: %d
+	activitySection := h.services.Localization.T(context.Background(), userLang, "admin_users_activity_section")
+	messages := h.services.Localization.T(context.Background(), userLang, "admin_users_messages", stats.Messages24h)
+	weatherRequests := h.services.Localization.T(context.Background(), userLang, "admin_users_weather_requests", stats.WeatherRequests24h)
+	locationsSaved := h.services.Localization.T(context.Background(), userLang, "admin_users_locations_saved", stats.LocationsSaved)
+	activeAlerts := h.services.Localization.T(context.Background(), userLang, "admin_users_active_alerts", stats.ActiveAlerts)
 
-📈 *Activity:*
-Messages (24h): %d
-Weather Requests: %d
-Locations Saved: %d
-Active Alerts: %d`,
-		stats.TotalUsers,
-		stats.ActiveUsers,
-		stats.NewUsers24h,
-		stats.AdminCount,
-		stats.ModeratorCount,
-		stats.Messages24h,
-		stats.WeatherRequests24h,
-		stats.LocationsSaved,
-		stats.ActiveAlerts)
+	statsText := fmt.Sprintf(`%s
+
+%s
+%s
+%s
+%s
+%s
+%s
+
+%s
+%s
+%s
+%s
+%s`,
+		title,
+		statisticsSection, totalUsers, activeUsers, newUsers, admins, moderators,
+		activitySection, messages, weatherRequests, locationsSaved, activeAlerts)
+
+	recentUsersBtn := h.services.Localization.T(context.Background(), userLang, "admin_users_recent_btn")
+	rolesBtn := h.services.Localization.T(context.Background(), userLang, "admin_users_roles_btn")
+	detailedStatsBtn := h.services.Localization.T(context.Background(), userLang, "admin_users_detailed_stats_btn")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "👤 Recent Users", CallbackData: "admin_users_recent"}},
-		{{Text: "🔒 Manage Roles", CallbackData: "admin_users_roles"}},
-		{{Text: "📊 Detailed Stats", CallbackData: "admin_stats_detailed"}},
+		{{Text: recentUsersBtn, CallbackData: "admin_users_recent"}},
+		{{Text: rolesBtn, CallbackData: "admin_users_roles"}},
+		{{Text: detailedStatsBtn, CallbackData: "admin_stats_detailed"}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, statsText, &gotgbot.SendMessageOpts{
@@ -328,35 +345,35 @@ Active Alerts: %d`,
 }
 
 // Helper methods for text formatting
-func (h *CommandHandler) getSubscriptionTypeText(subType models.SubscriptionType) string {
+func (h *CommandHandler) getSubscriptionTypeText(subType models.SubscriptionType, language string) string {
 	switch subType {
 	case models.SubscriptionDaily:
-		return "Daily Weather"
+		return h.services.Localization.T(context.Background(), language, "subscription_type_daily")
 	case models.SubscriptionWeekly:
-		return "Weekly Forecast"
+		return h.services.Localization.T(context.Background(), language, "subscription_type_weekly")
 	case models.SubscriptionAlerts:
-		return "Weather Alerts"
+		return h.services.Localization.T(context.Background(), language, "subscription_type_alerts")
 	case models.SubscriptionExtreme:
-		return "Extreme Weather"
+		return h.services.Localization.T(context.Background(), language, "subscription_type_extreme")
 	default:
-		return "Unknown"
+		return h.services.Localization.T(context.Background(), language, "subscription_type_unknown")
 	}
 }
 
-func (h *CommandHandler) getFrequencyText(freq models.Frequency) string {
+func (h *CommandHandler) getFrequencyText(freq models.Frequency, language string) string {
 	switch freq {
 	case models.FrequencyHourly:
-		return "Every Hour"
+		return h.services.Localization.T(context.Background(), language, "frequency_hourly")
 	case models.FrequencyEvery3Hours:
-		return "Every 3 Hours"
+		return h.services.Localization.T(context.Background(), language, "frequency_every_3_hours")
 	case models.FrequencyEvery6Hours:
-		return "Every 6 Hours"
+		return h.services.Localization.T(context.Background(), language, "frequency_every_6_hours")
 	case models.FrequencyDaily:
-		return "Daily"
+		return h.services.Localization.T(context.Background(), language, "frequency_daily")
 	case models.FrequencyWeekly:
-		return "Weekly"
+		return h.services.Localization.T(context.Background(), language, "frequency_weekly")
 	default:
-		return "Unknown"
+		return h.services.Localization.T(context.Background(), language, "frequency_unknown")
 	}
 }
 

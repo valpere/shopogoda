@@ -65,7 +65,7 @@ func (ls *LocalizationService) LoadTranslations(localesFS fs.FS) error {
 		if err != nil {
 			ls.logger.Error().
 				Err(err).
-				Str("language", cod).
+				Str("language", code).
 				Str("file", filename).
 				Msg("Failed to read translation file")
 			continue
@@ -75,14 +75,14 @@ func (ls *LocalizationService) LoadTranslations(localesFS fs.FS) error {
 		if err := json.Unmarshal(data, &translations); err != nil {
 			ls.logger.Error().
 				Err(err).
-				Str("language", cod).
+				Str("language", code).
 				Msg("Failed to parse translation file")
 			continue
 		}
 
-		ls.translations[cod] = translations
+		ls.translations[code] = translations
 		ls.logger.Info().
-			Str("language", cod).
+			Str("language", code).
 			Int("keys", len(translations)).
 			Msg("Loaded translations")
 	}

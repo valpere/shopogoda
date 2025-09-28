@@ -271,12 +271,18 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 		Msg("Successfully got weather data")
 
 	// Format weather message
-	weatherText := h.formatWeatherMessage(weatherData)
+	userLang := h.getUserLanguage(context.Background(), userID)
+	weatherText := h.formatWeatherMessage(weatherData, userLang)
+
+	// Get localized button texts
+	forecastBtn := h.services.Localization.T(context.Background(), userLang, "button_forecast")
+	airQualityBtn := h.services.Localization.T(context.Background(), userLang, "button_air_quality")
+	setAlertBtn := h.services.Localization.T(context.Background(), userLang, "button_set_alert")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "📊 5-Day Forecast", CallbackData: fmt.Sprintf("forecast_%s", location)}},
-		{{Text: "🌬️ Air Quality", CallbackData: fmt.Sprintf("air_%s", location)}},
-		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_%s", location)}},
+		{{Text: forecastBtn, CallbackData: fmt.Sprintf("forecast_%s", location)}},
+		{{Text: airQualityBtn, CallbackData: fmt.Sprintf("air_%s", location)}},
+		{{Text: setAlertBtn, CallbackData: fmt.Sprintf("alert_%s", location)}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, weatherText, &gotgbot.SendMessageOpts{
@@ -338,7 +344,8 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
-	forecastText := h.formatForecastMessage(forecast)
+	userLang := h.getUserLanguage(context.Background(), userID)
+	forecastText := h.formatForecastMessage(forecast, userLang)
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, forecastText, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
@@ -381,7 +388,7 @@ func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
-	airText := h.formatAirQualityMessage(airData)
+	airText := h.formatAirQualityMessage(airData, userLang)
 
 	// Get localized button texts
 	weatherBtn := h.services.Localization.T(context.Background(), userLang, "button_current_weather")
@@ -589,14 +596,15 @@ func (h *CommandHandler) HandleLocationMessage(bot *gotgbot.Bot, ctx *ext.Contex
 	}
 
 	// Get weather for this location
+	userLang := h.getUserLanguage(context.Background(), user.Id)
 	weatherData, err := h.services.Weather.GetCurrentWeatherByCoords(context.Background(), lat, lon)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"❌ Failed to get weather for your location", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_weather_location_failed")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
-	weatherText := h.formatWeatherMessage(weatherData)
+	weatherText := h.formatWeatherMessage(weatherData, userLang)
 
 	// URL encode the location name to handle spaces and special characters
 	encodedName := url.QueryEscape(locationName)
@@ -769,6 +777,7 @@ func (h *CommandHandler) showLocationConfirmation(bot *gotgbot.Bot, ctx *ext.Con
 // handleCoordinateInput processes GPS coordinates entered as text
 func (h *CommandHandler) handleCoordinateInput(bot *gotgbot.Bot, ctx *ext.Context, coordinateText string) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	// Parse coordinates from text
 	coordPattern := `^(-?\d+\.?\d*),?\s*(-?\d+\.?\d*)$`
@@ -777,32 +786,36 @@ func (h *CommandHandler) handleCoordinateInput(bot *gotgbot.Bot, ctx *ext.Contex
 
 	if len(matches) != 3 {
 		h.logger.Warn().Str("input", coordinateText).Msg("Failed to parse coordinates")
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"❌ Invalid coordinate format. Please use format: 'latitude, longitude' (e.g., '37.7749, -122.4194')", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_coordinate_format")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	lat, err := strconv.ParseFloat(matches[1], 64)
 	if err != nil {
 		h.logger.Error().Err(err).Str("lat", matches[1]).Msg("Failed to parse latitude")
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid latitude value", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_latitude_invalid")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	lon, err := strconv.ParseFloat(matches[2], 64)
 	if err != nil {
 		h.logger.Error().Err(err).Str("lon", matches[2]).Msg("Failed to parse longitude")
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid longitude value", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_longitude_invalid")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	// Validate coordinate ranges
 	if lat < -90 || lat > 90 {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Latitude must be between -90 and 90", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_latitude_range")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 	if lon < -180 || lon > 180 {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Longitude must be between -180 and 180", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_longitude_range")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
@@ -821,14 +834,15 @@ func (h *CommandHandler) handleCoordinateInput(bot *gotgbot.Bot, ctx *ext.Contex
 // handleTimezoneInput processes timezone input entered as text
 func (h *CommandHandler) handleTimezoneInput(bot *gotgbot.Bot, ctx *ext.Context, timezoneText string) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	h.logger.Info().Str("timezone", timezoneText).Int64("user_id", userID).Msg("Processing timezone input")
 
 	// Validate timezone
 	if !h.isValidTimezone(timezoneText) {
 		h.logger.Warn().Str("timezone", timezoneText).Msg("Invalid timezone")
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Invalid timezone '%s'. Please use a valid timezone name like 'Europe/Kyiv', 'America/New_York', or 'UTC'.\n\nFind valid timezones at: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones", timezoneText), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_timezone_invalid", timezoneText)
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
@@ -892,43 +906,53 @@ func (h *CommandHandler) showTimezoneConfirmation(bot *gotgbot.Bot, ctx *ext.Con
 }
 
 // Helper methods for formatting messages
-func (h *CommandHandler) formatWeatherMessage(weather *services.WeatherData) string {
+func (h *CommandHandler) formatWeatherMessage(weather *services.WeatherData, userLang string) string {
+	// Get localized strings
+	temperature := h.services.Localization.T(context.Background(), userLang, "weather_temperature")
+	feelsLike := h.services.Localization.T(context.Background(), userLang, "weather_feels_like")
+	humidity := h.services.Localization.T(context.Background(), userLang, "weather_humidity")
+	wind := h.services.Localization.T(context.Background(), userLang, "weather_wind")
+	visibility := h.services.Localization.T(context.Background(), userLang, "weather_visibility")
+	uvIndex := h.services.Localization.T(context.Background(), userLang, "weather_uv_index")
+	pressure := h.services.Localization.T(context.Background(), userLang, "weather_pressure")
+	airQuality := h.services.Localization.T(context.Background(), userLang, "weather_air_quality")
+	aqi := h.services.Localization.T(context.Background(), userLang, "weather_aqi")
+	updated := h.services.Localization.T(context.Background(), userLang, "weather_updated")
+
 	return fmt.Sprintf(`🌤️ *%s*
 
-🌡️ Temperature: %d°C (feels like %d°C)
-💧 Humidity: %d%%
-🌬️ Wind: %.1f km/h %d°
-👁️ Visibility: %.1f km
-☀️ UV Index: %.1f
-🏢 Pressure: %.1f hPa
+%s: %d°C (%s %d°C)
+%s: %d%%
+%s: %.1f km/h %d°
+%s: %.1f km
+%s: %.1f
+%s: %.1f hPa
 
 %s %s
 
-*Air Quality:*
-🌿 AQI: %d (%s)
+*%s:*
+%s: %d (%s)
 CO: %.2f | NO₂: %.2f | O₃: %.2f
 PM2.5: %.1f | PM10: %.1f
 
-📅 Updated: %s`,
+%s: %s`,
 		weather.LocationName,
-		int(weather.Temperature),
-		int(weather.Temperature), // FeelsLike not available in current struct
-		weather.Humidity,
-		weather.WindSpeed,
-		weather.WindDirection,
-		weather.Visibility,
-		weather.UVIndex,
-		weather.Pressure,
+		temperature, int(weather.Temperature), feelsLike, int(weather.Temperature), // FeelsLike not available in current struct
+		humidity, weather.Humidity,
+		wind, weather.WindSpeed, weather.WindDirection,
+		visibility, weather.Visibility,
+		uvIndex, weather.UVIndex,
+		pressure, weather.Pressure,
 		weather.Icon,
 		weather.Description,
-		weather.AQI,
-		h.getAQIDescription(weather.AQI),
+		airQuality,
+		aqi, weather.AQI, h.getAQIDescription(weather.AQI, userLang),
 		weather.CO,
 		weather.NO2,
 		weather.O3,
 		weather.PM25,
 		weather.PM10,
-		weather.Timestamp.Format("15:04 UTC"))
+		updated, weather.Timestamp.Format("15:04 UTC"))
 }
 
 // Additional helper methods...
@@ -950,90 +974,106 @@ func (h *CommandHandler) getStatusText(isActive bool) string {
 	return "Inactive"
 }
 
-func (h *CommandHandler) getUnitsText(units string) string {
+func (h *CommandHandler) getUnitsText(units, language string) string {
 	switch units {
 	case "metric":
-		return "🌡️ Metric (°C, km/h, km)"
+		return h.services.Localization.T(context.Background(), language, "units_metric_text")
 	case "imperial":
-		return "🌡️ Imperial (°F, mph, miles)"
+		return h.services.Localization.T(context.Background(), language, "units_imperial_text")
 	default:
 		return units
 	}
 }
 
-func (h *CommandHandler) getAQIDescription(aqi int) string {
+func (h *CommandHandler) getAQIDescription(aqi int, language string) string {
 	switch {
 	case aqi <= 50:
-		return "Good"
+		return h.services.Localization.T(context.Background(), language, "aqi_good")
 	case aqi <= 100:
-		return "Moderate"
+		return h.services.Localization.T(context.Background(), language, "aqi_moderate")
 	case aqi <= 150:
-		return "Unhealthy for Sensitive Groups"
+		return h.services.Localization.T(context.Background(), language, "aqi_unhealthy_sensitive")
 	case aqi <= 200:
-		return "Unhealthy"
+		return h.services.Localization.T(context.Background(), language, "aqi_unhealthy")
 	case aqi <= 300:
-		return "Very Unhealthy"
+		return h.services.Localization.T(context.Background(), language, "aqi_very_unhealthy")
 	default:
-		return "Hazardous"
+		return h.services.Localization.T(context.Background(), language, "aqi_hazardous")
 	}
 }
 
-func (h *CommandHandler) formatForecastMessage(forecast *weather.ForecastData) string {
-	text := fmt.Sprintf("📊 *5-Day Forecast for %s*\n\n", forecast.Location)
+func (h *CommandHandler) formatForecastMessage(forecast *weather.ForecastData, language string) string {
+	title := h.services.Localization.T(context.Background(), language, "forecast_title", forecast.Location)
+	text := fmt.Sprintf("%s\n\n", title)
+
+	humidityLabel := h.services.Localization.T(context.Background(), language, "forecast_humidity")
+	windLabel := h.services.Localization.T(context.Background(), language, "forecast_wind")
 
 	for _, day := range forecast.Forecasts {
 		text += fmt.Sprintf("📅 *%s*\n", day.Date.Format("Monday, Jan 2"))
 		text += fmt.Sprintf("🌡️ %.1f°/%.1f°C | %s %s\n",
 			day.MaxTemp, day.MinTemp, day.Icon, day.Description)
-		text += fmt.Sprintf("💧 Humidity: %d%% | 🌬️ Wind: %.1f km/h\n\n",
-			day.Humidity, day.WindSpeed)
+		text += fmt.Sprintf("%s: %d%% | %s: %.1f km/h\n\n",
+			humidityLabel, day.Humidity, windLabel, day.WindSpeed)
 	}
 
 	return text
 }
 
-func (h *CommandHandler) formatAirQualityMessage(air *weather.AirQualityData) string {
-	return fmt.Sprintf(`🌬️ *Air Quality - %s*
+func (h *CommandHandler) formatAirQualityMessage(air *weather.AirQualityData, language string) string {
+	title := h.services.Localization.T(context.Background(), language, "air_quality_title", "Air Quality Data")
+	overallAqi := h.services.Localization.T(context.Background(), language, "air_quality_overall_aqi", air.AQI, h.getAQIDescription(air.AQI, language))
+	pollutantsLabel := h.services.Localization.T(context.Background(), language, "air_quality_pollutants")
+	coLabel := h.services.Localization.T(context.Background(), language, "air_quality_co")
+	no2Label := h.services.Localization.T(context.Background(), language, "air_quality_no2")
+	o3Label := h.services.Localization.T(context.Background(), language, "air_quality_o3")
+	pm25Label := h.services.Localization.T(context.Background(), language, "air_quality_pm25")
+	pm10Label := h.services.Localization.T(context.Background(), language, "air_quality_pm10")
+	healthLabel := h.services.Localization.T(context.Background(), language, "air_quality_health_recommendations")
+	updatedLabel := h.services.Localization.T(context.Background(), language, "air_quality_updated")
 
-🌿 *Overall AQI: %d (%s)*
+	return fmt.Sprintf(`%s
 
-*Pollutant Levels:*
-🏭 CO (Carbon Monoxide): %.2f μg/m³
-🚗 NO₂ (Nitrogen Dioxide): %.2f μg/m³
-☀️ O₃ (Ozone): %.2f μg/m³
-🏭 PM2.5: %.1f μg/m³
-🌫️ PM10: %.1f μg/m³
-
-*Health Recommendations:*
 %s
 
-📅 Updated: %s`,
-		"Air Quality Data", // LocationName not available in weather.AirQualityData
-		air.AQI,
-		h.getAQIDescription(air.AQI),
-		air.CO,
-		air.NO2,
-		air.O3,
-		air.PM25,
-		air.PM10,
-		h.getHealthRecommendation(air.AQI),
-		air.Timestamp.Format("15:04 UTC"))
+%s
+%s: %.2f μg/m³
+%s: %.2f μg/m³
+%s: %.2f μg/m³
+%s: %.1f μg/m³
+%s: %.1f μg/m³
+
+%s
+%s
+
+%s: %s`,
+		title,
+		overallAqi,
+		pollutantsLabel,
+		coLabel, air.CO,
+		no2Label, air.NO2,
+		o3Label, air.O3,
+		pm25Label, air.PM25,
+		pm10Label, air.PM10,
+		healthLabel,
+		h.getHealthRecommendation(air.AQI, language),
+		updatedLabel, air.Timestamp.Format("15:04 UTC"))
 }
 
-func (h *CommandHandler) getHealthRecommendation(aqi int) string {
+func (h *CommandHandler) getHealthRecommendation(aqi int, language string) string {
 	switch {
 	case aqi <= 50:
-		return "✅ Air quality is satisfactory. Enjoy outdoor activities!"
+		return h.services.Localization.T(context.Background(), language, "health_good")
 	case aqi <= 100:
-		return "⚠️ Acceptable for most people. Sensitive individuals should limit prolonged outdoor exertion."
+		return h.services.Localization.T(context.Background(), language, "health_moderate")
 	case aqi <= 150:
-		return "🚨 Sensitive groups should reduce outdoor activities."
+		return h.services.Localization.T(context.Background(), language, "health_unhealthy_sensitive")
 	case aqi <= 200:
-		return "❌ Everyone should limit outdoor activities."
+		return h.services.Localization.T(context.Background(), language, "health_unhealthy")
 	case aqi <= 300:
-		return "🔴 Avoid outdoor activities. Wear a mask if you must go outside."
+		return h.services.Localization.T(context.Background(), language, "health_very_unhealthy")
 	default:
-		return "🆘 Health emergency! Stay indoors and avoid all outdoor activities."
+		return h.services.Localization.T(context.Background(), language, "health_hazardous")
 	}
 }
 
@@ -1097,6 +1137,7 @@ func (h *CommandHandler) SetLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 func (h *CommandHandler) ListLocations(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	locationName, _, _, err := h.services.User.GetUserLocation(context.Background(), userID)
 	if err != nil {
@@ -1104,26 +1145,30 @@ func (h *CommandHandler) ListLocations(bot *gotgbot.Bot, ctx *ext.Context) error
 	}
 
 	if locationName == "" {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 No location set.\n\nUse /setlocation to set your location!",
+		noLocationText := h.services.Localization.T(context.Background(), userLang, "listlocations_no_location")
+		setLocationBtnText := h.services.Localization.T(context.Background(), userLang, "listlocations_set_location_btn")
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, noLocationText,
 			&gotgbot.SendMessageOpts{
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-						{{Text: "📍 Set Location", CallbackData: "location_set"}},
+						{{Text: setLocationBtnText, CallbackData: "location_set"}},
 					},
 				},
 			})
 		return err
 	}
 
-	text := fmt.Sprintf("📍 *Your Current Location:*\n\n🏠 %s", locationName)
+	titleText := h.services.Localization.T(context.Background(), userLang, "listlocations_title", locationName)
+	currentWeatherBtnText := h.services.Localization.T(context.Background(), userLang, "listlocations_current_weather_btn")
+	changeLocationBtnText := h.services.Localization.T(context.Background(), userLang, "listlocations_change_location_btn")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: fmt.Sprintf("🌤️ Current Weather"), CallbackData: fmt.Sprintf("weather_%s", locationName)}},
-		{{Text: "📍 Change Location", CallbackData: "location_set"}},
+		{{Text: currentWeatherBtnText, CallbackData: fmt.Sprintf("weather_%s", locationName)}},
+		{{Text: changeLocationBtnText, CallbackData: "location_set"}},
 	}
 
-	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, titleText, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
 		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 			InlineKeyboard: keyboard,
@@ -1212,37 +1257,51 @@ func (h *CommandHandler) AdminStats(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
-	statsText := fmt.Sprintf(`📊 *System Statistics*
+	title := h.services.Localization.T(context.Background(), userLang, "admin_stats_title")
+	usersSection := h.services.Localization.T(context.Background(), userLang, "admin_stats_users_section")
+	totalUsers := h.services.Localization.T(context.Background(), userLang, "admin_stats_total_users", stats.TotalUsers)
+	activeUsers := h.services.Localization.T(context.Background(), userLang, "admin_stats_active_users", stats.ActiveUsers)
+	newUsers := h.services.Localization.T(context.Background(), userLang, "admin_stats_new_users", stats.NewUsers24h)
+	usersWithLocation := h.services.Localization.T(context.Background(), userLang, "admin_stats_users_with_location", stats.UsersWithLocation)
 
-👥 *Users:*
-Total Users: %d
-Active Users: %d
-New Users (24h): %d
-Users with Location: %d
+	notificationsSection := h.services.Localization.T(context.Background(), userLang, "admin_stats_notifications_section")
+	activeSubscriptions := h.services.Localization.T(context.Background(), userLang, "admin_stats_active_subscriptions", stats.ActiveSubscriptions)
+	alertsConfigured := h.services.Localization.T(context.Background(), userLang, "admin_stats_alerts_configured", stats.AlertsConfigured)
+	messagesSent := h.services.Localization.T(context.Background(), userLang, "admin_stats_messages_sent", stats.MessagesSent24h)
 
-🔔 *Notifications:*
-Active Subscriptions: %d
-Alerts Configured: %d
-Messages Sent (24h): %d
+	apiSection := h.services.Localization.T(context.Background(), userLang, "admin_stats_api_section")
+	weatherRequests := h.services.Localization.T(context.Background(), userLang, "admin_stats_weather_requests", stats.WeatherRequests24h)
+	cacheHitRate := h.services.Localization.T(context.Background(), userLang, "admin_stats_cache_hit_rate", stats.CacheHitRate)
 
-🌐 *API Usage:*
-Weather Requests (24h): %d
-Cache Hit Rate: %.1f%%
+	performanceSection := h.services.Localization.T(context.Background(), userLang, "admin_stats_performance_section")
+	avgResponseTime := h.services.Localization.T(context.Background(), userLang, "admin_stats_avg_response_time", stats.AvgResponseTime)
+	uptime := h.services.Localization.T(context.Background(), userLang, "admin_stats_uptime", stats.Uptime)
 
-📈 *Performance:*
-Average Response Time: %dms
-Uptime: %.2f%%`,
-		stats.TotalUsers,
-		stats.ActiveUsers,
-		stats.NewUsers24h,
-		stats.UsersWithLocation,
-		stats.ActiveSubscriptions,
-		stats.AlertsConfigured,
-		stats.MessagesSent24h,
-		stats.WeatherRequests24h,
-		stats.CacheHitRate,
-		stats.AvgResponseTime,
-		stats.Uptime)
+	statsText := fmt.Sprintf(`%s
+
+%s
+%s
+%s
+%s
+%s
+
+%s
+%s
+%s
+%s
+
+%s
+%s
+%s
+
+%s
+%s
+%s`,
+		title,
+		usersSection, totalUsers, activeUsers, newUsers, usersWithLocation,
+		notificationsSection, activeSubscriptions, alertsConfigured, messagesSent,
+		apiSection, weatherRequests, cacheHitRate,
+		performanceSection, avgResponseTime, uptime)
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, statsText, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
@@ -1270,24 +1329,20 @@ func (h *CommandHandler) handleWeatherCallback(bot *gotgbot.Bot, ctx *ext.Contex
 
 // Helper function to get weather for a specific location
 func (h *CommandHandler) getWeatherForLocation(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	// Get weather data
 	weatherData, err := h.services.Weather.GetCurrentWeatherByLocation(context.Background(), locationName)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to get weather for '%s'. Please check the location name.", locationName), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_weather_get_failed", locationName)
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
-	// Format weather information
-	weatherText := fmt.Sprintf(
-		"🌤️ *Current Weather in %s*\n\n"+
-			"🌡️ *Temperature:* %.1f°C\n"+
-			"💨 *Wind:* %.1f km/h\n"+
-			"💧 *Humidity:* %d%%\n"+
-			"🏗️ *Pressure:* %.0f hPa\n"+
-			"👁️ *Visibility:* %.1f km\n"+
-			"☀️ *UV Index:* %.0f\n"+
-			"☁️ *Description:* %s",
+	// Format weather information using localized template
+	weatherFormat := h.services.Localization.T(context.Background(), userLang, "weather_current_format")
+	weatherText := fmt.Sprintf(weatherFormat,
 		weatherData.LocationName,
 		weatherData.Temperature,
 		weatherData.WindSpeed,
@@ -1298,10 +1353,14 @@ func (h *CommandHandler) getWeatherForLocation(bot *gotgbot.Bot, ctx *ext.Contex
 		weatherData.Description,
 	)
 
+	forecastBtn := h.services.Localization.T(context.Background(), userLang, "button_forecast")
+	airQualityBtn := h.services.Localization.T(context.Background(), userLang, "button_air_quality")
+	setAlertBtn := h.services.Localization.T(context.Background(), userLang, "button_set_alert")
+
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "📊 5-Day Forecast", CallbackData: fmt.Sprintf("forecast_%s", locationName)}},
-		{{Text: "🌬️ Air Quality", CallbackData: fmt.Sprintf("air_%s", locationName)}},
-		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_%s", locationName)}},
+		{{Text: forecastBtn, CallbackData: fmt.Sprintf("forecast_%s", locationName)}},
+		{{Text: airQualityBtn, CallbackData: fmt.Sprintf("air_%s", locationName)}},
+		{{Text: setAlertBtn, CallbackData: fmt.Sprintf("alert_%s", locationName)}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, weatherText, &gotgbot.SendMessageOpts{
@@ -1315,26 +1374,32 @@ func (h *CommandHandler) getWeatherForLocation(bot *gotgbot.Bot, ctx *ext.Contex
 }
 
 func (h *CommandHandler) getForecastForLocation(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	// First get coordinates for the location
 	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to find location '%s'", locationName), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_location_not_found", locationName)
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	forecast, err := h.services.Weather.GetForecast(context.Background(), locationData.Latitude, locationData.Longitude, 5)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to get forecast for '%s'. Please check the location name.", locationName), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_forecast_get_failed", locationName)
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
-	forecastText := h.formatForecastMessage(forecast)
+	forecastText := h.formatForecastMessage(forecast, userLang)
+
+	currentWeatherBtn := h.services.Localization.T(context.Background(), userLang, "button_current_weather")
+	airQualityBtn := h.services.Localization.T(context.Background(), userLang, "button_air_quality")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_%s", locationName)}},
-		{{Text: "🌬️ Air Quality", CallbackData: fmt.Sprintf("air_%s", locationName)}},
+		{{Text: currentWeatherBtn, CallbackData: fmt.Sprintf("weather_%s", locationName)}},
+		{{Text: airQualityBtn, CallbackData: fmt.Sprintf("air_%s", locationName)}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, forecastText, &gotgbot.SendMessageOpts{
@@ -1347,17 +1412,24 @@ func (h *CommandHandler) getForecastForLocation(bot *gotgbot.Bot, ctx *ext.Conte
 }
 
 func (h *CommandHandler) getForecastByCoords(bot *gotgbot.Bot, ctx *ext.Context, lat, lon float64) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	forecast, err := h.services.Weather.GetForecast(context.Background(), lat, lon, 5)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get forecast for this location", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "forecast_error")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
-	forecastText := h.formatForecastMessage(forecast)
+	forecastText := h.formatForecastMessage(forecast, userLang)
+
+	currentWeatherBtn := h.services.Localization.T(context.Background(), userLang, "button_current_weather")
+	airQualityBtn := h.services.Localization.T(context.Background(), userLang, "button_air_quality")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_coords_%.4f_%.4f", lat, lon)}},
-		{{Text: "🌬️ Air Quality", CallbackData: fmt.Sprintf("air_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: currentWeatherBtn, CallbackData: fmt.Sprintf("weather_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: airQualityBtn, CallbackData: fmt.Sprintf("air_coords_%.4f_%.4f", lat, lon)}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, forecastText, &gotgbot.SendMessageOpts{
@@ -1636,7 +1708,10 @@ func (h *CommandHandler) handleTimezoneCallback(bot *gotgbot.Bot, ctx *ext.Conte
 			// Validate timezone again before saving
 			if !h.isValidTimezone(timezoneName) {
 				h.logger.Error().Str("timezone", timezoneName).Msg("Invalid timezone during confirmation")
-				_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Invalid timezone. Please try again.", nil)
+				userID := ctx.EffectiveUser.Id
+				userLang := h.getUserLanguage(context.Background(), userID)
+				errorMsg := h.services.Localization.T(context.Background(), userLang, "error_timezone_invalid_simple")
+				_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 				return err
 			}
 
@@ -2068,27 +2143,34 @@ func (h *CommandHandler) editSubscription(bot *gotgbot.Bot, ctx *ext.Context, su
 }
 
 func (h *CommandHandler) getAirQualityData(bot *gotgbot.Bot, ctx *ext.Context, locationName string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	// Get coordinates first for air quality
 	locationData, err := h.services.Weather.GeocodeLocation(context.Background(), locationName)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to find location '%s'", locationName), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "error_location_not_found", locationName)
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
 	airData, err := h.services.Weather.GetAirQuality(context.Background(), locationData.Latitude, locationData.Longitude)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			fmt.Sprintf("❌ Failed to get air quality for '%s'", locationName), nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "air_quality_error")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
-	airText := h.formatAirQualityMessage(airData)
+	airText := h.formatAirQualityMessage(airData, userLang)
+
+	currentWeatherBtn := h.services.Localization.T(context.Background(), userLang, "button_current_weather")
+	forecastBtn := h.services.Localization.T(context.Background(), userLang, "button_forecast")
+	setAlertBtn := h.services.Localization.T(context.Background(), userLang, "button_set_alert")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_%s", locationName)}},
-		{{Text: "📊 5-Day Forecast", CallbackData: fmt.Sprintf("forecast_%s", locationName)}},
-		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_%s", locationName)}},
+		{{Text: currentWeatherBtn, CallbackData: fmt.Sprintf("weather_%s", locationName)}},
+		{{Text: forecastBtn, CallbackData: fmt.Sprintf("forecast_%s", locationName)}},
+		{{Text: setAlertBtn, CallbackData: fmt.Sprintf("alert_%s", locationName)}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, airText, &gotgbot.SendMessageOpts{
@@ -2101,18 +2183,26 @@ func (h *CommandHandler) getAirQualityData(bot *gotgbot.Bot, ctx *ext.Context, l
 }
 
 func (h *CommandHandler) getAirQualityByCoords(bot *gotgbot.Bot, ctx *ext.Context, lat, lon float64) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	airData, err := h.services.Weather.GetAirQuality(context.Background(), lat, lon)
 	if err != nil {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get air quality for this location", nil)
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "air_quality_error")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
 	}
 
-	airText := h.formatAirQualityMessage(airData)
+	airText := h.formatAirQualityMessage(airData, userLang)
+
+	currentWeatherBtn := h.services.Localization.T(context.Background(), userLang, "button_current_weather")
+	forecastBtn := h.services.Localization.T(context.Background(), userLang, "button_forecast")
+	setAlertBtn := h.services.Localization.T(context.Background(), userLang, "button_set_alert")
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
-		{{Text: "🌤️ Current Weather", CallbackData: fmt.Sprintf("weather_coords_%.4f_%.4f", lat, lon)}},
-		{{Text: "📊 5-Day Forecast", CallbackData: fmt.Sprintf("forecast_coords_%.4f_%.4f", lat, lon)}},
-		{{Text: "🔔 Set Alert", CallbackData: fmt.Sprintf("alert_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: currentWeatherBtn, CallbackData: fmt.Sprintf("weather_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: forecastBtn, CallbackData: fmt.Sprintf("forecast_coords_%.4f_%.4f", lat, lon)}},
+		{{Text: setAlertBtn, CallbackData: fmt.Sprintf("alert_coords_%.4f_%.4f", lat, lon)}},
 	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, airText, &gotgbot.SendMessageOpts{
@@ -3287,7 +3377,8 @@ func (h *CommandHandler) processExportRequest(bot *gotgbot.Bot, ctx *ext.Context
 	}
 
 	// Generate export
-	buffer, filename, err := h.services.Export.ExportUserData(context.Background(), userID, serviceExportType, serviceFormat)
+	userLang := h.getUserLanguage(context.Background(), userID)
+	buffer, filename, err := h.services.Export.ExportUserData(context.Background(), userID, serviceExportType, serviceFormat, userLang)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Failed to export user data")
 
