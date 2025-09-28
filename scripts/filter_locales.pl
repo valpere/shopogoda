@@ -293,7 +293,7 @@ sub run {
 
         print "  -> Original: $original_count keys\n";
         print "  -> Kept: $kept_count keys\n";
-        print "  -> Removed: $removed_count keys\n" unless ($options->{add_empty});;
+        print "  -> Removed: $removed_count keys\n" unless ($options->{add_empty});
         print "  -> Backup saved as: $backup_file\n";
     } ## end for my $locale (sort keys...)
 
