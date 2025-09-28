@@ -58,8 +58,8 @@ func (ls *LocalizationService) LoadTranslations(localesFS fs.FS) error {
 		return err
 	}
 
-	for cod, _ := range ls.supportedLanguages {
-		filename := fmt.Sprintf("%s.json", cod)
+	for code := range ls.supportedLanguages {
+		filename := fmt.Sprintf("%s.json", code)
 
 		data, err := fs.ReadFile(localesFS, filename)
 		if err != nil {

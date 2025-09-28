@@ -26,10 +26,10 @@ const (
 type ExportType string
 
 const (
-	ExportTypeWeatherData    ExportType = "weather"
-	ExportTypeAlerts         ExportType = "alerts"
-	ExportTypeSubscriptions  ExportType = "subscriptions"
-	ExportTypeAll            ExportType = "all"
+	ExportTypeWeatherData   ExportType = "weather"
+	ExportTypeAlerts        ExportType = "alerts"
+	ExportTypeSubscriptions ExportType = "subscriptions"
+	ExportTypeAll           ExportType = "all"
 )
 
 type ExportService struct {
@@ -38,14 +38,14 @@ type ExportService struct {
 }
 
 type ExportData struct {
-	User            *models.User                     `json:"user,omitempty"`
-	WeatherData     []models.WeatherData             `json:"weather_data,omitempty"`
-	Subscriptions   []models.Subscription            `json:"subscriptions,omitempty"`
-	AlertConfigs    []models.AlertConfig             `json:"alert_configs,omitempty"`
-	TriggeredAlerts []models.EnvironmentalAlert      `json:"triggered_alerts,omitempty"`
-	ExportedAt      time.Time                        `json:"exported_at"`
-	Format          ExportFormat                     `json:"format"`
-	Type            ExportType                       `json:"type"`
+	User            *models.User                `json:"user,omitempty"`
+	WeatherData     []models.WeatherData        `json:"weather_data,omitempty"`
+	Subscriptions   []models.Subscription       `json:"subscriptions,omitempty"`
+	AlertConfigs    []models.AlertConfig        `json:"alert_configs,omitempty"`
+	TriggeredAlerts []models.EnvironmentalAlert `json:"triggered_alerts,omitempty"`
+	ExportedAt      time.Time                   `json:"exported_at"`
+	Format          ExportFormat                `json:"format"`
+	Type            ExportType                  `json:"type"`
 }
 
 func NewExportService(db *gorm.DB, logger *zerolog.Logger) *ExportService {

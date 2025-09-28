@@ -5,5 +5,6 @@ import (
 )
 
 // LocalesFS contains embedded locale files
+//
 //go:embed *.json
 var LocalesFS embed.FS
