@@ -9,7 +9,7 @@ A professional-grade Telegram bot for weather monitoring, environmental alerts, 
 - **5-Day Forecasts**: Detailed weather predictions
 - **Air Quality Monitoring**: AQI and pollutant tracking
 - **Smart Location Management**: Single location per user with GPS and name-based input
-- **Multi-language Support**: Ukrainian, English, German, French, Spanish
+- **Multi-language Support**: Complete localization in Ukrainian, English, German, French, and Spanish with dynamic language switching
 
 ### Enterprise Features
 - **Advanced Alert System**: Custom thresholds and conditions
@@ -138,9 +138,10 @@ shopogoda/
 │   ├── config/          # Configuration management
 │   ├── database/        # Database connections
 │   ├── handlers/        # Telegram command handlers
+│   ├── locales/         # Translation files (en, de, es, fr, uk)
 │   ├── middleware/      # Bot middleware (auth, logging)
 │   ├── models/          # Data models and structs
-│   └── services/        # Business logic services
+│   └── services/        # Business logic services (incl. localization)
 ├── pkg/                 # Public libraries
 │   ├── weather/         # Weather API clients
 │   ├── alerts/          # Alert engine
@@ -196,12 +197,22 @@ The bot is ready for deployment on:
 - Secure credential management
 - Audit logging for compliance
 
-## 🇺🇦 Ukrainian Localization
+## 🌐 Multi-Language Support
 
-- Native Ukrainian language support
-- Local weather patterns and seasonal considerations
-- Integration potential with Ukrainian emergency services
-- Time zone support for Ukrainian regions
+ShoPogoda offers comprehensive internationalization with complete localization in 5 languages:
+
+- **🇺🇦 Ukrainian (uk)**: Native support with cultural considerations
+- **🇺🇸 English (en)**: Default language with comprehensive coverage
+- **🇩🇪 German (de)**: Full localization for German-speaking regions
+- **🇫🇷 French (fr)**: Complete French translation
+- **🇪🇸 Spanish (es)**: Full Spanish localization
+
+### Language Features
+- **Dynamic Language Switching**: Users can change language anytime via `/settings`
+- **Persistent Preferences**: Language settings are saved and preserved across sessions
+- **Complete UI Localization**: All bot messages, buttons, and help text translated
+- **Timezone Independence**: Language and timezone settings are managed separately
+- **Fallback System**: Automatic fallback to English for missing translations
 
 ## 📄 License
 
