@@ -13,7 +13,7 @@ filter_locales.pl - Filter locale files to keep only used localization keys
 
 This script filters all locale JSON files to keep only the localization keys
 that are actually used in the codebase. It reads the list of used keys from
-11_keys.csv and removes all unused keys from the locale files.
+keys-cod.csv and removes all unused keys from the locale files.
 
 Directories & Files:
 - CSV:  $PROJECT_ROOT/locales/
