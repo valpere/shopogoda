@@ -1,0 +1,219 @@
+Key,Value
+addalert_air_btn,"🌫️ Alerta de Aire"
+addalert_my_alerts_btn,"📋 Mis alertas"
+addalert_rain_btn,"🌧️ Alerta de lluvia"
+addalert_temp_btn,"🌡️ Alerta de temperatura"
+addalert_text,"⚠️ *Sistema de alertas climáticas*
+
+Crea alertas personalizadas para condiciones climáticas:
+
+*Tipos de alerta:*
+• 🌡️ Temperatura (umbrales alto/bajo)
+• 💧 Niveles de humedad
+• 🌬️ Advertencias de velocidad del viento
+• ☀️ Alertas de índice UV
+• 🌫️ Notificaciones de calidad del aire
+• 🌧️ Alertas de precipitación
+
+*Características empresariales:*
+• Integración Slack/Teams
+• Notificaciones por email
+• Procedimientos de escalación
+• Reportes de cumplimiento"
+addalert_wind_btn,"🌬️ Alerta de viento"
+air_location_needed,"📍 Por favor proporcione una ubicación o establezca su ubicación:
+
+/air Londres
+o
+/setlocation para establecer su ubicación"
+air_quality_error,"❌ **Error del Servicio de Calidad del Aire**
+
+Lo sentimos, no pudimos obtener datos de calidad del aire en este momento. Inténtelo de nuevo en unos minutos."
+button_add_alert,"🔔 Agregar alerta"
+button_back_to_settings,"🔙 Volver a configuraciones"
+button_back_to_start,"🏠 Volver al Inicio"
+button_current_weather,"🌤️ Clima actual"
+button_data_export,"📊 Exportar Datos"
+button_get_weather,"🌤️ Obtener clima"
+button_language,"🌐 Idioma"
+button_notifications,"🔔 Notificaciones"
+button_set_air_alert,"🌫️ Establecer Alerta de Aire"
+button_set_location,"📍 Establecer Ubicación"
+button_settings,"⚙️ Configuraciones"
+button_share_location,"📍 Compartir Ubicación"
+button_timezone,"🕐 Zona Horaria"
+button_units,"📏 Unidades"
+forecast_error,"❌ **Error del Servicio de Pronóstico**
+
+Lo sentimos, no pudimos obtener datos de pronóstico en este momento. Inténtelo de nuevo en unos minutos."
+forecast_location_needed,"📍 Por favor proporcione una ubicación o establezca su ubicación:
+
+/forecast Londres
+o
+/setlocation para establecer su ubicación"
+help_addalert,"Crear alertas meteorológicas personalizadas"
+help_admin_commands,"Comandos de Administrador"
+help_air,"Índice de calidad del aire y contaminantes"
+help_alerts,"Sistema de Alertas Inteligente"
+help_basic_commands,"Comandos Básicos"
+help_broadcast,"Enviar mensaje a todos los usuarios"
+help_data_export,"Exportar Datos - Exporte sus datos en formatos JSON/CSV/TXT"
+help_export_alerts,"Configuraciones de alertas e historial"
+help_export_complete,"Exportación completa de datos"
+help_export_features,"Funciones de Exportación de Datos"
+help_export_subscriptions,"Suscripciones de notificaciones"
+help_export_weather,"Datos meteorológicos (últimos 30 días)"
+help_forecast,"Pronóstico del tiempo de 5 días"
+help_location_management,"Gestión de Ubicación"
+help_notifications,"**🔔 Notificaciones y alertas:**"
+help_pro_tips,"Consejos Profesionales"
+help_removealert,"Eliminar alerta específica"
+help_setlocation,"Establecer su ubicación (texto, coordenadas o compartir ubicación)"
+help_settings,"**⚙️ Configuración y preferencias:**"
+help_settings_desc,"Abrir menú de configuración completo\n• Idioma, unidades, configuración de zona horaria\n• Gestión de preferencias de notificación"
+help_stats,"Estadísticas de uso del bot"
+help_subscribe,"Configurar notificaciones meteorológicas"
+help_subscriptions,"Ver suscripciones activas"
+help_support,"**💬 ¿Necesitas ayuda?**"
+help_tip_alerts,"Establecer múltiples alertas para diferentes condiciones"
+help_tip_export,"Exportar datos regularmente para respaldo/cumplimiento"
+help_tip_location,"Comparta su ubicación para clima instantáneo"
+help_tip_separation,"Gestión separada de ubicación y zona horaria"
+help_tip_timezone,"Usar configuración de zona horaria para notificaciones precisas"
+help_title,"🤖 **Bot ShoPogoda - Comandos disponibles**"
+help_unsubscribe,"Eliminar notificaciones"
+help_users,"Gestión de usuarios"
+help_view_alerts,"Ver y gestionar alertas activas"
+help_weather,"**🌤️ Comandos meteorológicos:**"
+language_current,"🌍 **Idioma actual:** %s %s"
+language_select,"🌍 **Selecciona tu idioma**
+
+Elige tu idioma preferido para los mensajes del bot:"
+language_set_error,"❌ **Fallo al actualizar idioma**
+
+Por favor, inténtalo de nuevo o contacta soporte."
+language_set_success,"✅ **Idioma actualizado**
+
+🌍 Idioma establecido en: %s %s
+
+¡Todos los mensajes del bot aparecerán ahora en tu idioma seleccionado!"
+location_clear_failed,"❌ Error al limpiar ubicación"
+location_clear_success,"✅ ¡Ubicación limpiada exitosamente!"
+location_confirm_change,"📍 ¿Quieres cambiar tu ubicación de *%s* a *%s*?"
+location_confirm_no_ignore,"❌ No, ignorar"
+location_confirm_no_keep,"❌ No, mantener actual"
+location_confirm_set,"📍 ¿Quieres establecer *%s* como tu ubicación?"
+location_confirm_yes_change,"✅ Sí, cambiar ubicación"
+location_confirm_yes_set,"✅ Sí, establecer como mi ubicación"
+location_input_coords_prompt,"📍 *Establecer ubicación por coordenadas*
+
+Por favor ingresa tus coordenadas GPS en el formato:
+`latitud, longitud`
+
+Ejemplo: `37.7749, -122.4194`"
+location_input_name_prompt,"📝 *Establecer ubicación por nombre*
+
+Por favor escribe el nombre de tu ciudad (ej. ""Londres"", ""Nueva York"", ""Madrid""):"
+location_not_found,"❌ **Ubicación No Encontrada**
+
+No se pudieron encontrar datos para ""%s"". Verifique la ortografía o intente una ubicación diferente."
+location_required_notifications,"📍 Por favor establece tu ubicación primero usando /setlocation antes de configurar notificaciones."
+location_required_setlocation,"❌ Por favor establece una ubicación primero usando /setlocation"
+location_save_success_with_coords,"✅ Ubicación establecida en *%s, %s*
+📍 Coordenadas: %.4f, %.4f"
+location_settings_btn_back,"⬅️ Volver a configuraciones"
+location_settings_btn_clear,"🗑️ Limpiar ubicación"
+location_settings_btn_set_coords,"📍 Establecer ubicación por coordenadas"
+location_settings_btn_set_name,"📝 Establecer ubicación por nombre"
+location_settings_current,"Ubicación actual"
+location_settings_is_set,"Tu ubicación está configurada. Puedes actualizarla en cualquier momento."
+location_settings_not_set_help,"Puedes establecer tu ubicación:
+• Escribiendo un nombre de ciudad
+• Compartiendo tu ubicación GPS actual"
+location_settings_option_clear,"Limpiar ubicación actual"
+location_settings_option_gps,"Compartir tu ubicación GPS"
+location_settings_option_name,"Establecer nueva ubicación por nombre"
+location_settings_options,Opciones
+location_settings_title,"Configuraciones de ubicación"
+role_admin,Administrador
+role_moderator,Moderador
+role_user,Usuario
+setlocation_not_found,"❌ No se pudo encontrar la ubicación '%s'. Por favor verifica la ortografía."
+setlocation_prompt,"📍 Por favor proporciona un nombre de ubicación:
+
+/setlocation Londres
+o comparte tu ubicación actual"
+setlocation_save_failed,"❌ Error al guardar ubicación. Por favor inténtalo de nuevo."
+setlocation_success,"✅ ¡Ubicación '%s' guardada exitosamente!
+📍 Esta es ahora tu ubicación actual"
+settings_available,"Configuraciones disponibles"
+settings_current_config,"Configuración actual"
+settings_data_export,"📊 Exportar Datos"
+settings_lang_prefs,"🌐 Preferencias de Idioma"
+settings_language,"🌍 Idioma"
+settings_location,"📍 Ubicación"
+settings_location_mgmt,"📍 Gestión de Ubicación"
+settings_not_set,"No configurado"
+settings_notif_prefs,"🔔 Preferencias de Notificación"
+settings_role,Rol
+settings_status,Estado
+settings_timezone,"🕐 Zona horaria"
+settings_timezone_settings,"🕐 Configuración de Zona Horaria"
+settings_title,"⚙️ **Tu configuración**"
+settings_unit_system,"📏 Sistema de Unidades"
+settings_units,Unidades
+status_active,Activo
+status_inactive,Inactivo
+subscribe_air_btn,"🌬️ Calidad del aire"
+subscribe_alerts_btn,"⚠️ Alertas climáticas"
+subscribe_daily_btn,"🌅 Clima diario"
+subscribe_my_subs_btn,"📋 Mis suscripciones"
+subscribe_text,"🔔 *Notificaciones del clima*
+
+Configura actualizaciones automáticas del clima para tu ubicación:
+
+*Tipos de suscripción disponibles:*
+• 🌅 Clima diario (resumen matutino)
+• 📊 Pronóstico semanal (resumen dominical)
+• ⚠️ Alertas climáticas (condiciones extremas)
+• 🌬️ Alertas de calidad del aire (niveles de contaminación)
+
+*Horario de notificaciones:*
+• Elige tu hora preferida
+• Selecciona frecuencia de notificación
+• Configura umbrales de alerta"
+subscribe_weekly_btn,"📊 Pronóstico semanal"
+timezone_confirm_change,"🕐 ¿Quieres cambiar tu zona horaria de *%s* a *%s*?"
+timezone_confirm_no_ignore,"❌ No, ignorar"
+timezone_confirm_no_keep,"❌ No, mantener actual"
+timezone_confirm_set,"🕐 ¿Quieres establecer *%s* como tu zona horaria?"
+timezone_confirm_yes_change,"✅ Sí, cambiar zona horaria"
+timezone_confirm_yes_set,"✅ Sí, establecer como mi zona horaria"
+timezone_input_prompt,"🕐 *Establecer zona horaria*
+
+Por favor escribe el nombre de tu zona horaria (ej. ""Europe/Madrid"", ""America/New_York"", ""Asia/Tokyo""):
+
+Puedes encontrar nombres de zonas horarias en: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+timezone_update_failed,"❌ Error al actualizar configuración de zona horaria. Por favor inténtalo de nuevo."
+timezone_update_success,"✅ Zona horaria actualizada a %s"
+unauthorized,"❌ **Acceso denegado**
+
+No tienes permiso para usar este comando."
+units_choose_prompt,"📏 *Elige tus unidades preferidas:*"
+units_imperial,"🌡️ Imperial (°F, mph, millas)"
+units_metric,"🌡️ Métrico (°C, km/h, km)"
+units_update_failed,"❌ Error al actualizar configuración de unidades. Por favor inténtalo de nuevo."
+units_update_success,"✅ Unidades actualizadas a %s"
+weather_error,"❌ **Error del Servicio Meteorológico**\n\nLo sentimos, no pudimos obtener datos meteorológicos en este momento. Inténtelo de nuevo en unos minutos."
+weather_location_needed,"📍 Por favor proporcione una ubicación o establezca su ubicación:\n\n/weather Londres\no\n/setlocation para establecer su ubicación"
+welcome_message,"🌤️ ¡Bienvenido a **ShoPogoda**!
+
+Tu asistente meteorológico personal para pronósticos precisos, monitoreo de calidad del aire y alertas meteorológicas personalizadas.
+
+Para empezar:
+• Usa /weather para verificar las condiciones actuales
+• Usa /forecast para pronósticos de 5 días
+• Usa /setlocation para guardar tu ubicación
+• Usa /settings para personalizar tu experiencia
+
+Escribe /help para ver todos los comandos disponibles."

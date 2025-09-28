@@ -1,0 +1,177 @@
+Key,Value
+addalert_air_btn,"🌫️ Alerte Air"
+addalert_my_alerts_btn,"📋 Mes Alertes"
+addalert_rain_btn,"🌧️ Alerte Pluie"
+addalert_temp_btn,"🌡️ Alerte Température"
+addalert_text,"⚠️ *Système d'Alerte Météo*\n\nCréez des alertes personnalisées pour les conditions météorologiques :\n\n*Types d'Alerte :*\n• 🌡️ Température (seuils haut/bas)\n• 💧 Niveaux d'humidité\n• 🌬️ Avertissements de vitesse du vent\n• ☀️ Alertes d'index UV\n• 🌫️ Notifications de qualité de l'air\n• 🌧️ Alertes de précipitations\n\n*Fonctionnalités Entreprise :*\n• Intégration Slack/Teams\n• Notifications par email\n• Procédures d'escalade\n• Rapports de conformité"
+addalert_wind_btn,"🌬️ Alerte Vent"
+air_location_needed,"📍 Veuillez fournir un emplacement ou définir votre emplacement :
+
+/air Londres
+ou
+/setlocation pour définir votre emplacement"
+air_quality_error,"❌ **Erreur du Service de Qualité de l'Air**
+
+Désolé, nous n'avons pas pu récupérer les données de qualité de l'air en ce moment. Veuillez réessayer dans quelques minutes."
+button_add_alert,"🔔 Ajouter Alerte"
+button_back_to_settings,"🔙 Retour aux paramètres"
+button_back_to_start,"🏠 Retour au Début"
+button_current_weather,"🌤️ Météo Actuelle"
+button_data_export,"📊 Export de Données"
+button_get_weather,"🌤️ Obtenir Météo"
+button_language,"🌐 Langue"
+button_notifications,"🔔 Notifications"
+button_set_air_alert,"🌫️ Définir Alerte Air"
+button_set_location,"📍 Définir Emplacement"
+button_settings,"⚙️ Paramètres"
+button_share_location,"📍 Partager Emplacement"
+button_timezone,"🕐 Fuseau Horaire"
+button_units,"📏 Unités"
+forecast_error,"❌ **Erreur du Service de Prévisions**
+
+Désolé, nous n'avons pas pu récupérer les données de prévisions en ce moment. Veuillez réessayer dans quelques minutes."
+forecast_location_needed,"📍 Veuillez fournir un emplacement ou définir votre emplacement :
+
+/forecast Londres
+ou
+/setlocation pour définir votre emplacement"
+help_addalert,"Créer des alertes météo personnalisées"
+help_admin_commands,"Commandes Administrateur"
+help_air,"Indice de qualité de l'air et polluants"
+help_alerts,"Système d'Alerte Intelligent"
+help_basic_commands,"Commandes de Base"
+help_broadcast,"Envoyer un message à tous les utilisateurs"
+help_data_export,"Export de Données - Exportez vos données aux formats JSON/CSV/TXT"
+help_export_alerts,"Configurations d'alertes et historique"
+help_export_complete,"Export complet des données"
+help_export_features,"Fonctionnalités d'Export de Données"
+help_export_subscriptions,"Abonnements aux notifications"
+help_export_weather,"Données météo (30 derniers jours)"
+help_forecast,"Prévisions météo 5 jours"
+help_location_management,"Gestion de l'Emplacement"
+help_notifications,"**🔔 Notifications et alertes :**"
+help_pro_tips,"Conseils Pro"
+help_removealert,"Supprimer une alerte spécifique"
+help_setlocation,"Définir votre emplacement (texte, coordonnées ou partager l'emplacement)"
+help_settings,"**⚙️ Paramètres et préférences :**"
+help_settings_desc,"Ouvrir le menu de paramètres complet\n• Langue, unités, paramètres de fuseau horaire\n• Gestion des préférences de notification"
+help_stats,"Statistiques d'utilisation du bot"
+help_subscribe,"Configurer les notifications météo"
+help_subscriptions,"Voir les abonnements actifs"
+help_support,"**💬 Besoin d'aide ?**"
+help_tip_alerts,"Définir plusieurs alertes pour différentes conditions"
+help_tip_export,"Exporter régulièrement les données pour sauvegarde/conformité"
+help_tip_location,"Partagez votre emplacement pour une météo instantanée"
+help_tip_separation,"Gestion séparée de l'emplacement et du fuseau horaire"
+help_tip_timezone,"Utiliser les paramètres de fuseau horaire pour des notifications précises"
+help_title,"🤖 **Bot ShoPogoda - Commandes disponibles**"
+help_unsubscribe,"Supprimer les notifications"
+help_users,"Gestion des utilisateurs"
+help_view_alerts,"Voir et gérer les alertes actives"
+help_weather,"**🌤️ Commandes météo :**"
+language_current,"🌍 **Langue actuelle :** %s %s"
+language_select,"🌍 **Sélectionnez votre langue**
+
+Choisissez votre langue préférée pour les messages du bot :"
+language_set_error,"❌ **Échec de la mise à jour de la langue**
+
+Veuillez réessayer ou contacter le support."
+language_set_success,"✅ **Langue mise à jour**
+
+🌍 Langue définie sur : %s %s
+
+Tous les messages du bot apparaîtront maintenant dans votre langue sélectionnée !"
+location_clear_failed,"❌ Échec de la suppression de l'emplacement"
+location_clear_success,"✅ **Emplacement supprimé**
+
+📍 Votre emplacement sauvegardé a été supprimé avec succès.
+
+Vous devrez maintenant spécifier un emplacement pour les commandes météo ou utiliser /setlocation pour en définir un nouveau."
+location_confirm_change,"Changer l'emplacement de **%s** vers **%s** ?"
+location_confirm_no_ignore,"🚫 Ignorer"
+location_confirm_no_keep,"🔄 Garder %s"
+location_confirm_set,"Définir l'emplacement sur **%s** ?"
+location_confirm_yes_change,"✅ Changer vers %s"
+location_confirm_yes_set,"✅ Définir sur %s"
+location_input_coords_prompt,"📍 Veuillez envoyer vos coordonnées au format :\n`latitude,longitude`\n\nExemple: `51.5074,-0.1278`"
+location_input_name_prompt,"📍 Veuillez envoyer le nom de l'emplacement :\n\nExemples:\n• Paris\n• Londres, Royaume-Uni\n• New York, NY, États-Unis"
+location_not_found,"❌ **Emplacement Non Trouvé**
+
+Impossible de trouver des données pour ""%s"". Vérifiez l'orthographe ou essayez un autre emplacement."
+location_required_notifications,"📍 **Emplacement Requis**\n\nVeuillez définir votre emplacement d'abord :\n/setlocation"
+location_required_setlocation,"📍 **Emplacement Requis**\n\nPour utiliser cette fonction, définissez d'abord votre emplacement :\n/setlocation"
+location_save_success_with_coords,"✅ Emplacement défini sur *%s, %s*
+📍 Coordonnées : %.4f, %.4f"
+location_settings_btn_back,"🔙 Retour"
+location_settings_btn_clear,"🗑️ Supprimer l'Emplacement"
+location_settings_btn_set_coords,"🗺️ Définir par Coordonnées"
+location_settings_btn_set_name,"📝 Définir par Nom"
+location_settings_current,"📍 **Emplacement Actuel**: %s"
+location_settings_is_set,"✅ Emplacement défini"
+location_settings_not_set_help,"❌ Aucun emplacement défini\n\nDéfinissez votre emplacement pour :\n• Météo instantanée avec /weather\n• Prévisions avec /forecast\n• Qualité de l'air avec /air\n• Notifications automatiques"
+location_settings_option_clear,"🗑️ Supprimer l'emplacement actuel"
+location_settings_option_gps,"📍 Partager l'emplacement GPS"
+location_settings_option_name,"📝 Entrer le nom de l'emplacement"
+location_settings_options,"Choisissez comment définir votre emplacement :"
+location_settings_title,"📍 **Gestion de l'Emplacement**"
+role_admin,"👑 Administrateur"
+role_moderator,"🛡️ Modérateur"
+role_user,"👤 Utilisateur"
+setlocation_not_found,"❌ **Emplacement Introuvable**\n\nImpossible de trouver des données pour \""%s\"". Vérifiez l'orthographe ou essayez un autre emplacement."
+setlocation_prompt,"📍 **Définir l'Emplacement**\n\nChoisissez comment définir votre emplacement :"
+setlocation_save_failed,"❌ Échec de la sauvegarde de l'emplacement"
+setlocation_success,"✅ **Emplacement Défini**\n\n📍 **%s**\n🌍 %s\n📍 %.4f, %.4f\n\nVous pouvez maintenant utiliser :\n• /weather pour la météo actuelle\n• /forecast pour les prévisions\n• /air pour la qualité de l'air"
+settings_available,"**Paramètres Disponibles**"
+settings_current_config,"**Configuration Actuelle**"
+settings_data_export,"📊 Export de Données"
+settings_lang_prefs,"🌐 Préférences de Langue"
+settings_language,"🌍 Langue"
+settings_location,"📍 Emplacement"
+settings_location_mgmt,"📍 Gestion de l'Emplacement"
+settings_not_set,"Non défini"
+settings_notif_prefs,"🔔 Préférences de Notification"
+settings_role,"**Rôle**: %s"
+settings_status,"**Statut**: %s"
+settings_timezone,"🕐 Fuseau horaire"
+settings_timezone_settings,"🕐 Paramètres de Fuseau Horaire"
+settings_title,"⚙️ **Vos paramètres**"
+settings_unit_system,"📏 Système d'Unités"
+settings_units,"**Unités**: %s"
+status_active,"🟢 Actif"
+status_inactive,"🔴 Inactif"
+subscribe_air_btn,"🌫️ Alertes Air"
+subscribe_alerts_btn,"⚠️ Alertes Personnalisées"
+subscribe_daily_btn,"📅 Quotidien"
+subscribe_my_subs_btn,"📋 Mes Abonnements"
+subscribe_text,"🔔 **Notifications Météo**\n\nRestez informé avec des mises à jour météo automatiques :\n\n**Types de Notifications :**\n• 📅 Rapports quotidiens (matin/soir)\n• 📊 Résumés hebdomadaires\n• ⚠️ Alertes de conditions extrêmes\n• 🌫️ Mises à jour de qualité de l'air\n• 🌧️ Alertes de précipitations\n\n**Fonctionnalités Entreprise :**\n• Notifications Slack/Teams\n• Rapports programmés\n• Alertes d'équipe\n• Tableaux de bord de conformité"
+subscribe_weekly_btn,"📊 Hebdomadaire"
+timezone_confirm_change,"🕐 Voulez-vous changer votre fuseau horaire de *%s* à *%s* ?"
+timezone_confirm_no_ignore,"❌ Non, ignorer"
+timezone_confirm_no_keep,"❌ Non, conserver actuel"
+timezone_confirm_set,"🕐 Voulez-vous définir *%s* comme votre fuseau horaire ?"
+timezone_confirm_yes_change,"✅ Oui, changer le fuseau horaire"
+timezone_confirm_yes_set,"✅ Oui, définir ce fuseau horaire"
+timezone_input_prompt,"🕐 Veuillez envoyer votre fuseau horaire.\n\nExemples:\n• Europe/Paris\n• America/New_York\n• Asia/Tokyo\n• UTC\n\nUtilisez le format IANA (Region/City)."
+timezone_update_failed,"❌ Échec de la mise à jour du fuseau horaire. Veuillez réessayer."
+timezone_update_success,"✅ Fuseau horaire mis à jour vers %s"
+unauthorized,"❌ **Accès refusé**
+
+Vous n'avez pas la permission d'utiliser cette commande."
+units_choose_prompt,"📏 **Choisir le Système d'Unités**\n\nSélectionnez votre système d'unités préféré :"
+units_imperial,"🌡️ Impérial (°F, mph, miles)"
+units_metric,"🌡️ Métrique (°C, m/s, km)"
+units_update_failed,"❌ Échec de la mise à jour des unités"
+units_update_success,"✅ **Unités Mises à Jour**\n\nVos unités ont été définies sur **%s**."
+weather_error,"❌ **Erreur du Service Météo**\n\nDésolé, nous n'avons pas pu récupérer les données météo en ce moment. Veuillez réessayer dans quelques minutes."
+weather_location_needed,"📍 Veuillez fournir un emplacement ou définir votre emplacement :\n\n/weather Londres\nou\n/setlocation pour définir votre emplacement"
+welcome_message,"🌤️ Bienvenue sur **ShoPogoda** !
+
+Votre assistant météo personnel pour des prévisions précises, la surveillance de la qualité de l'air et des alertes météo personnalisées.
+
+Pour commencer :
+• Utilisez /weather pour vérifier les conditions actuelles
+• Utilisez /forecast pour les prévisions 5 jours
+• Utilisez /setlocation pour sauvegarder votre emplacement
+• Utilisez /settings pour personnaliser votre expérience
+
+Tapez /help pour toutes les commandes disponibles."

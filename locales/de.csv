@@ -1,0 +1,219 @@
+Key,Value
+addalert_air_btn,"🌫️ Luftalarm"
+addalert_my_alerts_btn,"📋 Meine Warnungen"
+addalert_rain_btn,"🌧️ Regen-Warnung"
+addalert_temp_btn,"🌡️ Temperatur-Warnung"
+addalert_text,"⚠️ *Wetter-Warnsystem*
+
+Erstellen Sie benutzerdefinierte Warnungen für Wetterbedingungen:
+
+*Warnungstypen:*
+• 🌡️ Temperatur (hohe/niedrige Schwellwerte)
+• 💧 Luftfeuchtigkeit
+• 🌬️ Windgeschwindigkeits-Warnungen
+• ☀️ UV-Index-Warnungen
+• 🌫️ Luftqualitäts-Benachrichtigungen
+• 🌧️ Niederschlags-Warnungen
+
+*Enterprise-Funktionen:*
+• Slack/Teams-Integration
+• E-Mail-Benachrichtigungen
+• Eskalationsverfahren
+• Compliance-Berichterstattung"
+addalert_wind_btn,"🌬️ Wind-Warnung"
+air_location_needed,"📍 Bitte geben Sie einen Standort an oder setzen Sie Ihren Standort:
+
+/air London
+oder
+/setlocation um Ihren Standort zu setzen"
+air_quality_error,"❌ **Luftqualitätsdienst-Fehler**
+
+Entschuldigung, wir konnten gerade keine Luftqualitätsdaten abrufen. Bitte versuchen Sie es in einigen Minuten erneut."
+button_add_alert,"🔔 Warnung hinzufügen"
+button_back_to_settings,"🔙 Zurück zu Einstellungen"
+button_back_to_start,"🏠 Zurück zum Start"
+button_current_weather,"🌤️ Aktuelles Wetter"
+button_data_export,"📊 Datenexport"
+button_get_weather,"🌤️ Wetter abrufen"
+button_language,"🌐 Sprache"
+button_notifications,"🔔 Benachrichtigungen"
+button_set_air_alert,"🌫️ Luftqualitätswarnung setzen"
+button_set_location,"📍 Standort setzen"
+button_settings,"⚙️ Einstellungen"
+button_share_location,"📍 Standort teilen"
+button_timezone,"🕐 Zeitzone"
+button_units,"📏 Einheiten"
+forecast_error,"❌ **Vorhersagedienst-Fehler**
+
+Entschuldigung, wir konnten gerade keine Vorhersagedaten abrufen. Bitte versuchen Sie es in einigen Minuten erneut."
+forecast_location_needed,"📍 Bitte geben Sie einen Standort an oder setzen Sie Ihren Standort:
+
+/forecast London
+oder
+/setlocation um Ihren Standort zu setzen"
+help_addalert,"Benutzerdefinierte Wetterwarnungen erstellen"
+help_admin_commands,Administrator-Befehle
+help_air,"Luftqualitätsindex und Schadstoffe"
+help_alerts,"Intelligentes Warnsystem"
+help_basic_commands,Grundbefehle
+help_broadcast,"Nachricht an alle Benutzer senden"
+help_data_export,"Datenexport - Exportieren Sie Ihre Daten in JSON/CSV/TXT-Formaten"
+help_export_alerts,"Warnkonfigurationen und Verlauf"
+help_export_complete,"Vollständiger Datenexport"
+help_export_features,Datenexport-Funktionen
+help_export_subscriptions,Benachrichtigungsabonnements
+help_export_weather,"Wetterdaten (letzten 30 Tage)"
+help_forecast,5-Tage-Wettervorhersage
+help_location_management,Standortverwaltung
+help_notifications,"**🔔 Benachrichtigungen & Warnungen:**"
+help_pro_tips,Profi-Tipps
+help_removealert,"Bestimmte Warnung entfernen"
+help_setlocation,"Ihren Standort festlegen (Text, Koordinaten oder Standort teilen)"
+help_settings,"**⚙️ Einstellungen & Präferenzen:**"
+help_settings_desc,"Umfassendes Einstellungsmenü öffnen\n• Sprache, Einheiten, Zeitzoneneinstellungen\n• Verwaltung der Benachrichtigungseinstellungen"
+help_stats,Bot-Nutzungsstatistiken
+help_subscribe,"Wetterbenachrichtigungen einrichten"
+help_subscriptions,"Aktive Abonnements anzeigen"
+help_support,"**💬 Hilfe benötigt?**"
+help_tip_alerts,"Mehrere Warnungen für verschiedene Bedingungen einstellen"
+help_tip_export,"Daten regelmäßig für Backup/Compliance exportieren"
+help_tip_location,"Teilen Sie Ihren Standort für sofortiges Wetter"
+help_tip_separation,"Getrennte Standort- und Zeitzonenverwaltung"
+help_tip_timezone,"Zeitzoneneinstellungen für genaue Benachrichtigungen verwenden"
+help_title,"🤖 **ShoPogoda Bot - Verfügbare Befehle**"
+help_unsubscribe,"Benachrichtigungen entfernen"
+help_users,Benutzerverwaltung
+help_view_alerts,"Aktive Warnungen anzeigen und verwalten"
+help_weather,"**🌤️ Wetterbefehle:**"
+language_current,"🌍 **Aktuelle Sprache:** %s %s"
+language_select,"🌍 **Wählen Sie Ihre Sprache**
+
+Wählen Sie Ihre bevorzugte Sprache für Bot-Nachrichten:"
+language_set_error,"❌ **Sprachaktualisierung fehlgeschlagen**
+
+Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+language_set_success,"✅ **Sprache aktualisiert**
+
+🌍 Sprache eingestellt auf: %s %s
+
+Alle Bot-Nachrichten werden nun in Ihrer gewählten Sprache angezeigt!"
+location_clear_failed,"❌ Löschen des Standorts fehlgeschlagen"
+location_clear_success,"✅ Standort erfolgreich gelöscht!"
+location_confirm_change,"📍 Möchten Sie Ihren Standort von *%s* zu *%s* ändern?"
+location_confirm_no_ignore,"❌ Nein, ignorieren"
+location_confirm_no_keep,"❌ Nein, aktuellen beibehalten"
+location_confirm_set,"📍 Möchten Sie *%s* als Ihren Standort festlegen?"
+location_confirm_yes_change,"✅ Ja, Standort ändern"
+location_confirm_yes_set,"✅ Ja, als meinen Standort festlegen"
+location_input_coords_prompt,"📍 *Standort nach Koordinaten setzen*
+
+Bitte geben Sie Ihre GPS-Koordinaten im Format ein:
+`Breitengrad, Längengrad`
+
+Beispiel: `37.7749, -122.4194`"
+location_input_name_prompt,"📝 *Standort nach Namen setzen*
+
+Bitte geben Sie Ihren Stadtnamen ein (z.B. ""London"", ""New York"", ""Berlin""):"
+location_not_found,"❌ **Standort nicht gefunden**
+
+Konnte keine Daten für ""%s"" finden. Bitte überprüfen Sie die Schreibweise oder versuchen Sie einen anderen Standort."
+location_required_notifications,"📍 Bitte setzen Sie zuerst Ihren Standort mit /setlocation bevor Sie Benachrichtigungen einrichten."
+location_required_setlocation,"❌ Bitte setzen Sie zuerst einen Standort mit /setlocation"
+location_save_success_with_coords,"✅ Standort festgelegt auf *%s, %s*
+📍 Koordinaten: %.4f, %.4f"
+location_settings_btn_back,"⬅️ Zurück zu Einstellungen"
+location_settings_btn_clear,"🗑️ Standort löschen"
+location_settings_btn_set_coords,"📍 Standort nach Koordinaten setzen"
+location_settings_btn_set_name,"📝 Standort nach Namen setzen"
+location_settings_current,"Aktueller Standort"
+location_settings_is_set,"Ihr Standort ist eingestellt. Sie können ihn jederzeit aktualisieren."
+location_settings_not_set_help,"Sie können Ihren Standort einstellen durch:
+• Eingabe eines Stadtnamens
+• Teilen Ihres aktuellen GPS-Standorts"
+location_settings_option_clear,"Aktuellen Standort löschen"
+location_settings_option_gps,"GPS-Standort teilen"
+location_settings_option_name,"Neuen Standort nach Namen setzen"
+location_settings_options,Optionen
+location_settings_title,Standort-Einstellungen
+role_admin,Administrator
+role_moderator,Moderator
+role_user,Benutzer
+setlocation_not_found,"❌ Standort '%s' nicht gefunden. Bitte überprüfen Sie die Schreibweise."
+setlocation_prompt,"📍 Bitte geben Sie einen Ortsnamen an:
+
+/setlocation London
+oder teilen Sie Ihren aktuellen Standort"
+setlocation_save_failed,"❌ Speichern des Standorts fehlgeschlagen. Bitte versuchen Sie es erneut."
+setlocation_success,"✅ Standort '%s' erfolgreich gespeichert!
+📍 Dies ist jetzt Ihr aktueller Standort"
+settings_available,"Verfügbare Einstellungen"
+settings_current_config,"Aktuelle Konfiguration"
+settings_data_export,"📊 Datenexport"
+settings_lang_prefs,"🌐 Spracheinstellungen"
+settings_language,"🌍 Sprache"
+settings_location,"📍 Standort"
+settings_location_mgmt,"📍 Standortverwaltung"
+settings_not_set,"Nicht gesetzt"
+settings_notif_prefs,"🔔 Benachrichtigungseinstellungen"
+settings_role,Rolle
+settings_status,Status
+settings_timezone,"🕐 Zeitzone"
+settings_timezone_settings,"🕐 Zeitzoneneinstellungen"
+settings_title,"⚙️ **Ihre Einstellungen**"
+settings_unit_system,"📏 Einheitensystem"
+settings_units,Einheiten
+status_active,Aktiv
+status_inactive,Inaktiv
+subscribe_air_btn,"🌬️ Luftqualität"
+subscribe_alerts_btn,"⚠️ Wetter-Warnungen"
+subscribe_daily_btn,"🌅 Tägliches Wetter"
+subscribe_my_subs_btn,"📋 Meine Abonnements"
+subscribe_text,"🔔 *Wetter-Benachrichtigungen*
+
+Richten Sie automatische Wetter-Updates für Ihren Standort ein:
+
+*Verfügbare Abonnement-Typen:*
+• 🌅 Tägliches Wetter (Morgen-Zusammenfassung)
+• 📊 Wöchentliche Vorhersage (Sonntags-Überblick)
+• ⚠️ Wetter-Warnungen (extreme Bedingungen)
+• 🌬️ Luftqualitäts-Warnungen (Verschmutzungslevel)
+
+*Benachrichtigungs-Zeitplan:*
+• Wählen Sie Ihre bevorzugte Zeit
+• Wählen Sie die Benachrichtigungshäufigkeit
+• Konfigurieren Sie Warnschwellenwerte"
+subscribe_weekly_btn,"📊 Wöchentliche Vorhersage"
+timezone_confirm_change,"🕐 Möchten Sie Ihre Zeitzone von *%s* zu *%s* ändern?"
+timezone_confirm_no_ignore,"❌ Nein, ignorieren"
+timezone_confirm_no_keep,"❌ Nein, aktuelle beibehalten"
+timezone_confirm_set,"🕐 Möchten Sie *%s* als Ihre Zeitzone festlegen?"
+timezone_confirm_yes_change,"✅ Ja, Zeitzone ändern"
+timezone_confirm_yes_set,"✅ Ja, als meine Zeitzone festlegen"
+timezone_input_prompt,"🕐 *Zeitzone einstellen*
+
+Bitte geben Sie Ihren Zeitzonennamen ein (z.B. ""Europe/Berlin"", ""America/New_York"", ""Asia/Tokyo""):
+
+Sie finden Zeitzonennamen unter: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+timezone_update_failed,"❌ Aktualisierung der Zeitzone fehlgeschlagen. Bitte versuchen Sie es erneut."
+timezone_update_success,"✅ Zeitzone aktualisiert auf %s"
+unauthorized,"❌ **Zugriff verweigert**
+
+Sie haben keine Berechtigung, diesen Befehl zu verwenden."
+units_choose_prompt,"📏 *Wählen Sie Ihre bevorzugten Einheiten:*"
+units_imperial,"🌡️ Imperial (°F, mph, Meilen)"
+units_metric,"🌡️ Metrisch (°C, km/h, km)"
+units_update_failed,"❌ Aktualisierung der Einheiten fehlgeschlagen. Bitte versuchen Sie es erneut."
+units_update_success,"✅ Einheiten aktualisiert auf %s"
+weather_error,"❌ **Wetterdienst-Fehler**\n\nEntschuldigung, wir konnten gerade keine Wetterdaten abrufen. Bitte versuchen Sie es in ein paar Minuten erneut."
+weather_location_needed,"📍 Bitte geben Sie einen Standort an oder setzen Sie Ihren Standort:\n\n/weather London\noder\n/setlocation um Ihren Standort zu setzen"
+welcome_message,"🌤️ Willkommen bei **ShoPogoda**!
+
+Ihr persönlicher Wetterassistent für präzise Vorhersagen, Luftqualitätsüberwachung und individuelle Wetterwarnungen.
+
+Für den Einstieg:
+• Verwenden Sie /weather für aktuelle Bedingungen
+• Verwenden Sie /forecast für 5-Tage-Prognosen
+• Verwenden Sie /setlocation um Ihren Standort zu speichern
+• Verwenden Sie /settings um Ihre Erfahrung anzupassen
+
+Geben Sie /help ein für alle verfügbaren Befehle."

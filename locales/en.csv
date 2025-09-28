@@ -1,0 +1,225 @@
+Key,Value
+addalert_air_btn,"🌫️ Air Alert"
+addalert_my_alerts_btn,"📋 My Alerts"
+addalert_rain_btn,"🌧️ Rain Alert"
+addalert_temp_btn,"🌡️ Temperature Alert"
+addalert_text,"⚠️ *Weather Alert System*
+
+Create custom alerts for weather conditions:
+
+*Alert Types:*
+• 🌡️ Temperature (high/low thresholds)
+• 💧 Humidity levels
+• 🌬️ Wind speed warnings
+• ☀️ UV index alerts
+• 🌫️ Air quality notifications
+• 🌧️ Precipitation alerts
+
+*Enterprise Features:*
+• Slack/Teams integration
+• Email notifications
+• Escalation procedures
+• Compliance reporting"
+addalert_wind_btn,"🌬️ Wind Alert"
+air_location_needed,"📍 Please provide a location or set your location:
+
+/air London
+or
+/setlocation to set your location"
+air_quality_error,"❌ **Air Quality Service Error**
+
+Sorry, we couldn't fetch air quality data right now. Please try again in a few minutes."
+button_add_alert,"🔔 Add Alert"
+button_back_to_settings,"🔙 Back to Settings"
+button_back_to_start,"🏠 Back to Start"
+button_current_weather,"🌤️ Current Weather"
+button_data_export,"📊 Data Export"
+button_get_weather,"🌤️ Get Weather"
+button_language,"🌐 Language"
+button_notifications,"🔔 Notifications"
+button_set_air_alert,"🌫️ Set Air Alert"
+button_set_location,"📍 Set Location"
+button_settings,"⚙️ Settings"
+button_share_location,"📍 Share Location"
+button_timezone,"🕐 Timezone"
+button_units,"📏 Units"
+forecast_error,"❌ **Forecast Service Error**
+
+Sorry, we couldn't fetch forecast data right now. Please try again in a few minutes."
+forecast_location_needed,"📍 Please provide a location or set your location:
+
+/forecast London
+or
+/setlocation to set your location"
+help_addalert,"Create custom weather alerts"
+help_admin_commands,"Admin Commands"
+help_air,"Air quality index and pollutants"
+help_alerts,"Smart Alert System"
+help_basic_commands,"Basic Commands"
+help_broadcast,"Send message to all users"
+help_data_export,"Data Export - Export your data in JSON/CSV/TXT formats"
+help_export_alerts,"Alert configurations & history"
+help_export_complete,"Complete data export"
+help_export_features,"Data Export Features"
+help_export_subscriptions,"Notification subscriptions"
+help_export_weather,"Weather data (last 30 days)"
+help_forecast,"5-day weather forecast"
+help_location_management,"Location Management"
+help_notifications,"Notifications & Subscriptions"
+help_pro_tips,"Pro Tips"
+help_removealert,"Remove specific alert"
+help_setlocation,"Set your location (text, coordinates, or share location)"
+help_settings,"Settings & Configuration"
+help_settings_desc,"Open comprehensive settings menu
+• Language, units, timezone settings
+• Notification preferences management"
+help_stats,"Bot usage statistics"
+help_subscribe,"Set up weather notifications"
+help_subscriptions,"View active subscriptions"
+help_support,Support
+help_tip_alerts,"Set multiple alerts for different conditions"
+help_tip_export,"Export data regularly for backup/compliance"
+help_tip_location,"Share your location for instant weather"
+help_tip_separation,"Separate location and timezone management"
+help_tip_timezone,"Use timezone settings for accurate notifications"
+help_title,"🤖 **ShoPogoda Bot - Available Commands**"
+help_unsubscribe,"Remove notifications"
+help_users,"User management"
+help_view_alerts,"View and manage active alerts"
+help_weather,"Current weather conditions"
+language_current,"🌍 **Current Language:** %s %s"
+language_select,"🌍 **Select Your Language**
+
+Choose your preferred language for bot messages:"
+language_set_error,"❌ **Language Update Failed**
+
+Please try again or contact support."
+language_set_success,"✅ **Language Updated**
+
+🌍 Language set to: %s %s
+
+All bot messages will now appear in your selected language!"
+location_clear_failed,"❌ Failed to clear location"
+location_clear_success,"✅ Location cleared successfully!"
+location_confirm_change,"📍 Did you want to change your location from *%s* to *%s*?"
+location_confirm_no_ignore,"❌ No, just ignore"
+location_confirm_no_keep,"❌ No, keep current"
+location_confirm_set,"📍 Did you want to set *%s* as your location?"
+location_confirm_yes_change,"✅ Yes, change location"
+location_confirm_yes_set,"✅ Yes, set as my location"
+location_input_coords_prompt,"📍 *Set Location by Coordinates*
+
+Please enter your GPS coordinates in the format:
+`latitude, longitude`
+
+Example: `37.7749, -122.4194`"
+location_input_name_prompt,"📝 *Set Location by Name*
+
+Please type your city name (e.g., ""London"", ""New York"", ""Kyiv""):"
+location_not_found,"❌ **Location Not Found**
+
+Couldn't find data for ""%s"". Please check the spelling or try a different location."
+location_required_notifications,"📍 Please set your location first using /setlocation before setting up notifications."
+location_required_setlocation,"❌ Please set a location first using /setlocation"
+location_save_success_with_coords,"✅ Location set to *%s, %s*
+📍 Coordinates: %.4f, %.4f"
+location_settings_btn_back,"⬅️ Back to Settings"
+location_settings_btn_clear,"🗑️ Clear Location"
+location_settings_btn_set_coords,"📍 Set Location by Coordinates"
+location_settings_btn_set_name,"📝 Set Location by Name"
+location_settings_current,"Current Location"
+location_settings_is_set,"Your location is set. You can update it anytime."
+location_settings_not_set_help,"You can set your location by:
+• Typing a city name
+• Sharing your current GPS location"
+location_settings_option_clear,"Clear current location"
+location_settings_option_gps,"Share your GPS location"
+location_settings_option_name,"Set a new location by name"
+location_settings_options,Options
+location_settings_title,"Location Settings"
+role_admin,Administrator
+role_moderator,Moderator
+role_user,User
+setlocation_not_found,"❌ Could not find location '%s'. Please check the spelling."
+setlocation_prompt,"📍 Please provide a location name:
+
+/setlocation London
+or share your current location"
+setlocation_save_failed,"❌ Failed to save location. Please try again."
+setlocation_success,"✅ Location '%s' saved successfully!
+📍 This is now your current location"
+settings_available,"Available Settings"
+settings_current_config,"Current Configuration"
+settings_data_export,"Data export options"
+settings_lang_prefs,"Language preferences"
+settings_language,"🌍 Language"
+settings_location,"📍 Location"
+settings_location_mgmt,"Location management"
+settings_not_set,"Not set"
+settings_notif_prefs,"Notification preferences"
+settings_role,Role
+settings_status,Status
+settings_timezone,"🕐 Timezone"
+settings_timezone_settings,"Timezone settings"
+settings_title,"⚙️ **Your Settings**"
+settings_unit_system,"Unit system (Metric/Imperial)"
+settings_units,Units
+status_active,Active
+status_inactive,Inactive
+subscribe_air_btn,"🌬️ Air Quality"
+subscribe_alerts_btn,"⚠️ Weather Alerts"
+subscribe_daily_btn,"🌅 Daily Weather"
+subscribe_my_subs_btn,"📋 My Subscriptions"
+subscribe_text,"🔔 *Weather Notifications*
+
+Set up automatic weather updates for your location:
+
+*Available Subscription Types:*
+• 🌅 Daily Weather (morning summary)
+• 📊 Weekly Forecast (Sunday overview)
+• ⚠️ Weather Alerts (extreme conditions)
+• 🌬️ Air Quality Alerts (pollution levels)
+
+*Notification Schedule:*
+• Choose your preferred time
+• Select notification frequency
+• Configure alert thresholds"
+subscribe_weekly_btn,"📊 Weekly Forecast"
+timezone_confirm_change,"🕐 Did you want to change your timezone from *%s* to *%s*?"
+timezone_confirm_no_ignore,"❌ No, just ignore"
+timezone_confirm_no_keep,"❌ No, keep current"
+timezone_confirm_set,"🕐 Did you want to set *%s* as your timezone?"
+timezone_confirm_yes_change,"✅ Yes, change timezone"
+timezone_confirm_yes_set,"✅ Yes, set as my timezone"
+timezone_input_prompt,"🕐 *Set Timezone*
+
+Please type your timezone name (e.g., ""Europe/Kyiv"", ""America/New_York"", ""Asia/Tokyo""):
+
+You can find timezone names at: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+timezone_update_failed,"❌ Failed to update timezone setting. Please try again."
+timezone_update_success,"✅ Timezone updated to %s"
+unauthorized,"❌ **Access Denied**
+
+You don't have permission to use this command."
+units_choose_prompt,"📏 *Choose your preferred units:*"
+units_imperial,"🌡️ Imperial (°F, mph, miles)"
+units_metric,"🌡️ Metric (°C, km/h, km)"
+units_update_failed,"❌ Failed to update units setting. Please try again."
+units_update_success,"✅ Units updated to %s"
+weather_error,"❌ Failed to get weather for '%s'. Please check the location name."
+weather_location_needed,"📍 Please provide a location or set your location:
+
+/weather London
+or
+/setlocation to set your location"
+welcome_message,"🌤️ Welcome to **ShoPogoda**!
+
+Your personal weather assistant for accurate forecasts, air quality monitoring, and custom weather alerts.
+
+To get started:
+• Use /weather to check current conditions
+• Use /forecast for 5-day predictions
+• Use /setlocation to save your location
+• Use /settings to customize your experience
+
+Type /help for all available commands."
