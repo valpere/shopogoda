@@ -49,6 +49,13 @@ test-e2e: ## Run end-to-end tests
 	@echo "$(CYAN)Running E2E tests...$(NC)"
 	@go test -tags=e2e -v ./tests/e2e/...
 
+benchmark: ## Run benchmark tests
+	@echo "$(CYAN)Running benchmark tests...$(NC)"
+	@go test -bench=. -benchmem -run=^$$ ./...
+
+test-all: test test-integration benchmark ## Run all tests (unit, integration, benchmark)
+	@echo "$(GREEN)All tests completed!$(NC)"
+
 fmt: ## Format Go code
 	@echo "$(CYAN)Formatting Go code...$(NC)"
 	@gofmt -s -w .
@@ -154,7 +161,25 @@ install-tools: ## Install development tools
 	@echo "$(CYAN)Installing development tools...$(NC)"
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@go install golang.org/x/tools/cmd/goimports@latest
+	@go install github.com/golang/mock/mockgen@latest
+	@go install golang.org/x/vuln/cmd/govulncheck@latest
+	@go install github.com/sonatypecommunity/nancy@latest
 	@echo "$(GREEN)Development tools installed$(NC)"
+
+generate-mocks: ## Generate mocks for testing
+	@echo "$(CYAN)Generating mocks...$(NC)"
+	@go generate ./...
+	@echo "$(GREEN)Mocks generated$(NC)"
+
+ci-local: clean generate-mocks fmt lint test test-integration ## Run CI pipeline locally
+	@echo "$(GREEN)Local CI pipeline completed successfully!$(NC)"
+
+security-scan: ## Run security scans
+	@echo "$(CYAN)Running security scans...$(NC)"
+	@gosec -fmt json -out gosec.json ./... || true
+	@govulncheck ./...
+	@go list -json -deps ./... | nancy sleuth || true
+	@echo "$(GREEN)Security scan completed$(NC)"
 
 # Database helpers
 db-reset: ## Reset database (WARNING: destroys all data)

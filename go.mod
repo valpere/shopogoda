@@ -3,9 +3,14 @@ module github.com/valpere/shopogoda
 go 1.24.6
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.25
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-redis/redis/v8 v8.11.5
+	github.com/go-redis/redismock/v9 v9.2.0
+	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
+	github.com/jarcoal/httpmock v1.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.18.0
 	github.com/redis/go-redis/v9 v9.4.0
