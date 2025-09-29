@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-package filter_locales;
+package FilterLocales;
 
 =head1 NAME
 
