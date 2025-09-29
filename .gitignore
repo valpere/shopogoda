@@ -10,6 +10,7 @@
 
 bin/
 dist/
+build/
 
 shopogoda
 

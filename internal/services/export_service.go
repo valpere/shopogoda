@@ -26,37 +26,39 @@ const (
 type ExportType string
 
 const (
-	ExportTypeWeatherData    ExportType = "weather"
-	ExportTypeAlerts         ExportType = "alerts"
-	ExportTypeSubscriptions  ExportType = "subscriptions"
-	ExportTypeAll            ExportType = "all"
+	ExportTypeWeatherData   ExportType = "weather"
+	ExportTypeAlerts        ExportType = "alerts"
+	ExportTypeSubscriptions ExportType = "subscriptions"
+	ExportTypeAll           ExportType = "all"
 )
 
 type ExportService struct {
-	db     *gorm.DB
-	logger *zerolog.Logger
+	db           *gorm.DB
+	logger       *zerolog.Logger
+	localization *LocalizationService
 }
 
 type ExportData struct {
-	User            *models.User                     `json:"user,omitempty"`
-	WeatherData     []models.WeatherData             `json:"weather_data,omitempty"`
-	Subscriptions   []models.Subscription            `json:"subscriptions,omitempty"`
-	AlertConfigs    []models.AlertConfig             `json:"alert_configs,omitempty"`
-	TriggeredAlerts []models.EnvironmentalAlert      `json:"triggered_alerts,omitempty"`
-	ExportedAt      time.Time                        `json:"exported_at"`
-	Format          ExportFormat                     `json:"format"`
-	Type            ExportType                       `json:"type"`
+	User            *models.User                `json:"user,omitempty"`
+	WeatherData     []models.WeatherData        `json:"weather_data,omitempty"`
+	Subscriptions   []models.Subscription       `json:"subscriptions,omitempty"`
+	AlertConfigs    []models.AlertConfig        `json:"alert_configs,omitempty"`
+	TriggeredAlerts []models.EnvironmentalAlert `json:"triggered_alerts,omitempty"`
+	ExportedAt      time.Time                   `json:"exported_at"`
+	Format          ExportFormat                `json:"format"`
+	Type            ExportType                  `json:"type"`
 }
 
-func NewExportService(db *gorm.DB, logger *zerolog.Logger) *ExportService {
+func NewExportService(db *gorm.DB, logger *zerolog.Logger, localization *LocalizationService) *ExportService {
 	return &ExportService{
-		db:     db,
-		logger: logger,
+		db:           db,
+		logger:       logger,
+		localization: localization,
 	}
 }
 
 // ExportUserData exports user's data in the specified format
-func (s *ExportService) ExportUserData(ctx context.Context, userID int64, exportType ExportType, format ExportFormat) (*bytes.Buffer, string, error) {
+func (s *ExportService) ExportUserData(ctx context.Context, userID int64, exportType ExportType, format ExportFormat, userLang string) (*bytes.Buffer, string, error) {
 	s.logger.Info().
 		Int64("user_id", userID).
 		Str("type", string(exportType)).
@@ -124,11 +126,11 @@ func (s *ExportService) ExportUserData(ctx context.Context, userID int64, export
 
 	switch format {
 	case ExportFormatJSON:
-		buffer, filename, err = s.exportToJSON(exportData)
+		buffer, filename, err = s.exportToJSON(exportData, userLang)
 	case ExportFormatCSV:
-		buffer, filename, err = s.exportToCSV(exportData)
+		buffer, filename, err = s.exportToCSV(exportData, userLang)
 	case ExportFormatTXT:
-		buffer, filename, err = s.exportToTXT(exportData)
+		buffer, filename, err = s.exportToTXT(exportData, userLang)
 	default:
 		return nil, "", fmt.Errorf("unsupported export format: %s", format)
 	}
@@ -197,7 +199,7 @@ func (s *ExportService) getSubscriptions(ctx context.Context, userID int64) ([]m
 	return subscriptions, err
 }
 
-func (s *ExportService) exportToJSON(data *ExportData) (*bytes.Buffer, string, error) {
+func (s *ExportService) exportToJSON(data *ExportData, userLang string) (*bytes.Buffer, string, error) {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return nil, "", err
@@ -212,21 +214,38 @@ func (s *ExportService) exportToJSON(data *ExportData) (*bytes.Buffer, string, e
 	return buffer, filename, nil
 }
 
-func (s *ExportService) exportToCSV(data *ExportData) (*bytes.Buffer, string, error) {
+func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.Buffer, string, error) {
 	var buffer bytes.Buffer
 	writer := csv.NewWriter(&buffer)
 
 	// Write user info header
-	writer.Write([]string{"Export Type", string(data.Type)})
-	writer.Write([]string{"User ID", strconv.FormatInt(data.User.ID, 10)})
-	writer.Write([]string{"Username", data.User.Username})
-	writer.Write([]string{"Exported At", data.ExportedAt.Format(time.RFC3339)})
+	exportType := s.localization.T(context.Background(), userLang, "export_type")
+	userID := s.localization.T(context.Background(), userLang, "export_user_id")
+	username := s.localization.T(context.Background(), userLang, "export_username")
+	exportedAt := s.localization.T(context.Background(), userLang, "export_exported_at")
+
+	writer.Write([]string{exportType, string(data.Type)})
+	writer.Write([]string{userID, strconv.FormatInt(data.User.ID, 10)})
+	writer.Write([]string{username, data.User.Username})
+	writer.Write([]string{exportedAt, data.ExportedAt.Format(time.RFC3339)})
 	writer.Write([]string{}) // Empty line
 
 	// Export weather data if present
 	if len(data.WeatherData) > 0 {
-		writer.Write([]string{"Weather Data"})
-		writer.Write([]string{"Timestamp", "Temperature", "Humidity", "Pressure", "Wind Speed", "Wind Degree", "Visibility", "UV Index", "Description", "AQI"})
+		weatherData := s.localization.T(context.Background(), userLang, "export_weather_data")
+		timestamp := s.localization.T(context.Background(), userLang, "export_timestamp")
+		temperature := s.localization.T(context.Background(), userLang, "export_temperature")
+		humidity := s.localization.T(context.Background(), userLang, "export_humidity")
+		pressure := s.localization.T(context.Background(), userLang, "export_pressure")
+		windSpeed := s.localization.T(context.Background(), userLang, "export_wind_speed")
+		windDegree := s.localization.T(context.Background(), userLang, "export_wind_degree")
+		visibility := s.localization.T(context.Background(), userLang, "export_visibility")
+		uvIndex := s.localization.T(context.Background(), userLang, "export_uv_index")
+		description := s.localization.T(context.Background(), userLang, "export_description")
+		aqi := s.localization.T(context.Background(), userLang, "export_aqi")
+
+		writer.Write([]string{weatherData})
+		writer.Write([]string{timestamp, temperature, humidity, pressure, windSpeed, windDegree, visibility, uvIndex, description, aqi})
 
 		for _, weather := range data.WeatherData {
 			writer.Write([]string{
@@ -247,8 +266,15 @@ func (s *ExportService) exportToCSV(data *ExportData) (*bytes.Buffer, string, er
 
 	// Export subscriptions if present
 	if len(data.Subscriptions) > 0 {
-		writer.Write([]string{"Subscriptions"})
-		writer.Write([]string{"Type", "Frequency", "Time Of Day", "Is Active", "Created At"})
+		subscriptions := s.localization.T(context.Background(), userLang, "export_subscriptions")
+		typeLabel := s.localization.T(context.Background(), userLang, "export_type_label")
+		frequency := s.localization.T(context.Background(), userLang, "export_frequency")
+		timeOfDay := s.localization.T(context.Background(), userLang, "export_time_of_day")
+		isActive := s.localization.T(context.Background(), userLang, "export_is_active")
+		createdAt := s.localization.T(context.Background(), userLang, "export_created_at")
+
+		writer.Write([]string{subscriptions})
+		writer.Write([]string{typeLabel, frequency, timeOfDay, isActive, createdAt})
 
 		for _, sub := range data.Subscriptions {
 			writer.Write([]string{
@@ -264,8 +290,15 @@ func (s *ExportService) exportToCSV(data *ExportData) (*bytes.Buffer, string, er
 
 	// Export alert configs if present
 	if len(data.AlertConfigs) > 0 {
-		writer.Write([]string{"Alert Configurations"})
-		writer.Write([]string{"Alert Type", "Condition", "Threshold", "Is Active", "Created At"})
+		alertConfigs := s.localization.T(context.Background(), userLang, "export_alert_configurations")
+		alertType := s.localization.T(context.Background(), userLang, "export_alert_type")
+		condition := s.localization.T(context.Background(), userLang, "export_condition")
+		threshold := s.localization.T(context.Background(), userLang, "export_threshold")
+		isActive := s.localization.T(context.Background(), userLang, "export_is_active")
+		createdAt := s.localization.T(context.Background(), userLang, "export_created_at")
+
+		writer.Write([]string{alertConfigs})
+		writer.Write([]string{alertType, condition, threshold, isActive, createdAt})
 
 		for _, alert := range data.AlertConfigs {
 			writer.Write([]string{
@@ -281,8 +314,17 @@ func (s *ExportService) exportToCSV(data *ExportData) (*bytes.Buffer, string, er
 
 	// Export triggered alerts if present
 	if len(data.TriggeredAlerts) > 0 {
-		writer.Write([]string{"Triggered Alerts"})
-		writer.Write([]string{"Alert Type", "Severity", "Title", "Value", "Threshold", "Is Resolved", "Created At"})
+		triggeredAlerts := s.localization.T(context.Background(), userLang, "export_triggered_alerts")
+		alertType := s.localization.T(context.Background(), userLang, "export_alert_type")
+		severity := s.localization.T(context.Background(), userLang, "export_severity")
+		title := s.localization.T(context.Background(), userLang, "export_title")
+		value := s.localization.T(context.Background(), userLang, "export_value")
+		threshold := s.localization.T(context.Background(), userLang, "export_threshold")
+		isResolved := s.localization.T(context.Background(), userLang, "export_is_resolved")
+		createdAt := s.localization.T(context.Background(), userLang, "export_created_at")
+
+		writer.Write([]string{triggeredAlerts})
+		writer.Write([]string{alertType, severity, title, value, threshold, isResolved, createdAt})
 
 		for _, alert := range data.TriggeredAlerts {
 			writer.Write([]string{
@@ -310,26 +352,39 @@ func (s *ExportService) exportToCSV(data *ExportData) (*bytes.Buffer, string, er
 	return &buffer, filename, nil
 }
 
-func (s *ExportService) exportToTXT(data *ExportData) (*bytes.Buffer, string, error) {
+func (s *ExportService) exportToTXT(data *ExportData, userLang string) (*bytes.Buffer, string, error) {
 	var buffer bytes.Buffer
 
 	// Header
-	buffer.WriteString("ShoPogoda Data Export\n")
+	header := s.localization.T(context.Background(), userLang, "export_data_export_header")
+	exportType := s.localization.T(context.Background(), userLang, "export_type")
+	username := s.localization.T(context.Background(), userLang, "export_username")
+	exportedAt := s.localization.T(context.Background(), userLang, "export_exported_at")
+	userInformation := s.localization.T(context.Background(), userLang, "export_user_information")
+
+	buffer.WriteString(fmt.Sprintf("%s\n", header))
 	buffer.WriteString("=====================\n\n")
-	buffer.WriteString(fmt.Sprintf("Export Type: %s\n", data.Type))
-	buffer.WriteString(fmt.Sprintf("User: %s (ID: %d)\n", data.User.Username, data.User.ID))
-	buffer.WriteString(fmt.Sprintf("Exported At: %s\n\n", data.ExportedAt.Format(time.RFC3339)))
+	buffer.WriteString(fmt.Sprintf("%s: %s\n", exportType, data.Type))
+	buffer.WriteString(fmt.Sprintf("%s: %s (ID: %d)\n", username, data.User.Username, data.User.ID))
+	buffer.WriteString(fmt.Sprintf("%s: %s\n\n", exportedAt, data.ExportedAt.Format(time.RFC3339)))
 
 	// User information
-	buffer.WriteString("User Information:\n")
+	buffer.WriteString(fmt.Sprintf("%s:\n", userInformation))
 	buffer.WriteString("-----------------\n")
-	buffer.WriteString(fmt.Sprintf("Name: %s %s\n", data.User.FirstName, data.User.LastName))
-	buffer.WriteString(fmt.Sprintf("Language: %s\n", data.User.Language))
-	buffer.WriteString(fmt.Sprintf("Units: %s\n", data.User.Units))
-	buffer.WriteString(fmt.Sprintf("Timezone: %s\n", data.User.Timezone))
+	name := s.localization.T(context.Background(), userLang, "export_name")
+	language := s.localization.T(context.Background(), userLang, "export_language")
+	units := s.localization.T(context.Background(), userLang, "export_units")
+	timezone := s.localization.T(context.Background(), userLang, "export_timezone")
+	location := s.localization.T(context.Background(), userLang, "export_location")
+	coordinates := s.localization.T(context.Background(), userLang, "export_coordinates")
+
+	buffer.WriteString(fmt.Sprintf("%s: %s %s\n", name, data.User.FirstName, data.User.LastName))
+	buffer.WriteString(fmt.Sprintf("%s: %s\n", language, data.User.Language))
+	buffer.WriteString(fmt.Sprintf("%s: %s\n", units, data.User.Units))
+	buffer.WriteString(fmt.Sprintf("%s: %s\n", timezone, data.User.Timezone))
 	if data.User.LocationName != "" {
-		buffer.WriteString(fmt.Sprintf("Location: %s (%s, %s)\n", data.User.LocationName, data.User.City, data.User.Country))
-		buffer.WriteString(fmt.Sprintf("Coordinates: %.4f, %.4f\n", data.User.Latitude, data.User.Longitude))
+		buffer.WriteString(fmt.Sprintf("%s: %s (%s, %s)\n", location, data.User.LocationName, data.User.City, data.User.Country))
+		buffer.WriteString(fmt.Sprintf("%s: %.4f, %.4f\n", coordinates, data.User.Latitude, data.User.Longitude))
 	}
 	buffer.WriteString("\n")
 
