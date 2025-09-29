@@ -72,7 +72,7 @@ const my @_OPTIONS => (
     'help|h|?',
     'man',
     'verbose|v',
-    'json=s',
+    'json',
     'keys|k=s',
     'add_empty|ae',
 );
