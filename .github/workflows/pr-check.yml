@@ -133,29 +133,30 @@ jobs:
           fi
         done
 
-    - name: Comment PR with coverage
-      uses: actions/github-script@v7
-      if: github.event.pull_request.head.repo.full_name == github.repository
-      with:
-        script: |
-          const coverage = process.env.COVERAGE;
-          const body = `## Test Coverage Report
-
-          📊 **Coverage**: ${coverage}%
-
-          ${coverage >= 80 ? '✅ Coverage meets minimum requirement (80%)' : '❌ Coverage below minimum requirement (80%)'}
-
-          View detailed coverage report in the Actions artifacts.
-          `;
-
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: body
-          });
-      env:
-        COVERAGE: ${{ steps.coverage.outputs.coverage }}
+    # Disabled due to permissions issue - coverage is already checked above
+    # - name: Comment PR with coverage
+    #   uses: actions/github-script@v7
+    #   if: github.event.pull_request.head.repo.full_name == github.repository
+    #   with:
+    #     script: |
+    #       const coverage = process.env.COVERAGE;
+    #       const body = `## Test Coverage Report
+    #
+    #       📊 **Coverage**: ${coverage}%
+    #
+    #       ${coverage >= 80 ? '✅ Coverage meets minimum requirement (80%)' : '❌ Coverage below minimum requirement (80%)'}
+    #
+    #       View detailed coverage report in the Actions artifacts.
+    #       `;
+    #
+    #       github.rest.issues.createComment({
+    #         issue_number: context.issue.number,
+    #         owner: context.repo.owner,
+    #         repo: context.repo.repo,
+    #         body: body
+    #       });
+    #   env:
+    #     COVERAGE: ${{ steps.coverage.outputs.coverage }}
 
   security-check:
     name: Security Check
