@@ -271,7 +271,7 @@ func TestAlertService_UpdateAlert(t *testing.T) {
 		userID := int64(123)
 		alertID := uuid.New()
 		updates := map[string]interface{}{
-			"threshold":  30.0,
+			"threshold": 30.0,
 			"is_active": false,
 		}
 

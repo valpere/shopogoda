@@ -24,11 +24,11 @@ import (
 )
 
 type IntegrationTestSuite struct {
-	db          *gorm.DB
-	redisClient *redis.Client
-	pgContainer testcontainers.Container
+	db             *gorm.DB
+	redisClient    *redis.Client
+	pgContainer    testcontainers.Container
 	redisContainer testcontainers.Container
-	services    *services.Services
+	services       *services.Services
 }
 
 func setupIntegrationTest(t *testing.T) *IntegrationTestSuite {

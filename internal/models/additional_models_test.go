@@ -136,59 +136,59 @@ func TestFrequency_String(t *testing.T) {
 
 func TestAlertType_String(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		alertType AlertType
-		expected string
+		expected  string
 	}{
 		{
-			name:     "temperature alert",
+			name:      "temperature alert",
 			alertType: AlertTemperature,
-			expected: "Temperature",
+			expected:  "Temperature",
 		},
 		{
-			name:     "humidity alert",
+			name:      "humidity alert",
 			alertType: AlertHumidity,
-			expected: "Humidity",
+			expected:  "Humidity",
 		},
 		{
-			name:     "pressure alert",
+			name:      "pressure alert",
 			alertType: AlertPressure,
-			expected: "Pressure",
+			expected:  "Pressure",
 		},
 		{
-			name:     "wind speed alert",
+			name:      "wind speed alert",
 			alertType: AlertWindSpeed,
-			expected: "Wind Speed",
+			expected:  "Wind Speed",
 		},
 		{
-			name:     "UV index alert",
+			name:      "UV index alert",
 			alertType: AlertUVIndex,
-			expected: "UV Index",
+			expected:  "UV Index",
 		},
 		{
-			name:     "air quality alert",
+			name:      "air quality alert",
 			alertType: AlertAirQuality,
-			expected: "Air Quality",
+			expected:  "Air Quality",
 		},
 		{
-			name:     "rain alert",
+			name:      "rain alert",
 			alertType: AlertRain,
-			expected: "Rain",
+			expected:  "Rain",
 		},
 		{
-			name:     "snow alert",
+			name:      "snow alert",
 			alertType: AlertSnow,
-			expected: "Snow",
+			expected:  "Snow",
 		},
 		{
-			name:     "storm alert",
+			name:      "storm alert",
 			alertType: AlertStorm,
-			expected: "Storm",
+			expected:  "Storm",
 		},
 		{
-			name:     "unknown alert type",
+			name:      "unknown alert type",
 			alertType: AlertType(999),
-			expected: "Unknown",
+			expected:  "Unknown",
 		},
 	}
 

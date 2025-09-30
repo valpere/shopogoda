@@ -28,7 +28,7 @@ func GetTestConfig() *config.Config {
 		},
 		Weather: config.WeatherConfig{
 			OpenWeatherAPIKey: "test_weather_api_key",
-			UserAgent:        "ShoPogoda-Weather-Bot/1.0 (test@shopogoda.bot)",
+			UserAgent:         "ShoPogoda-Weather-Bot/1.0 (test@shopogoda.bot)",
 		},
 		Logging: config.LoggingConfig{
 			Level:  "debug",
@@ -39,7 +39,7 @@ func GetTestConfig() *config.Config {
 		},
 		Integrations: config.IntegrationsConfig{
 			SlackWebhookURL: "https://hooks.slack.com/test",
-			GrafanaURL:     "http://localhost:3001",
+			GrafanaURL:      "http://localhost:3001",
 		},
 	}
 }
@@ -77,7 +77,7 @@ func GetMinimalTestConfig() *config.Config {
 		},
 		Weather: config.WeatherConfig{
 			OpenWeatherAPIKey: "test_key",
-			UserAgent:        "Test-Bot/1.0",
+			UserAgent:         "Test-Bot/1.0",
 		},
 		Logging: config.LoggingConfig{
 			Level:  "debug",

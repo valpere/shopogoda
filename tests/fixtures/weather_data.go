@@ -21,7 +21,7 @@ type OpenWeatherCurrentResponse struct {
 		Speed float64 `json:"speed"`
 		Deg   int     `json:"deg"`
 	} `json:"wind"`
-	Visibility int `json:"visibility"`
+	Visibility int    `json:"visibility"`
 	Name       string `json:"name"`
 	Sys        struct {
 		Country string `json:"country"`

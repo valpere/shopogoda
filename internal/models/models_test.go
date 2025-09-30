@@ -128,23 +128,23 @@ func TestUser_IsAdmin(t *testing.T) {
 		expected bool
 	}{
 		{
-			name: "admin user",
-			user: User{Role: RoleAdmin},
+			name:     "admin user",
+			user:     User{Role: RoleAdmin},
 			expected: true,
 		},
 		{
-			name: "moderator user",
-			user: User{Role: RoleModerator},
+			name:     "moderator user",
+			user:     User{Role: RoleModerator},
 			expected: false,
 		},
 		{
-			name: "regular user",
-			user: User{Role: RoleUser},
+			name:     "regular user",
+			user:     User{Role: RoleUser},
 			expected: false,
 		},
 		{
-			name: "user with undefined role",
-			user: User{Role: UserRole(999)},
+			name:     "user with undefined role",
+			user:     User{Role: UserRole(999)},
 			expected: false,
 		},
 	}
@@ -164,18 +164,18 @@ func TestUser_IsModerator(t *testing.T) {
 		expected bool
 	}{
 		{
-			name: "moderator user",
-			user: User{Role: RoleModerator},
+			name:     "moderator user",
+			user:     User{Role: RoleModerator},
 			expected: true,
 		},
 		{
-			name: "admin user (also moderator)",
-			user: User{Role: RoleAdmin},
+			name:     "admin user (also moderator)",
+			user:     User{Role: RoleAdmin},
 			expected: true,
 		},
 		{
-			name: "regular user",
-			user: User{Role: RoleUser},
+			name:     "regular user",
+			user:     User{Role: RoleUser},
 			expected: false,
 		},
 	}
@@ -440,9 +440,9 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 			name: "daily subscription - should notify",
 			subscription: Subscription{
 				SubscriptionType: SubscriptionDaily,
-				Frequency: FrequencyDaily,
-				TimeOfDay: "08:00",
-				IsActive:  true,
+				Frequency:        FrequencyDaily,
+				TimeOfDay:        "08:00",
+				IsActive:         true,
 			},
 			currentTime: mockTime,
 			expected:    true,
@@ -451,9 +451,9 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 			name: "weekly subscription on Sunday - should notify",
 			subscription: Subscription{
 				SubscriptionType: SubscriptionWeekly,
-				Frequency: FrequencyWeekly,
-				TimeOfDay: "08:00",
-				IsActive:  true,
+				Frequency:        FrequencyWeekly,
+				TimeOfDay:        "08:00",
+				IsActive:         true,
 			},
 			currentTime: mockTime, // Sunday
 			expected:    true,
@@ -462,9 +462,9 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 			name: "weekly subscription on Monday - should not notify",
 			subscription: Subscription{
 				SubscriptionType: SubscriptionWeekly,
-				Frequency: FrequencyWeekly,
-				TimeOfDay: "08:00",
-				IsActive:  true,
+				Frequency:        FrequencyWeekly,
+				TimeOfDay:        "08:00",
+				IsActive:         true,
 			},
 			currentTime: mockTime.AddDate(0, 0, 1), // Monday
 			expected:    false,
@@ -473,9 +473,9 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 			name: "inactive subscription - should not notify",
 			subscription: Subscription{
 				SubscriptionType: SubscriptionDaily,
-				Frequency: FrequencyDaily,
-				TimeOfDay: "08:00",
-				IsActive:  false,
+				Frequency:        FrequencyDaily,
+				TimeOfDay:        "08:00",
+				IsActive:         false,
 			},
 			currentTime: mockTime,
 			expected:    false,
@@ -484,9 +484,9 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 			name: "wrong time - should not notify",
 			subscription: Subscription{
 				SubscriptionType: SubscriptionDaily,
-				Frequency: FrequencyDaily,
-				TimeOfDay: "09:00",
-				IsActive:  true,
+				Frequency:        FrequencyDaily,
+				TimeOfDay:        "09:00",
+				IsActive:         true,
 			},
 			currentTime: mockTime,
 			expected:    false,
