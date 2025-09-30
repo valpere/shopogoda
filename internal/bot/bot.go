@@ -297,7 +297,9 @@ func (b *Bot) Stop() error {
 	b.logger.Info().Msg("Stopping ShoPogoda bot...")
 
 	// Stop updater
-	b.updater.Stop()
+	if err := b.updater.Stop(); err != nil {
+		b.logger.Error().Err(err).Msg("Updater stop error")
+	}
 
 	// Shutdown HTTP server
 	if b.server != nil {

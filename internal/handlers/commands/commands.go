@@ -955,36 +955,6 @@ PM2.5: %.1f | PM10: %.1f
 		updated, weather.Timestamp.Format("15:04 UTC"))
 }
 
-// Additional helper methods...
-func (h *CommandHandler) getRoleName(role models.UserRole) string {
-	switch role {
-	case models.RoleAdmin:
-		return "Administrator"
-	case models.RoleModerator:
-		return "Moderator"
-	default:
-		return "User"
-	}
-}
-
-func (h *CommandHandler) getStatusText(isActive bool) string {
-	if isActive {
-		return "Active"
-	}
-	return "Inactive"
-}
-
-func (h *CommandHandler) getUnitsText(units, language string) string {
-	switch units {
-	case "metric":
-		return h.services.Localization.T(context.Background(), language, "units_metric_text")
-	case "imperial":
-		return h.services.Localization.T(context.Background(), language, "units_imperial_text")
-	default:
-		return units
-	}
-}
-
 func (h *CommandHandler) getAQIDescription(aqi int, language string) string {
 	switch {
 	case aqi <= 50:

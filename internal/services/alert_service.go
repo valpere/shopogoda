@@ -72,7 +72,10 @@ func (s *AlertService) CheckAlerts(ctx context.Context, weatherData *models.Weat
 
 	for _, config := range alertConfigs {
 		var condition AlertCondition
-		json.Unmarshal([]byte(config.Condition), &condition)
+		if err := json.Unmarshal([]byte(config.Condition), &condition); err != nil {
+			// Skip this alert config if condition cannot be unmarshalled
+			continue
+		}
 
 		var currentValue float64
 		var alertTitle, alertDescription string
