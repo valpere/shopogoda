@@ -186,20 +186,40 @@ func (s *AlertService) calculateSeverity(alertType models.AlertType, currentValu
 
 // DeleteAlert marks an alert as inactive
 func (s *AlertService) DeleteAlert(ctx context.Context, userID int64, alertID uuid.UUID) error {
-	return s.db.WithContext(ctx).
+	result := s.db.WithContext(ctx).
 		Model(&models.AlertConfig{}).
 		Where("id = ? AND user_id = ?", alertID, userID).
-		Update("is_active", false).Error
+		Update("is_active", false)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("alert not found")
+	}
+
+	return nil
 }
 
 // UpdateAlert updates an existing alert configuration
 func (s *AlertService) UpdateAlert(ctx context.Context, userID int64, alertID uuid.UUID, updates map[string]interface{}) error {
 	updates["updated_at"] = time.Now().UTC()
 
-	return s.db.WithContext(ctx).
+	result := s.db.WithContext(ctx).
 		Model(&models.AlertConfig{}).
 		Where("id = ? AND user_id = ?", alertID, userID).
-		Updates(updates).Error
+		Updates(updates)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("alert not found")
+	}
+
+	return nil
 }
 
 // GetAlert retrieves a specific alert by ID and user ID

@@ -2,11 +2,11 @@ package helpers
 
 import (
 	"database/sql/driver"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -63,14 +63,14 @@ func MockUser(userID int64) *models.User {
 		FirstName:    "Test",
 		LastName:     "User",
 		Username:     "testuser",
-		LanguageCode: "en",
+		Language:     "en",
 		LocationName: "Test City",
 		Latitude:     51.5074,
 		Longitude:    -0.1278,
 		Country:      "UK",
 		City:         "London",
 		Timezone:     "Europe/London",
-		Role:         models.UserRole,
+		Role:         models.RoleUser,
 		CreatedAt:    time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
 		UpdatedAt:    time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
@@ -79,56 +79,67 @@ func MockUser(userID int64) *models.User {
 // MockWeatherData creates mock weather data for testing
 func MockWeatherData(userID int64) *models.WeatherData {
 	return &models.WeatherData{
-		UserID:       userID,
-		LocationName: "Test City",
-		Temperature:  20.5,
-		FeelsLike:    22.0,
-		Humidity:     65,
-		Pressure:     1013,
-		Visibility:   10,
-		UVIndex:      3,
-		WindSpeed:    5.2,
-		WindDirection: 180,
-		Description:  "Clear sky",
-		AQI:          2,
-		CO:           0.3,
-		NO:           0.1,
-		NO2:          15.2,
-		O3:           45.3,
-		SO2:          2.1,
-		PM25:         8.5,
-		PM10:         12.3,
-		NH3:          1.2,
-		Timestamp:    time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+		UserID:      userID,
+		Temperature: 20.5,
+		Humidity:    65,
+		Pressure:    1013,
+		Visibility:  10,
+		UVIndex:     3,
+		WindSpeed:   5.2,
+		WindDegree:  180,
+		Description: "Clear sky",
+		AQI:         2,
+		CO:          0.3,
+		NO2:         15.2,
+		O3:          45.3,
+		PM25:        8.5,
+		PM10:        12.3,
+		Timestamp:   time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+		CreatedAt:   time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
 	}
 }
 
-// MockAlert creates a mock alert for testing
+// MockAlert creates a mock environmental alert for testing
 func MockAlert(userID int64) *models.EnvironmentalAlert {
 	return &models.EnvironmentalAlert{
-		UserID:    userID,
-		Type:      models.AlertTemperature,
-		Threshold: 25.0,
-		Condition: "greater_than",
-		Value:     26.5,
-		Severity:  models.SeverityMedium,
-		Title:     "High Temperature Alert",
+		ID:          uuid.New(),
+		UserID:      userID,
+		AlertType:   models.AlertTemperature,
+		Threshold:   25.0,
+		Value:       26.5,
+		Severity:    models.SeverityMedium,
+		Title:       "High Temperature Alert",
 		Description: "Temperature exceeded threshold",
+		IsResolved:  false,
+		CreatedAt:   time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:   time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+}
+
+// MockAlertConfig creates a mock alert config for testing
+func MockAlertConfig(userID int64) *models.AlertConfig {
+	return &models.AlertConfig{
+		ID:        uuid.New(),
+		UserID:    userID,
+		AlertType: models.AlertTemperature,
+		Condition: `{"operator":"gt","value":25.0}`,
+		Threshold: 25.0,
 		IsActive:  true,
 		CreatedAt: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
-		TriggeredAt: &[]time.Time{time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)}[0],
+		UpdatedAt: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 }
 
 // MockSubscription creates a mock subscription for testing
 func MockSubscription(userID int64) *models.Subscription {
 	return &models.Subscription{
-		UserID:      userID,
-		Type:        models.SubscriptionDaily,
-		Frequency:   models.FrequencyDaily,
-		TimeOfDay:   "08:00",
-		IsActive:    true,
-		CreatedAt:   time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+		UserID:           userID,
+		SubscriptionType: models.SubscriptionDaily,
+		Frequency:        models.FrequencyDaily,
+		TimeOfDay:        "08:00",
+		IsActive:         true,
+		CreatedAt:        time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:        time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 }
 
@@ -154,6 +165,14 @@ func (a AnyUUID) Match(v driver.Value) bool {
 	return len(s) == 36 && s[8] == '-' && s[13] == '-' && s[18] == '-' && s[23] == '-'
 }
 
+// AnyValue is a custom matcher for any value in SQL mocks
+type AnyValue struct{}
+
+// Match implements the driver.Valuer interface
+func (a AnyValue) Match(v driver.Value) bool {
+	return true // Matches any value
+}
+
 // ExpectUserCreate sets up expectations for creating a user
 func (m *MockDB) ExpectUserCreate() {
 	m.Mock.ExpectBegin()
@@ -166,11 +185,11 @@ func (m *MockDB) ExpectUserCreate() {
 // ExpectUserFind sets up expectations for finding a user
 func (m *MockDB) ExpectUserFind(userID int64, user *models.User) {
 	rows := sqlmock.NewRows([]string{
-		"id", "first_name", "last_name", "username", "language_code",
+		"id", "first_name", "last_name", "username", "language",
 		"location_name", "latitude", "longitude", "country", "city", "timezone",
 		"role", "created_at", "updated_at",
 	}).AddRow(
-		user.ID, user.FirstName, user.LastName, user.Username, user.LanguageCode,
+		user.ID, user.FirstName, user.LastName, user.Username, user.Language,
 		user.LocationName, user.Latitude, user.Longitude, user.Country, user.City,
 		user.Timezone, user.Role, user.CreatedAt, user.UpdatedAt,
 	)

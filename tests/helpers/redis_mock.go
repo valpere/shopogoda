@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"testing"
+	"time"
 
 	"github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
@@ -15,7 +16,7 @@ type MockRedis struct {
 }
 
 // NewMockRedis creates a new mock Redis client
-func NewMockRedis(t *testing.T) *MockRedis {
+func NewMockRedis() *MockRedis {
 	client, mock := redismock.NewClientMock()
 
 	return &MockRedis{
@@ -51,7 +52,7 @@ func (m *MockRedis) ExpectCacheSet(key, value string) {
 
 // ExpectCacheSetWithTTL sets up expectation for setting a cache value with TTL
 func (m *MockRedis) ExpectCacheSetWithTTL(key, value string, ttlSeconds int) {
-	m.Mock.ExpectSetEx(key, value, ttlSeconds).SetVal("OK")
+	m.Mock.ExpectSetEx(key, value, time.Duration(ttlSeconds)*time.Second).SetVal("OK")
 }
 
 // ExpectCacheDel sets up expectation for deleting a cache key
@@ -80,7 +81,7 @@ func (m *MockRedis) ExpectExists(key string, exists bool) {
 
 // ExpectTTL sets up expectation for getting TTL
 func (m *MockRedis) ExpectTTL(key string, ttlSeconds int) {
-	m.Mock.ExpectTTL(key).SetVal(int64(ttlSeconds))
+	m.Mock.ExpectTTL(key).SetVal(time.Duration(ttlSeconds) * time.Second)
 }
 
 // ExpectHSet sets up expectation for setting hash field

@@ -5,16 +5,18 @@ import (
 	"time"
 
 	"github.com/valpere/shopogoda/internal/models"
+	"github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/pkg/weather"
 )
 
 //go:generate mockgen -source=services.go -destination=../tests/mocks/services_mock.go -package=mocks
 
 // WeatherServiceInterface defines the interface for weather service operations
 type WeatherServiceInterface interface {
-	GeocodeLocation(ctx context.Context, location string) (*models.Coordinates, error)
-	GetCurrentWeather(ctx context.Context, lat, lon float64) (*models.WeatherData, error)
-	GetForecast(ctx context.Context, lat, lon float64) ([]models.WeatherData, error)
-	GetAirQuality(ctx context.Context, lat, lon float64) (*models.AirQualityData, error)
+	GeocodeLocation(ctx context.Context, location string) (*weather.Location, error)
+	GetCurrentWeather(ctx context.Context, lat, lon float64) (*services.WeatherData, error)
+	GetForecast(ctx context.Context, lat, lon float64) ([]services.WeatherData, error)
+	GetAirQuality(ctx context.Context, lat, lon float64) (*weather.AirQualityData, error)
 	SaveWeatherData(ctx context.Context, data *models.WeatherData) error
 }
 
@@ -43,17 +45,17 @@ type AlertServiceInterface interface {
 	GetUserAlerts(ctx context.Context, userID int64) ([]*models.EnvironmentalAlert, error)
 	UpdateAlert(ctx context.Context, alert *models.EnvironmentalAlert) error
 	DeleteAlert(ctx context.Context, alertID string) error
-	CheckAlertsForUser(ctx context.Context, userID int64, weatherData *models.WeatherData) ([]*models.EnvironmentalAlert, error)
+	CheckAlertsForUser(ctx context.Context, userID int64, weatherData *services.WeatherData) ([]*models.EnvironmentalAlert, error)
 	TriggerAlert(ctx context.Context, alert *models.EnvironmentalAlert, value float64) error
 }
 
 // NotificationServiceInterface defines the interface for notification service operations
 type NotificationServiceInterface interface {
 	SendSlackAlert(alert *models.EnvironmentalAlert, user *models.User) error
-	SendSlackWeatherUpdate(weatherData *models.WeatherData, subscribers []models.User) error
+	SendSlackWeatherUpdate(weatherData *services.WeatherData, subscribers []models.User) error
 	SendTelegramAlert(alert *models.EnvironmentalAlert, user *models.User) error
-	SendTelegramWeatherUpdate(weatherData *models.WeatherData, user *models.User) error
-	SendTelegramWeeklyUpdate(weatherData *models.WeatherData, user *models.User) error
+	SendTelegramWeatherUpdate(weatherData *services.WeatherData, user *models.User) error
+	SendTelegramWeeklyUpdate(weatherData *services.WeatherData, user *models.User) error
 }
 
 // SubscriptionServiceInterface defines the interface for subscription service operations
@@ -76,10 +78,10 @@ type LocalizationServiceInterface interface {
 
 // ExportServiceInterface defines the interface for export service operations
 type ExportServiceInterface interface {
-	ExportUserData(ctx context.Context, userID int64, format models.ExportFormat, dataType models.ExportType) ([]byte, error)
-	ExportWeatherData(ctx context.Context, userID int64, format models.ExportFormat) ([]byte, error)
-	ExportAlerts(ctx context.Context, userID int64, format models.ExportFormat) ([]byte, error)
-	ExportSubscriptions(ctx context.Context, userID int64, format models.ExportFormat) ([]byte, error)
+	ExportUserData(ctx context.Context, userID int64, format services.ExportFormat, dataType services.ExportType) ([]byte, error)
+	ExportWeatherData(ctx context.Context, userID int64, format services.ExportFormat) ([]byte, error)
+	ExportAlerts(ctx context.Context, userID int64, format services.ExportFormat) ([]byte, error)
+	ExportSubscriptions(ctx context.Context, userID int64, format services.ExportFormat) ([]byte, error)
 }
 
 // SchedulerServiceInterface defines the interface for scheduler service operations

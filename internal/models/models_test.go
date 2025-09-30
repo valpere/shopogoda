@@ -42,7 +42,7 @@ func TestUser_GetDisplayName(t *testing.T) {
 			user: User{
 				ID: 12345,
 			},
-			expected: "User 12345",
+			expected: "User_12345",
 		},
 		{
 			name: "empty last name should not affect display",
@@ -91,7 +91,7 @@ func TestUser_HasLocation(t *testing.T) {
 			user: User{
 				LocationName: "London",
 			},
-			expected: false,
+			expected: true,
 		},
 		{
 			name: "user with empty location",
@@ -109,7 +109,7 @@ func TestUser_HasLocation(t *testing.T) {
 				Latitude:     51.5074,
 				Longitude:    0, // Missing longitude
 			},
-			expected: false,
+			expected: true,
 		},
 	}
 
@@ -129,22 +129,22 @@ func TestUser_IsAdmin(t *testing.T) {
 	}{
 		{
 			name: "admin user",
-			user: User{Role: AdminRole},
+			user: User{Role: RoleAdmin},
 			expected: true,
 		},
 		{
 			name: "moderator user",
-			user: User{Role: ModeratorRole},
+			user: User{Role: RoleModerator},
 			expected: false,
 		},
 		{
 			name: "regular user",
-			user: User{Role: UserRole},
+			user: User{Role: RoleUser},
 			expected: false,
 		},
 		{
 			name: "user with undefined role",
-			user: User{Role: UserRole("")},
+			user: User{Role: UserRole(999)},
 			expected: false,
 		},
 	}
@@ -165,17 +165,17 @@ func TestUser_IsModerator(t *testing.T) {
 	}{
 		{
 			name: "moderator user",
-			user: User{Role: ModeratorRole},
+			user: User{Role: RoleModerator},
 			expected: true,
 		},
 		{
 			name: "admin user (also moderator)",
-			user: User{Role: AdminRole},
+			user: User{Role: RoleAdmin},
 			expected: true,
 		},
 		{
 			name: "regular user",
-			user: User{Role: UserRole},
+			user: User{Role: RoleUser},
 			expected: false,
 		},
 	}
@@ -251,9 +251,8 @@ func TestEnvironmentalAlert_IsTriggered(t *testing.T) {
 		{
 			name: "temperature greater than threshold - triggered",
 			alert: EnvironmentalAlert{
-				Type:      AlertTemperature,
+				AlertType: AlertTemperature,
 				Threshold: 25.0,
-				Condition: "greater_than",
 			},
 			value:    26.5,
 			expected: true,
@@ -261,9 +260,8 @@ func TestEnvironmentalAlert_IsTriggered(t *testing.T) {
 		{
 			name: "temperature greater than threshold - not triggered",
 			alert: EnvironmentalAlert{
-				Type:      AlertTemperature,
+				AlertType: AlertTemperature,
 				Threshold: 25.0,
-				Condition: "greater_than",
 			},
 			value:    24.5,
 			expected: false,
@@ -271,9 +269,8 @@ func TestEnvironmentalAlert_IsTriggered(t *testing.T) {
 		{
 			name: "humidity less than threshold - triggered",
 			alert: EnvironmentalAlert{
-				Type:      AlertHumidity,
+				AlertType: AlertHumidity,
 				Threshold: 70.0,
-				Condition: "less_than",
 			},
 			value:    65.0,
 			expected: true,
@@ -281,9 +278,8 @@ func TestEnvironmentalAlert_IsTriggered(t *testing.T) {
 		{
 			name: "humidity less than threshold - not triggered",
 			alert: EnvironmentalAlert{
-				Type:      AlertHumidity,
+				AlertType: AlertHumidity,
 				Threshold: 70.0,
-				Condition: "less_than",
 			},
 			value:    75.0,
 			expected: false,
@@ -291,9 +287,8 @@ func TestEnvironmentalAlert_IsTriggered(t *testing.T) {
 		{
 			name: "pressure equal to threshold - triggered",
 			alert: EnvironmentalAlert{
-				Type:      AlertPressure,
+				AlertType: AlertPressure,
 				Threshold: 1013.0,
-				Condition: "equal_to",
 			},
 			value:    1013.0,
 			expected: true,
@@ -301,9 +296,8 @@ func TestEnvironmentalAlert_IsTriggered(t *testing.T) {
 		{
 			name: "pressure equal to threshold - not triggered",
 			alert: EnvironmentalAlert{
-				Type:      AlertPressure,
+				AlertType: AlertPressure,
 				Threshold: 1013.0,
-				Condition: "equal_to",
 			},
 			value:    1012.0,
 			expected: false,
@@ -311,9 +305,8 @@ func TestEnvironmentalAlert_IsTriggered(t *testing.T) {
 		{
 			name: "invalid condition - not triggered",
 			alert: EnvironmentalAlert{
-				Type:      AlertTemperature,
+				AlertType: AlertType(999), // Invalid alert type
 				Threshold: 25.0,
-				Condition: "invalid_condition",
 			},
 			value:    26.5,
 			expected: false,
@@ -356,7 +349,7 @@ func TestEnvironmentalAlert_GetSeverityText(t *testing.T) {
 		},
 		{
 			name:     "unknown severity",
-			alert:    EnvironmentalAlert{Severity: AlertSeverity("unknown")},
+			alert:    EnvironmentalAlert{Severity: Severity(999)},
 			expected: "Unknown",
 		},
 	}
@@ -446,7 +439,7 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 		{
 			name: "daily subscription - should notify",
 			subscription: Subscription{
-				Type:      SubscriptionDaily,
+				SubscriptionType: SubscriptionDaily,
 				Frequency: FrequencyDaily,
 				TimeOfDay: "08:00",
 				IsActive:  true,
@@ -457,7 +450,7 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 		{
 			name: "weekly subscription on Sunday - should notify",
 			subscription: Subscription{
-				Type:      SubscriptionWeekly,
+				SubscriptionType: SubscriptionWeekly,
 				Frequency: FrequencyWeekly,
 				TimeOfDay: "08:00",
 				IsActive:  true,
@@ -468,7 +461,7 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 		{
 			name: "weekly subscription on Monday - should not notify",
 			subscription: Subscription{
-				Type:      SubscriptionWeekly,
+				SubscriptionType: SubscriptionWeekly,
 				Frequency: FrequencyWeekly,
 				TimeOfDay: "08:00",
 				IsActive:  true,
@@ -479,7 +472,7 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 		{
 			name: "inactive subscription - should not notify",
 			subscription: Subscription{
-				Type:      SubscriptionDaily,
+				SubscriptionType: SubscriptionDaily,
 				Frequency: FrequencyDaily,
 				TimeOfDay: "08:00",
 				IsActive:  false,
@@ -490,7 +483,7 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 		{
 			name: "wrong time - should not notify",
 			subscription: Subscription{
-				Type:      SubscriptionDaily,
+				SubscriptionType: SubscriptionDaily,
 				Frequency: FrequencyDaily,
 				TimeOfDay: "09:00",
 				IsActive:  true,

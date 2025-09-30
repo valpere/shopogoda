@@ -11,6 +11,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	models "github.com/valpere/shopogoda/internal/models"
+	services "github.com/valpere/shopogoda/internal/services"
+	weather "github.com/valpere/shopogoda/pkg/weather"
 )
 
 // MockWeatherServiceInterface is a mock of WeatherServiceInterface interface.
@@ -37,10 +39,10 @@ func (m *MockWeatherServiceInterface) EXPECT() *MockWeatherServiceInterfaceMockR
 }
 
 // GeocodeLocation mocks base method.
-func (m *MockWeatherServiceInterface) GeocodeLocation(ctx context.Context, location string) (*models.Coordinates, error) {
+func (m *MockWeatherServiceInterface) GeocodeLocation(ctx context.Context, location string) (*weather.Location, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GeocodeLocation", ctx, location)
-	ret0, _ := ret[0].(*models.Coordinates)
+	ret0, _ := ret[0].(*weather.Location)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -52,10 +54,10 @@ func (mr *MockWeatherServiceInterfaceMockRecorder) GeocodeLocation(ctx, location
 }
 
 // GetAirQuality mocks base method.
-func (m *MockWeatherServiceInterface) GetAirQuality(ctx context.Context, lat, lon float64) (*models.AirQualityData, error) {
+func (m *MockWeatherServiceInterface) GetAirQuality(ctx context.Context, lat, lon float64) (*weather.AirQualityData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAirQuality", ctx, lat, lon)
-	ret0, _ := ret[0].(*models.AirQualityData)
+	ret0, _ := ret[0].(*weather.AirQualityData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -67,10 +69,10 @@ func (mr *MockWeatherServiceInterfaceMockRecorder) GetAirQuality(ctx, lat, lon i
 }
 
 // GetCurrentWeather mocks base method.
-func (m *MockWeatherServiceInterface) GetCurrentWeather(ctx context.Context, lat, lon float64) (*models.WeatherData, error) {
+func (m *MockWeatherServiceInterface) GetCurrentWeather(ctx context.Context, lat, lon float64) (*services.WeatherData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCurrentWeather", ctx, lat, lon)
-	ret0, _ := ret[0].(*models.WeatherData)
+	ret0, _ := ret[0].(*services.WeatherData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -82,10 +84,10 @@ func (mr *MockWeatherServiceInterfaceMockRecorder) GetCurrentWeather(ctx, lat, l
 }
 
 // GetForecast mocks base method.
-func (m *MockWeatherServiceInterface) GetForecast(ctx context.Context, lat, lon float64) ([]models.WeatherData, error) {
+func (m *MockWeatherServiceInterface) GetForecast(ctx context.Context, lat, lon float64) ([]services.WeatherData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetForecast", ctx, lat, lon)
-	ret0, _ := ret[0].([]models.WeatherData)
+	ret0, _ := ret[0].([]services.WeatherData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -358,7 +360,7 @@ func (m *MockAlertServiceInterface) EXPECT() *MockAlertServiceInterfaceMockRecor
 }
 
 // CheckAlertsForUser mocks base method.
-func (m *MockAlertServiceInterface) CheckAlertsForUser(ctx context.Context, userID int64, weatherData *models.WeatherData) ([]*models.EnvironmentalAlert, error) {
+func (m *MockAlertServiceInterface) CheckAlertsForUser(ctx context.Context, userID int64, weatherData *services.WeatherData) ([]*models.EnvironmentalAlert, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckAlertsForUser", ctx, userID, weatherData)
 	ret0, _ := ret[0].([]*models.EnvironmentalAlert)
@@ -496,7 +498,7 @@ func (mr *MockNotificationServiceInterfaceMockRecorder) SendSlackAlert(alert, us
 }
 
 // SendSlackWeatherUpdate mocks base method.
-func (m *MockNotificationServiceInterface) SendSlackWeatherUpdate(weatherData *models.WeatherData, subscribers []models.User) error {
+func (m *MockNotificationServiceInterface) SendSlackWeatherUpdate(weatherData *services.WeatherData, subscribers []models.User) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendSlackWeatherUpdate", weatherData, subscribers)
 	ret0, _ := ret[0].(error)
@@ -524,7 +526,7 @@ func (mr *MockNotificationServiceInterfaceMockRecorder) SendTelegramAlert(alert,
 }
 
 // SendTelegramWeatherUpdate mocks base method.
-func (m *MockNotificationServiceInterface) SendTelegramWeatherUpdate(weatherData *models.WeatherData, user *models.User) error {
+func (m *MockNotificationServiceInterface) SendTelegramWeatherUpdate(weatherData *services.WeatherData, user *models.User) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendTelegramWeatherUpdate", weatherData, user)
 	ret0, _ := ret[0].(error)
@@ -538,7 +540,7 @@ func (mr *MockNotificationServiceInterfaceMockRecorder) SendTelegramWeatherUpdat
 }
 
 // SendTelegramWeeklyUpdate mocks base method.
-func (m *MockNotificationServiceInterface) SendTelegramWeeklyUpdate(weatherData *models.WeatherData, user *models.User) error {
+func (m *MockNotificationServiceInterface) SendTelegramWeeklyUpdate(weatherData *services.WeatherData, user *models.User) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendTelegramWeeklyUpdate", weatherData, user)
 	ret0, _ := ret[0].(error)
@@ -770,7 +772,7 @@ func (m *MockExportServiceInterface) EXPECT() *MockExportServiceInterfaceMockRec
 }
 
 // ExportAlerts mocks base method.
-func (m *MockExportServiceInterface) ExportAlerts(ctx context.Context, userID int64, format models.ExportFormat) ([]byte, error) {
+func (m *MockExportServiceInterface) ExportAlerts(ctx context.Context, userID int64, format services.ExportFormat) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExportAlerts", ctx, userID, format)
 	ret0, _ := ret[0].([]byte)
@@ -785,7 +787,7 @@ func (mr *MockExportServiceInterfaceMockRecorder) ExportAlerts(ctx, userID, form
 }
 
 // ExportSubscriptions mocks base method.
-func (m *MockExportServiceInterface) ExportSubscriptions(ctx context.Context, userID int64, format models.ExportFormat) ([]byte, error) {
+func (m *MockExportServiceInterface) ExportSubscriptions(ctx context.Context, userID int64, format services.ExportFormat) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExportSubscriptions", ctx, userID, format)
 	ret0, _ := ret[0].([]byte)
@@ -800,7 +802,7 @@ func (mr *MockExportServiceInterfaceMockRecorder) ExportSubscriptions(ctx, userI
 }
 
 // ExportUserData mocks base method.
-func (m *MockExportServiceInterface) ExportUserData(ctx context.Context, userID int64, format models.ExportFormat, dataType models.ExportType) ([]byte, error) {
+func (m *MockExportServiceInterface) ExportUserData(ctx context.Context, userID int64, format services.ExportFormat, dataType services.ExportType) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExportUserData", ctx, userID, format, dataType)
 	ret0, _ := ret[0].([]byte)
@@ -815,7 +817,7 @@ func (mr *MockExportServiceInterfaceMockRecorder) ExportUserData(ctx, userID, fo
 }
 
 // ExportWeatherData mocks base method.
-func (m *MockExportServiceInterface) ExportWeatherData(ctx context.Context, userID int64, format models.ExportFormat) ([]byte, error) {
+func (m *MockExportServiceInterface) ExportWeatherData(ctx context.Context, userID int64, format services.ExportFormat) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExportWeatherData", ctx, userID, format)
 	ret0, _ := ret[0].([]byte)
