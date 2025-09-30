@@ -1,0 +1,209 @@
+name: Pull Request Check
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  GO_VERSION: 1.21
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Verify dependencies
+      run: go mod verify
+
+    - name: Check formatting
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted correctly:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+    - name: Run vet
+      run: go vet ./...
+
+    - name: Generate mocks
+      run: |
+        go install github.com/golang/mock/mockgen@latest
+        go generate ./...
+
+    - name: Run linter
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        args: --timeout=5m
+        only-new-issues: true
+
+    - name: Run tests
+      env:
+        WB_DATABASE_HOST: localhost
+        WB_DATABASE_PORT: 5432
+        WB_DATABASE_USER: testuser
+        WB_DATABASE_PASSWORD: testpass
+        WB_DATABASE_NAME: testdb
+        WB_DATABASE_SSLMODE: disable
+        WB_REDIS_ADDR: localhost:6379
+        WB_REDIS_PASSWORD: ""
+        WB_BOT_TOKEN: "test_token"
+        WB_WEATHER_API_KEY: "test_api_key"
+      run: |
+        go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Check test coverage
+      run: |
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+        echo "Test coverage: ${COVERAGE}%"
+        if (( $(echo "$COVERAGE < 80.0" | bc -l) )); then
+          echo "::error::Test coverage ${COVERAGE}% is below required 80%"
+          exit 1
+        fi
+
+    - name: Build application
+      run: go build -v ./cmd/bot
+
+    - name: Check for breaking changes
+      run: |
+        echo "Checking for potential breaking changes..."
+        # Check if any public interfaces have been modified
+        git diff origin/main...HEAD --name-only | grep -E "\.(go)$" | while read file; do
+          if git diff origin/main...HEAD "$file" | grep -E "^-.*func.*\(.*\).*{" | grep -v "^-.*func.*Test"; then
+            echo "::warning file=$file::Potential breaking change detected in public function signature"
+          fi
+        done
+
+    - name: Check commit messages
+      run: |
+        # Check if commit messages follow conventional commit format
+        git log --oneline origin/main..HEAD | while read line; do
+          if ! echo "$line" | grep -qE "^[a-f0-9]+ (feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+"; then
+            echo "::warning::Commit message should follow conventional commit format: $line"
+          fi
+        done
+
+    - name: Comment PR with coverage
+      uses: actions/github-script@v7
+      if: github.event.pull_request.head.repo.full_name == github.repository
+      with:
+        script: |
+          const coverage = process.env.COVERAGE;
+          const body = `## Test Coverage Report
+
+          📊 **Coverage**: ${coverage}%
+
+          ${coverage >= 80 ? '✅ Coverage meets minimum requirement (80%)' : '❌ Coverage below minimum requirement (80%)'}
+
+          View detailed coverage report in the Actions artifacts.
+          `;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+      env:
+        COVERAGE: ${{ steps.coverage.outputs.coverage }}
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run security scan
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-fmt json -out gosec.json ./...'
+
+    - name: Check for high severity issues
+      run: |
+        if [ -f gosec.json ]; then
+          HIGH_ISSUES=$(jq '[.Issues[] | select(.Severity == "HIGH")] | length' gosec.json)
+          if [ "$HIGH_ISSUES" -gt 0 ]; then
+            echo "::error::Found $HIGH_ISSUES high severity security issues"
+            jq -r '.Issues[] | select(.Severity == "HIGH") | "::error file=\(.File),line=\(.Line)::\(.What) - \(.Details)"' gosec.json
+            exit 1
+          fi
+        fi
+
+  build-test:
+    name: Build Test
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        tags: shopogoda:pr-${{ github.event.pull_request.number }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
