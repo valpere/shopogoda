@@ -1294,7 +1294,6 @@ func (h *CommandHandler) handleWeatherCallback(bot *gotgbot.Bot, ctx *ext.Contex
 
 		return h.getWeatherForLocation(bot, ctx, locationName)
 	}
-	return nil
 }
 
 // Helper function to get weather for a specific location
