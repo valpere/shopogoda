@@ -224,11 +224,11 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 	username := s.localization.T(context.Background(), userLang, "export_username")
 	exportedAt := s.localization.T(context.Background(), userLang, "export_exported_at")
 
-	writer.Write([]string{exportType, string(data.Type)})
-	writer.Write([]string{userID, strconv.FormatInt(data.User.ID, 10)})
-	writer.Write([]string{username, data.User.Username})
-	writer.Write([]string{exportedAt, data.ExportedAt.Format(time.RFC3339)})
-	writer.Write([]string{}) // Empty line
+	_ = writer.Write([]string{exportType, string(data.Type)})
+	_ = writer.Write([]string{userID, strconv.FormatInt(data.User.ID, 10)})
+	_ = writer.Write([]string{username, data.User.Username})
+	_ = writer.Write([]string{exportedAt, data.ExportedAt.Format(time.RFC3339)})
+	_ = writer.Write([]string{}) // Empty line
 
 	// Export weather data if present
 	if len(data.WeatherData) > 0 {
@@ -244,11 +244,11 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 		description := s.localization.T(context.Background(), userLang, "export_description")
 		aqi := s.localization.T(context.Background(), userLang, "export_aqi")
 
-		writer.Write([]string{weatherData})
-		writer.Write([]string{timestamp, temperature, humidity, pressure, windSpeed, windDegree, visibility, uvIndex, description, aqi})
+		_ = writer.Write([]string{weatherData})
+		_ = writer.Write([]string{timestamp, temperature, humidity, pressure, windSpeed, windDegree, visibility, uvIndex, description, aqi})
 
 		for _, weather := range data.WeatherData {
-			writer.Write([]string{
+			_ = writer.Write([]string{
 				weather.Timestamp.Format(time.RFC3339),
 				fmt.Sprintf("%.1f", weather.Temperature),
 				strconv.Itoa(weather.Humidity),
@@ -261,7 +261,7 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 				strconv.Itoa(weather.AQI),
 			})
 		}
-		writer.Write([]string{}) // Empty line
+		_ = writer.Write([]string{}) // Empty line
 	}
 
 	// Export subscriptions if present
@@ -273,11 +273,11 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 		isActive := s.localization.T(context.Background(), userLang, "export_is_active")
 		createdAt := s.localization.T(context.Background(), userLang, "export_created_at")
 
-		writer.Write([]string{subscriptions})
-		writer.Write([]string{typeLabel, frequency, timeOfDay, isActive, createdAt})
+		_ = writer.Write([]string{subscriptions})
+		_ = writer.Write([]string{typeLabel, frequency, timeOfDay, isActive, createdAt})
 
 		for _, sub := range data.Subscriptions {
-			writer.Write([]string{
+			_ = writer.Write([]string{
 				sub.SubscriptionType.String(),
 				sub.Frequency.String(),
 				sub.TimeOfDay,
@@ -285,7 +285,7 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 				sub.CreatedAt.Format(time.RFC3339),
 			})
 		}
-		writer.Write([]string{}) // Empty line
+		_ = writer.Write([]string{}) // Empty line
 	}
 
 	// Export alert configs if present
@@ -297,11 +297,11 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 		isActive := s.localization.T(context.Background(), userLang, "export_is_active")
 		createdAt := s.localization.T(context.Background(), userLang, "export_created_at")
 
-		writer.Write([]string{alertConfigs})
-		writer.Write([]string{alertType, condition, threshold, isActive, createdAt})
+		_ = writer.Write([]string{alertConfigs})
+		_ = writer.Write([]string{alertType, condition, threshold, isActive, createdAt})
 
 		for _, alert := range data.AlertConfigs {
-			writer.Write([]string{
+			_ = writer.Write([]string{
 				alert.AlertType.String(),
 				alert.Condition,
 				fmt.Sprintf("%.1f", alert.Threshold),
@@ -309,7 +309,7 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 				alert.CreatedAt.Format(time.RFC3339),
 			})
 		}
-		writer.Write([]string{}) // Empty line
+		_ = writer.Write([]string{}) // Empty line
 	}
 
 	// Export triggered alerts if present
@@ -323,11 +323,11 @@ func (s *ExportService) exportToCSV(data *ExportData, userLang string) (*bytes.B
 		isResolved := s.localization.T(context.Background(), userLang, "export_is_resolved")
 		createdAt := s.localization.T(context.Background(), userLang, "export_created_at")
 
-		writer.Write([]string{triggeredAlerts})
-		writer.Write([]string{alertType, severity, title, value, threshold, isResolved, createdAt})
+		_ = writer.Write([]string{triggeredAlerts})
+		_ = writer.Write([]string{alertType, severity, title, value, threshold, isResolved, createdAt})
 
 		for _, alert := range data.TriggeredAlerts {
-			writer.Write([]string{
+			_ = writer.Write([]string{
 				alert.AlertType.String(),
 				alert.Severity.String(),
 				alert.Title,
