@@ -157,7 +157,7 @@ func TestNotificationService_SendSlackAlert(t *testing.T) {
 
 		alert := &models.EnvironmentalAlert{
 			ID:          uuid.New(),
-			Type:        models.AlertTemperature,
+			AlertType:   models.AlertTemperature,
 			Title:       "High Temperature Alert",
 			Description: "Temperature exceeds threshold",
 			Severity:    models.SeverityHigh,
@@ -334,7 +334,7 @@ func TestNotificationService_SendTelegramAlert(t *testing.T) {
 
 		alert := &models.EnvironmentalAlert{
 			ID:          uuid.New(),
-			Type:        models.AlertTemperature,
+			AlertType:   models.AlertTemperature,
 			Title:       "Test Alert",
 			Description: "Test Description",
 			Severity:    models.SeverityMedium,
