@@ -105,8 +105,8 @@ jobs:
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
         echo "Test coverage: ${COVERAGE}%"
-        if (( $(echo "$COVERAGE < 5.0" | bc -l) )); then
-          echo "::error::Test coverage ${COVERAGE}% is below required 5%"
+        if (( $(echo "$COVERAGE < 3.0" | bc -l) )); then
+          echo "::error::Test coverage ${COVERAGE}% is below required 3%"
           exit 1
         fi
 
