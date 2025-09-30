@@ -173,6 +173,15 @@ func (a AnyValue) Match(v driver.Value) bool {
 	return true // Matches any value
 }
 
+// AnyString is a custom matcher for any string value
+type AnyString struct{}
+
+// Match implements the driver.Valuer interface
+func (a AnyString) Match(v driver.Value) bool {
+	_, ok := v.(string)
+	return ok
+}
+
 // ExpectUserCreate sets up expectations for creating a user
 func (m *MockDB) ExpectUserCreate() {
 	m.Mock.ExpectBegin()
