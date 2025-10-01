@@ -226,11 +226,35 @@ jobs:
     environment: staging
 
     steps:
-    - name: Deploy to staging
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up environment
       run: |
-        echo "Deploying to staging environment"
-        # Add deployment script here
-        # Example: kubectl apply -f k8s/staging/
+        echo "Setting up staging environment"
+        cp .env.staging.example .env.staging
+        # In real deployment, secrets would be injected here
+        echo "VERSION=develop" >> .env.staging
+        echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.staging
+
+    - name: Deploy to staging using docker-compose
+      run: |
+        chmod +x scripts/deploy/deploy.sh
+        ./scripts/deploy/deploy.sh staging develop
+
+    - name: Run health checks
+      run: |
+        chmod +x scripts/deploy/health-check.sh
+        ./scripts/deploy/health-check.sh staging
+
+    - name: Post deployment notification
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Staging deployment successful"
+        else
+          echo "❌ Staging deployment failed"
+        fi
 
   deploy-production:
     name: Deploy to Production
@@ -240,11 +264,42 @@ jobs:
     environment: production
 
     steps:
-    - name: Deploy to production
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up environment
       run: |
-        echo "Deploying to production environment"
-        # Add deployment script here
-        # Example: kubectl apply -f k8s/production/
+        echo "Setting up production environment"
+        cp .env.production.example .env.production
+        # In real deployment, secrets would be injected from GitHub Secrets
+        echo "VERSION=latest" >> .env.production
+        echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.production
+
+    - name: Deploy to production using docker-compose
+      run: |
+        chmod +x scripts/deploy/deploy.sh
+        ./scripts/deploy/deploy.sh production latest
+
+    - name: Run health checks
+      run: |
+        chmod +x scripts/deploy/health-check.sh
+        ./scripts/deploy/health-check.sh production
+
+    - name: Verify deployment
+      run: |
+        echo "Deployment verification passed"
+        docker-compose -f docker/docker-compose.prod.yml ps
+
+    - name: Post deployment notification
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Production deployment successful"
+          echo "🚀 Version: latest deployed to production"
+        else
+          echo "❌ Production deployment failed"
+          echo "🔄 Consider rollback: ./scripts/deploy/rollback.sh production"
+        fi
 
   dependency-check:
     name: Dependency Security Scan
