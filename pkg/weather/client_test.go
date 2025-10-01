@@ -442,3 +442,80 @@ func TestClient_ContextCancellation(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "context canceled")
 }
+
+// Test request creation errors by using invalid base URLs
+func TestClient_GetCurrentWeather_RequestCreationError(t *testing.T) {
+	client := NewClient("test_key")
+	client.baseURL = "ht tp://invalid url with spaces"
+
+	_, err := client.GetCurrentWeather(context.Background(), 40.7128, -74.0060)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create request")
+}
+
+func TestClient_GetForecast_RequestCreationError(t *testing.T) {
+	client := NewClient("test_key")
+	client.baseURL = "ht tp://invalid url with spaces"
+
+	_, err := client.GetForecast(context.Background(), 40.7128, -74.0060, 5)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create request")
+}
+
+func TestClient_GetAirQuality_RequestCreationError(t *testing.T) {
+	client := NewClient("test_key")
+	client.baseURL = "ht tp://invalid url with spaces"
+
+	_, err := client.GetAirQuality(context.Background(), 40.7128, -74.0060)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create request")
+}
+
+func TestGeocodingClient_GeocodeLocation_RequestCreationError(t *testing.T) {
+	client := NewGeocodingClient("test_key")
+	client.baseURL = "ht tp://invalid url with spaces"
+
+	_, err := client.GeocodeLocation(context.Background(), "London")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create request")
+}
+
+// Test httpClient.Do() errors by using a closed server
+func TestClient_GetForecast_NetworkError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	serverURL := server.URL
+	server.Close() // Close immediately to trigger network error
+
+	client := NewClient("test_key")
+	client.baseURL = serverURL
+
+	_, err := client.GetForecast(context.Background(), 40.7128, -74.0060, 5)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to make request")
+}
+
+func TestClient_GetAirQuality_NetworkError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	serverURL := server.URL
+	server.Close() // Close immediately to trigger network error
+
+	client := NewClient("test_key")
+	client.baseURL = serverURL
+
+	_, err := client.GetAirQuality(context.Background(), 40.7128, -74.0060)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to make request")
+}
+
+func TestGeocodingClient_GeocodeLocation_NetworkError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	serverURL := server.URL
+	server.Close() // Close immediately to trigger network error
+
+	client := NewGeocodingClient("test_key")
+	client.baseURL = serverURL
+
+	_, err := client.GeocodeLocation(context.Background(), "London")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to make request")
+}
