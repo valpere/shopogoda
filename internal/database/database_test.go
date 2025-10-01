@@ -44,7 +44,7 @@ func TestMigrate(t *testing.T) {
 		// Migration might partially succeed with mock - we mainly test it doesn't panic
 		// In real tests with testcontainers, full migration is validated
 		assert.NotPanics(t, func() {
-			Migrate(gormDB)
+			Migrate(gormDB) //nolint:errcheck // Migrate doesn't return error, we test it doesn't panic
 		})
 	})
 }

@@ -21,8 +21,8 @@ func TestLoad(t *testing.T) {
 		// Ensure we're in a directory without config files
 		originalDir, _ := os.Getwd()
 		tmpDir := t.TempDir()
-		os.Chdir(tmpDir)
-		defer os.Chdir(originalDir)
+		require.NoError(t, os.Chdir(tmpDir))
+		defer func() { _ = os.Chdir(originalDir) }()
 
 		cfg, err := Load()
 		require.NoError(t, err)
@@ -70,8 +70,8 @@ func TestLoad(t *testing.T) {
 		// Ensure we're in a directory without config files
 		originalDir, _ := os.Getwd()
 		tmpDir := t.TempDir()
-		os.Chdir(tmpDir)
-		defer os.Chdir(originalDir)
+		require.NoError(t, os.Chdir(tmpDir))
+		defer func() { _ = os.Chdir(originalDir) }()
 
 		cfg, err := Load()
 		require.NoError(t, err)
@@ -95,8 +95,8 @@ func TestLoad(t *testing.T) {
 		// Ensure we're in a directory without .env file
 		originalDir, _ := os.Getwd()
 		tmpDir := t.TempDir()
-		os.Chdir(tmpDir)
-		defer os.Chdir(originalDir)
+		require.NoError(t, os.Chdir(tmpDir))
+		defer func() { _ = os.Chdir(originalDir) }()
 
 		cfg, err := Load()
 		require.NoError(t, err)
@@ -420,8 +420,8 @@ func TestEnvironmentVariableMapping(t *testing.T) {
 		// Load config
 		originalDir, _ := os.Getwd()
 		tmpDir := t.TempDir()
-		os.Chdir(tmpDir)
-		defer os.Chdir(originalDir)
+		require.NoError(t, os.Chdir(tmpDir))
+		defer func() { _ = os.Chdir(originalDir) }()
 
 		cfg, err := Load()
 		require.NoError(t, err)
