@@ -141,7 +141,7 @@ jobs:
       id: coverage
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: ./coverage.out
         flags: unittests
@@ -207,7 +207,7 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push Docker image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ./docker/Dockerfile
