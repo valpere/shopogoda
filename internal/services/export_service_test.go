@@ -255,6 +255,80 @@ func TestExportService_ExportToCSV(t *testing.T) {
 		assert.Contains(t, csvContent, "testuser")
 		assert.Contains(t, csvContent, "20.5") // Temperature
 	})
+
+	t.Run("export to CSV with subscriptions", func(t *testing.T) {
+		subscriptions := []models.Subscription{
+			{
+				UserID:           123,
+				SubscriptionType: models.SubscriptionDaily,
+				Frequency:        models.FrequencyDaily,
+				TimeOfDay:        "08:00",
+				IsActive:         true,
+				CreatedAt:        time.Now().UTC(),
+			},
+		}
+		exportDataWithSubs := &ExportData{
+			User:          user,
+			Subscriptions: subscriptions,
+			ExportedAt:    time.Now().UTC(),
+			Format:        ExportFormatCSV,
+			Type:          ExportTypeSubscriptions,
+		}
+
+		buffer, filename, err := service.exportToCSV(exportDataWithSubs, "en")
+
+		require.NoError(t, err)
+		assert.NotNil(t, buffer)
+		assert.Contains(t, filename, ".csv")
+
+		csvContent := buffer.String()
+		assert.Contains(t, csvContent, "Daily")
+		assert.Contains(t, csvContent, "08:00")
+	})
+
+	t.Run("export to CSV with alert configs and triggered alerts", func(t *testing.T) {
+		alertConfigs := []models.AlertConfig{
+			{
+				UserID:    123,
+				AlertType: models.AlertTemperature,
+				Condition: `{"operator":"gt","value":30}`,
+				Threshold: 30.0,
+				IsActive:  true,
+				CreatedAt: time.Now().UTC(),
+			},
+		}
+		triggeredAlerts := []models.EnvironmentalAlert{
+			{
+				UserID:    123,
+				AlertType: models.AlertTemperature,
+				Severity:  models.SeverityHigh,
+				Title:     "High Temperature",
+				Value:     35.0,
+				Threshold: 30.0,
+				CreatedAt: time.Now().UTC(),
+			},
+		}
+		exportDataWithAlerts := &ExportData{
+			User:            user,
+			AlertConfigs:    alertConfigs,
+			TriggeredAlerts: triggeredAlerts,
+			ExportedAt:      time.Now().UTC(),
+			Format:          ExportFormatCSV,
+			Type:            ExportTypeAlerts,
+		}
+
+		buffer, filename, err := service.exportToCSV(exportDataWithAlerts, "en")
+
+		require.NoError(t, err)
+		assert.NotNil(t, buffer)
+		assert.Contains(t, filename, ".csv")
+
+		csvContent := buffer.String()
+		assert.Contains(t, csvContent, "Temperature")
+		assert.Contains(t, csvContent, "30.0")
+		assert.Contains(t, csvContent, "35.0")
+		assert.Contains(t, csvContent, "High")
+	})
 }
 
 func TestExportService_ExportToTXT(t *testing.T) {
