@@ -346,7 +346,7 @@ func TestGeocodeWithNominatim(t *testing.T) {
 				"display_name": "Kyiv, Ukraine",
 			},
 		}
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
