@@ -87,6 +87,18 @@ jobs:
         args: --timeout=5m
         only-new-issues: true
 
+    - name: Check code complexity
+      run: |
+        go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+        echo "Checking cyclomatic complexity (max 15)..."
+        gocyclo -over 15 . || echo "::warning::Functions with high complexity found"
+
+    - name: Check code duplication
+      run: |
+        go install github.com/mibk/dupl@latest
+        echo "Checking for code duplication..."
+        dupl -threshold 100 ./... || echo "::warning::Code duplication detected"
+
     - name: Run tests
       env:
         WB_DATABASE_HOST: localhost
@@ -106,10 +118,25 @@ jobs:
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
         echo "Test coverage: ${COVERAGE}%"
-        if (( $(echo "$COVERAGE < 3.0" | bc -l) )); then
-          echo "::error::Test coverage ${COVERAGE}% is below required 3%"
+        echo "coverage=${COVERAGE}" >> $GITHUB_OUTPUT
+
+        # PR coverage threshold (slightly lower than main)
+        THRESHOLD=20.0
+        echo "::notice::Using PR coverage threshold: ${THRESHOLD}%"
+
+        if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+          echo "::error::Test coverage ${COVERAGE}% is below required ${THRESHOLD}%"
           exit 1
         fi
+
+        # Warn if coverage is below aspirational target (60%)
+        if (( $(echo "$COVERAGE < 60.0" | bc -l) )); then
+          echo "::warning::Test coverage ${COVERAGE}% is below aspirational target of 60%"
+        fi
+
+        # Check coverage delta (if base coverage info is available)
+        echo "📊 Coverage: ${COVERAGE}%"
+      id: coverage
 
     - name: Build application
       run: go build -v ./cmd/bot

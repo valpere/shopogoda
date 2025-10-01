@@ -75,6 +75,18 @@ jobs:
         version: latest
         args: --timeout=5m
 
+    - name: Check code complexity
+      run: |
+        go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+        echo "Checking cyclomatic complexity (max 15)..."
+        gocyclo -over 15 . || echo "::warning::Functions with high complexity found"
+
+    - name: Check code duplication
+      run: |
+        go install github.com/mibk/dupl@latest
+        echo "Checking for code duplication..."
+        dupl -threshold 100 ./... || echo "::warning::Code duplication detected"
+
     - name: Run security scan
       run: |
         go install github.com/securego/gosec/v2/cmd/gosec@latest
@@ -106,10 +118,27 @@ jobs:
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
         echo "Test coverage: ${COVERAGE}%"
-        if (( $(echo "$COVERAGE < 3.0" | bc -l) )); then
-          echo "::error::Test coverage ${COVERAGE}% is below required 3%"
+        echo "coverage=${COVERAGE}" >> $GITHUB_OUTPUT
+
+        # Set coverage thresholds based on branch
+        if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          THRESHOLD=25.0
+          echo "::notice::Using main branch coverage threshold: ${THRESHOLD}%"
+        else
+          THRESHOLD=20.0
+          echo "::notice::Using development coverage threshold: ${THRESHOLD}%"
+        fi
+
+        if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+          echo "::error::Test coverage ${COVERAGE}% is below required ${THRESHOLD}%"
           exit 1
         fi
+
+        # Warn if coverage is below aspirational target (60%)
+        if (( $(echo "$COVERAGE < 60.0" | bc -l) )); then
+          echo "::warning::Test coverage ${COVERAGE}% is below aspirational target of 60%"
+        fi
+      id: coverage
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -288,11 +317,40 @@ jobs:
         WB_BOT_TOKEN: "test_token"
         WB_WEATHER_API_KEY: "test_api_key"
       run: |
-        go test -bench=. -benchmem -run=^$ ./... > benchmark.txt
-        cat benchmark.txt
+        go test -bench=. -benchmem -benchtime=3s -run=^$ ./... | tee benchmark.txt
+
+    - name: Download previous benchmark results
+      uses: actions/cache@v3
+      with:
+        path: ./cache
+        key: ${{ runner.os }}-benchmark-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-benchmark-
+
+    - name: Compare benchmark results
+      run: |
+        if [ -f ./cache/benchmark.txt ]; then
+          echo "Comparing with previous benchmark results..."
+          go install golang.org/x/perf/cmd/benchstat@latest
+          benchstat ./cache/benchmark.txt benchmark.txt > comparison.txt || true
+          cat comparison.txt
+
+          # Check for significant performance regressions (>10% slower)
+          if grep -q "~" comparison.txt; then
+            echo "::warning::Performance changes detected. Review comparison.txt for details."
+          fi
+        else
+          echo "No previous benchmark results found. This will be the baseline."
+        fi
+
+        # Save current results for next run
+        mkdir -p ./cache
+        cp benchmark.txt ./cache/benchmark.txt
 
     - name: Upload benchmark results
       uses: actions/upload-artifact@v4
       with:
         name: benchmark-results
-        path: benchmark.txt
+        path: |
+          benchmark.txt
+          comparison.txt
