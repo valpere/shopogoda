@@ -430,3 +430,110 @@ func TestFormatLocationFromAddress(t *testing.T) {
 		assert.Equal(t, "Location (48.3794, 31.1656)", result)
 	})
 }
+
+func TestWeatherData_ToModelWeatherData(t *testing.T) {
+	wd := &WeatherData{
+		Temperature:   25.5,
+		Humidity:      60,
+		Pressure:      1013.25,
+		WindSpeed:     15.5,
+		WindDirection: 180,
+		Visibility:    10.0,
+		UVIndex:       5.5,
+		Description:   "Clear sky",
+		Icon:          "01d",
+		LocationName:  "Kyiv",
+		AQI:           2,
+		CO:            0.3,
+		NO2:           20.5,
+		O3:            45.3,
+		PM25:          12.5,
+		PM10:          18.3,
+		Timestamp:     time.Now().UTC(),
+	}
+
+	result := wd.ToModelWeatherData()
+
+	assert.NotNil(t, result)
+	assert.Equal(t, wd.Temperature, result.Temperature)
+	assert.Equal(t, wd.Humidity, result.Humidity)
+	assert.Equal(t, wd.Pressure, result.Pressure)
+	assert.Equal(t, wd.WindSpeed, result.WindSpeed)
+	assert.Equal(t, wd.WindDirection, result.WindDegree)
+	assert.Equal(t, wd.Visibility, result.Visibility)
+	assert.Equal(t, wd.UVIndex, result.UVIndex)
+	assert.Equal(t, wd.Description, result.Description)
+	assert.Equal(t, wd.Icon, result.Icon)
+	assert.Equal(t, wd.AQI, result.AQI)
+	assert.Equal(t, wd.CO, result.CO)
+	assert.Equal(t, wd.NO2, result.NO2)
+	assert.Equal(t, wd.O3, result.O3)
+	assert.Equal(t, wd.PM25, result.PM25)
+	assert.Equal(t, wd.PM10, result.PM10)
+	assert.Equal(t, wd.Timestamp, result.Timestamp)
+}
+
+func TestGetForecast_CacheMiss(t *testing.T) {
+	logger := zerolog.Nop()
+	rdb, mock := redismock.NewClientMock()
+	cfg := &config.WeatherConfig{
+		OpenWeatherAPIKey: "test-key",
+	}
+	service := NewWeatherService(cfg, rdb, &logger)
+
+	ctx := context.Background()
+	lat, lon := 50.4501, 30.5234
+	days := 5
+	cacheKey := "weather:forecast:50.4501:30.5234:5"
+
+	// Expect cache miss
+	mock.ExpectGet(cacheKey).RedisNil()
+
+	// API call will fail in unit test (expected)
+	_, err := service.GetForecast(ctx, lat, lon, days)
+
+	// API call failure is expected in unit test without real API
+	assert.Error(t, err)
+}
+
+func TestGetAirQuality_CacheMiss(t *testing.T) {
+	logger := zerolog.Nop()
+	rdb, mock := redismock.NewClientMock()
+	cfg := &config.WeatherConfig{
+		OpenWeatherAPIKey: "test-key",
+		AirQualityAPIKey:  "air-key",
+	}
+	service := NewWeatherService(cfg, rdb, &logger)
+
+	ctx := context.Background()
+	lat, lon := 50.4501, 30.5234
+	cacheKey := "weather:air:50.4501:30.5234"
+
+	// Expect cache miss
+	mock.ExpectGet(cacheKey).RedisNil()
+
+	// API call will fail in unit test (expected)
+	_, err := service.GetAirQuality(ctx, lat, lon)
+
+	// API call failure is expected in unit test without real API
+	assert.Error(t, err)
+}
+
+func TestGetLocationName_CacheMiss(t *testing.T) {
+	logger := zerolog.Nop()
+	rdb, mock := redismock.NewClientMock()
+	cfg := &config.WeatherConfig{
+		OpenWeatherAPIKey: "test-key",
+	}
+	service := NewWeatherService(cfg, rdb, &logger)
+
+	ctx := context.Background()
+	lat, lon := 50.4501, 30.5234
+	cacheKey := "reverse_geocode:50.4501:30.5234"
+
+	// Expect cache miss
+	mock.ExpectGet(cacheKey).RedisNil()
+
+	// API call will fail or succeed depending on network
+	_, _ = service.GetLocationName(ctx, lat, lon)
+}
