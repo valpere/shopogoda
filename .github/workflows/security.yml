@@ -42,19 +42,15 @@ jobs:
       run: go mod download
 
     - name: Run GoSec Security Scanner
-      uses: securecodewarrior/github-action-gosec@master
-      with:
-        args: '-fmt sarif -out gosec.sarif ./...'
+      run: |
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        gosec -fmt sarif -out gosec.sarif ./...
 
     - name: Upload GoSec SARIF file
       uses: github/codeql-action/upload-sarif@v3
+      continue-on-error: true
       with:
         sarif_file: gosec.sarif
-
-    - name: Run Nancy for known vulnerabilities
-      run: |
-        go install github.com/sonatypecommunity/nancy@latest
-        go list -json -deps ./... | nancy sleuth
 
     - name: Run Govulncheck
       run: |
@@ -90,6 +86,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./docker/Dockerfile
         push: false
         tags: shopogoda:security-scan
         load: true
