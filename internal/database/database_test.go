@@ -98,6 +98,37 @@ func TestConnect(t *testing.T) {
 		actualDSN := buildDSN(cfg)
 		assert.Equal(t, expectedDSN, actualDSN)
 	})
+
+	t.Run("fails with invalid host", func(t *testing.T) {
+		cfg := &config.DatabaseConfig{
+			Host:     "invalid-host-that-does-not-exist.local",
+			Port:     5432,
+			User:     "user",
+			Password: "pass",
+			Name:     "db",
+			SSLMode:  "disable",
+		}
+
+		db, err := Connect(cfg)
+		assert.Error(t, err)
+		assert.Nil(t, db)
+		assert.Contains(t, err.Error(), "failed to connect to database")
+	})
+
+	t.Run("fails with invalid port", func(t *testing.T) {
+		cfg := &config.DatabaseConfig{
+			Host:     "localhost",
+			Port:     99999, // Invalid port
+			User:     "user",
+			Password: "pass",
+			Name:     "db",
+			SSLMode:  "disable",
+		}
+
+		db, err := Connect(cfg)
+		assert.Error(t, err)
+		assert.Nil(t, db)
+	})
 }
 
 func TestConnectRedis(t *testing.T) {
@@ -180,6 +211,33 @@ func TestConnectRedis(t *testing.T) {
 		}
 
 		assert.Equal(t, "", cfg.Password)
+	})
+
+	t.Run("fails with invalid host", func(t *testing.T) {
+		cfg := &config.RedisConfig{
+			Host:     "invalid-redis-host-that-does-not-exist.local",
+			Port:     6379,
+			Password: "",
+			DB:       0,
+		}
+
+		client, err := ConnectRedis(cfg)
+		assert.Error(t, err)
+		assert.Nil(t, client)
+		assert.Contains(t, err.Error(), "failed to connect to Redis")
+	})
+
+	t.Run("fails with invalid port", func(t *testing.T) {
+		cfg := &config.RedisConfig{
+			Host:     "localhost",
+			Port:     99999, // Invalid port
+			Password: "",
+			DB:       0,
+		}
+
+		client, err := ConnectRedis(cfg)
+		assert.Error(t, err)
+		assert.Nil(t, client)
 	})
 }
 
