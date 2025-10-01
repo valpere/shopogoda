@@ -50,7 +50,7 @@ func TestAlertLevel_Color(t *testing.T) {
 
 func TestAlertType_String(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		alertType AlertType
 		expected  string
 	}{
@@ -229,9 +229,9 @@ func TestEngine_CalculateLevel(t *testing.T) {
 	}{
 		// Temperature tests
 		{"temperature critical deviation", AlertTypeTemperature, 40.0, 20.0, AlertLevelCritical}, // deviation 20
-		{"temperature high deviation", AlertTypeTemperature, 32.0, 20.0, AlertLevelHigh},          // deviation 12
-		{"temperature medium deviation", AlertTypeTemperature, 28.0, 20.0, AlertLevelMedium},      // deviation 8
-		{"temperature low deviation", AlertTypeTemperature, 24.0, 20.0, AlertLevelLow},            // deviation 4
+		{"temperature high deviation", AlertTypeTemperature, 32.0, 20.0, AlertLevelHigh},         // deviation 12
+		{"temperature medium deviation", AlertTypeTemperature, 28.0, 20.0, AlertLevelMedium},     // deviation 8
+		{"temperature low deviation", AlertTypeTemperature, 24.0, 20.0, AlertLevelLow},           // deviation 4
 
 		// Air Quality tests
 		{"air quality critical", AlertTypeAirQuality, 350.0, 100.0, AlertLevelCritical},
