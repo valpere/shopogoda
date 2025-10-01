@@ -102,6 +102,49 @@ func TestLoad(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, cfg)
 	})
+
+	t.Run("handles invalid .env file", func(t *testing.T) {
+		resetViper()
+
+		// Create a temp directory with an invalid .env file
+		originalDir, _ := os.Getwd()
+		tmpDir := t.TempDir()
+		require.NoError(t, os.Chdir(tmpDir))
+		defer func() { _ = os.Chdir(originalDir) }()
+
+		// Create .env file with invalid format (unclosed quote)
+		err := os.WriteFile(".env", []byte("INVALID_VAR=\"unclosed quote\n"), 0644)
+		require.NoError(t, err)
+
+		cfg, err := Load()
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Contains(t, err.Error(), "error loading .env file")
+	})
+
+	t.Run("handles invalid config file format", func(t *testing.T) {
+		resetViper()
+
+		// Create a temp directory with an invalid YAML config file
+		originalDir, _ := os.Getwd()
+		tmpDir := t.TempDir()
+		require.NoError(t, os.Chdir(tmpDir))
+		defer func() { _ = os.Chdir(originalDir) }()
+
+		// Create shopogoda.yaml with invalid YAML syntax
+		invalidYAML := `
+bot:
+  token: "test"
+  debug: [invalid - unclosed bracket
+`
+		err := os.WriteFile("shopogoda.yaml", []byte(invalidYAML), 0644)
+		require.NoError(t, err)
+
+		cfg, err := Load()
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Contains(t, err.Error(), "error reading config file")
+	})
 }
 
 func TestSetDefaults(t *testing.T) {
