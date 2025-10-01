@@ -392,6 +392,73 @@ func TestExportService_ExportToTXT(t *testing.T) {
 		assert.Contains(t, txtContent, "Subscriptions")
 		assert.Contains(t, txtContent, "End of Export")
 	})
+
+	t.Run("export to TXT with alert configs", func(t *testing.T) {
+		alertConfigs := []models.AlertConfig{
+			{
+				UserID:    123,
+				AlertType: models.AlertTemperature,
+				Condition: `{"operator":"gt","value":30}`,
+				Threshold: 30.0,
+				IsActive:  true,
+				CreatedAt: time.Now().UTC(),
+			},
+		}
+		exportDataWithAlerts := &ExportData{
+			User:         user,
+			AlertConfigs: alertConfigs,
+			ExportedAt:   time.Now().UTC(),
+			Format:       ExportFormatTXT,
+			Type:         ExportTypeAlerts,
+		}
+
+		buffer, filename, err := service.exportToTXT(exportDataWithAlerts, "en")
+
+		require.NoError(t, err)
+		assert.NotNil(t, buffer)
+		assert.Contains(t, filename, ".txt")
+
+		txtContent := buffer.String()
+		assert.Contains(t, txtContent, "Alert Configurations")
+		assert.Contains(t, txtContent, "Temperature")
+		assert.Contains(t, txtContent, "Threshold: 30.0")
+	})
+
+	t.Run("export to TXT with triggered alerts", func(t *testing.T) {
+		triggeredAlerts := []models.EnvironmentalAlert{
+			{
+				UserID:      123,
+				AlertType:   models.AlertTemperature,
+				Severity:    models.SeverityHigh,
+				Title:       "High Temperature Alert",
+				Description: "Temperature exceeded threshold",
+				Value:       35.0,
+				Threshold:   30.0,
+				IsResolved:  false,
+				CreatedAt:   time.Now().UTC(),
+			},
+		}
+		exportDataWithTriggered := &ExportData{
+			User:            user,
+			TriggeredAlerts: triggeredAlerts,
+			ExportedAt:      time.Now().UTC(),
+			Format:          ExportFormatTXT,
+			Type:            ExportTypeAlerts,
+		}
+
+		buffer, filename, err := service.exportToTXT(exportDataWithTriggered, "en")
+
+		require.NoError(t, err)
+		assert.NotNil(t, buffer)
+		assert.Contains(t, filename, ".txt")
+
+		txtContent := buffer.String()
+		assert.Contains(t, txtContent, "Triggered Alerts")
+		assert.Contains(t, txtContent, "High Temperature Alert")
+		assert.Contains(t, txtContent, "Value: 35.0")
+		assert.Contains(t, txtContent, "Threshold: 30.0")
+		assert.Contains(t, txtContent, "Resolved: false")
+	})
 }
 
 func TestExportService_ExportUserData(t *testing.T) {
