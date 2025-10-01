@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -407,6 +408,123 @@ func TestExportService_ExportUserData(t *testing.T) {
 		assert.Nil(t, buffer)
 		assert.Empty(t, filename)
 		assert.Contains(t, err.Error(), "unsupported export format")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("export alerts as CSV", func(t *testing.T) {
+		// Mock user query
+		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
+		userRows.AddRow(userID, "testuser")
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+			WillReturnRows(userRows)
+
+		// Mock alert configs query
+		alertRows := mockDB.Mock.NewRows([]string{"id", "user_id", "alert_type", "condition", "threshold", "is_active"})
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs"`).
+			WillReturnRows(alertRows)
+
+		// Mock triggered alerts query
+		triggeredRows := mockDB.Mock.NewRows([]string{"id", "user_id", "alert_type", "severity", "title", "description"})
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "environmental_alerts"`).
+			WillReturnRows(triggeredRows)
+
+		buffer, filename, err := service.ExportUserData(
+			context.Background(),
+			userID,
+			ExportTypeAlerts,
+			ExportFormatCSV,
+			"en",
+		)
+
+		require.NoError(t, err)
+		assert.NotNil(t, buffer)
+		assert.Contains(t, filename, ".csv")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("export subscriptions as TXT", func(t *testing.T) {
+		// Mock user query
+		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
+		userRows.AddRow(userID, "testuser")
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+			WillReturnRows(userRows)
+
+		// Mock subscriptions query
+		subRows := mockDB.Mock.NewRows([]string{"id", "user_id", "notification_type", "frequency"})
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "subscriptions"`).
+			WillReturnRows(subRows)
+
+		buffer, filename, err := service.ExportUserData(
+			context.Background(),
+			userID,
+			ExportTypeSubscriptions,
+			ExportFormatTXT,
+			"en",
+		)
+
+		require.NoError(t, err)
+		assert.NotNil(t, buffer)
+		assert.Contains(t, filename, ".txt")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("export all data as JSON", func(t *testing.T) {
+		// Mock user query
+		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
+		userRows.AddRow(userID, "testuser")
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+			WillReturnRows(userRows)
+
+		// Mock weather data query
+		weatherRows := mockDB.Mock.NewRows([]string{"id", "user_id", "location_name", "temperature"})
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "weather_data"`).
+			WillReturnRows(weatherRows)
+
+		// Mock alert configs query
+		alertRows := mockDB.Mock.NewRows([]string{"id", "user_id", "alert_type", "condition", "threshold"})
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs"`).
+			WillReturnRows(alertRows)
+
+		// Mock triggered alerts query
+		triggeredRows := mockDB.Mock.NewRows([]string{"id", "user_id", "alert_type", "severity"})
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "environmental_alerts"`).
+			WillReturnRows(triggeredRows)
+
+		// Mock subscriptions query
+		subRows := mockDB.Mock.NewRows([]string{"id", "user_id", "notification_type"})
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "subscriptions"`).
+			WillReturnRows(subRows)
+
+		buffer, filename, err := service.ExportUserData(
+			context.Background(),
+			userID,
+			ExportTypeAll,
+			ExportFormatJSON,
+			"en",
+		)
+
+		require.NoError(t, err)
+		assert.NotNil(t, buffer)
+		assert.Contains(t, filename, ".json")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("getUserData error handling", func(t *testing.T) {
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+			WillReturnError(errors.New("user not found"))
+
+		buffer, filename, err := service.ExportUserData(
+			context.Background(),
+			userID,
+			ExportTypeWeatherData,
+			ExportFormatJSON,
+			"en",
+		)
+
+		assert.Error(t, err)
+		assert.Nil(t, buffer)
+		assert.Empty(t, filename)
+		assert.Contains(t, err.Error(), "failed to get user data")
 		mockDB.ExpectationsWereMet(t)
 	})
 }
