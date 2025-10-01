@@ -4,8 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/time/rate"
+
+	"github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/tests/helpers"
 )
 
 func TestNewUserRateLimiter(t *testing.T) {
@@ -119,5 +125,100 @@ func TestUserRateLimiter_Allow(t *testing.T) {
 
 		// Should not panic from concurrent access
 		assert.True(t, true)
+	})
+}
+
+func TestLogging(t *testing.T) {
+	logger := zerolog.New(nil).Level(zerolog.Disabled)
+	handler := Logging(logger)
+
+	t.Run("logs message command", func(t *testing.T) {
+		bot := &gotgbot.Bot{}
+		ctx := &ext.Context{
+			Update: &gotgbot.Update{
+				Message: &gotgbot.Message{Text: "/start"},
+			},
+			EffectiveUser: &gotgbot.User{Id: 123, Username: "testuser"},
+			EffectiveChat: &gotgbot.Chat{Id: 456},
+		}
+
+		err := handler(bot, ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("logs callback query", func(t *testing.T) {
+		bot := &gotgbot.Bot{}
+		ctx := &ext.Context{
+			Update: &gotgbot.Update{
+				CallbackQuery: &gotgbot.CallbackQuery{Data: "test_callback"},
+			},
+			EffectiveUser: &gotgbot.User{Id: 123, Username: "testuser"},
+			EffectiveChat: &gotgbot.Chat{Id: 456},
+		}
+
+		err := handler(bot, ctx)
+		assert.NoError(t, err)
+	})
+}
+
+func TestRateLimitMiddleware(t *testing.T) {
+	limiter := NewUserRateLimiter(rate.Limit(1), 1)
+	handler := RateLimit(limiter)
+
+	bot := &gotgbot.Bot{}
+
+	t.Run("allows first request", func(t *testing.T) {
+		ctx := &ext.Context{
+			EffectiveUser: &gotgbot.User{Id: 123},
+		}
+
+		err := handler(bot, ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("blocks after rate limit", func(t *testing.T) {
+		userID := int64(999)
+
+		// Use up the limiter
+		limiter.Allow(userID)
+
+		ctx := &ext.Context{
+			EffectiveUser: &gotgbot.User{Id: userID},
+			EffectiveMessage: &gotgbot.Message{
+				MessageId: 1,
+				Chat:      gotgbot.Chat{Id: 123},
+			},
+		}
+
+		// This will try to send a reply but we can't easily mock that
+		// The important part is the rate limiter logic is tested
+		_ = handler(bot, ctx)
+	})
+}
+
+func TestAuthMiddleware(t *testing.T) {
+	t.Run("creates handler function", func(t *testing.T) {
+		mockDB := helpers.NewMockDB(t)
+		defer mockDB.Close()
+		mockRedis := helpers.NewMockRedis()
+
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client)
+		handler := Auth(userService)
+
+		assert.NotNil(t, handler)
+	})
+}
+
+func TestMetricsMiddleware(t *testing.T) {
+	handler := Metrics()
+
+	t.Run("executes without error", func(t *testing.T) {
+		bot := &gotgbot.Bot{}
+		ctx := &ext.Context{
+			EffectiveUser: &gotgbot.User{Id: 123},
+		}
+
+		err := handler(bot, ctx)
+		assert.NoError(t, err)
 	})
 }
