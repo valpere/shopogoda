@@ -454,3 +454,63 @@ func TestUserRole_ValidValues(t *testing.T) {
 	// Verify we have all expected roles
 	assert.Len(t, roles, 3, "Should have exactly 3 user roles defined")
 }
+
+func TestUser_GetCoordinatesString(t *testing.T) {
+	user := &User{
+		Latitude:  51.5074,
+		Longitude: -0.1278,
+	}
+
+	result := user.GetCoordinatesString()
+	assert.Equal(t, "51.5074, -0.1278", result)
+}
+
+func TestWeatherData_GetTemperatureString(t *testing.T) {
+	weather := &WeatherData{
+		Temperature: 23.7,
+	}
+
+	result := weather.GetTemperatureString()
+	assert.Equal(t, "23.7°C", result)
+}
+
+func TestEnvironmentalAlert_GetSeverityColor(t *testing.T) {
+	tests := []struct {
+		name     string
+		severity Severity
+		expected string
+	}{
+		{"low severity", SeverityLow, "🟢"},
+		{"medium severity", SeverityMedium, "🟡"},
+		{"high severity", SeverityHigh, "🟠"},
+		{"critical severity", SeverityCritical, "🔴"},
+		{"unknown severity", Severity(999), "⚪"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			alert := &EnvironmentalAlert{
+				Severity: tt.severity,
+			}
+			result := alert.GetSeverityColor()
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestEnvironmentalAlert_GetFormattedMessage(t *testing.T) {
+	alert := &EnvironmentalAlert{
+		Severity:    SeverityHigh,
+		Title:       "High Temperature",
+		Value:       35.5,
+		Threshold:   30.0,
+		Description: "Temperature exceeded threshold",
+	}
+
+	result := alert.GetFormattedMessage()
+	assert.Contains(t, result, "🟠")
+	assert.Contains(t, result, "High Temperature")
+	assert.Contains(t, result, "35.5")
+	assert.Contains(t, result, "30.0")
+	assert.Contains(t, result, "Temperature exceeded threshold")
+}

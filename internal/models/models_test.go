@@ -500,3 +500,304 @@ func TestSubscription_ShouldNotify(t *testing.T) {
 		})
 	}
 }
+
+func TestUser_Validate(t *testing.T) {
+	tests := []struct {
+		name      string
+		user      *User
+		expectErr bool
+		errMsg    string
+	}{
+		{
+			name: "valid user",
+			user: &User{
+				ID:        123,
+				FirstName: "John",
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid user ID",
+			user: &User{
+				ID:        0,
+				FirstName: "John",
+			},
+			expectErr: true,
+			errMsg:    "invalid user ID",
+		},
+		{
+			name: "missing first name",
+			user: &User{
+				ID:        123,
+				FirstName: "",
+			},
+			expectErr: true,
+			errMsg:    "first name is required",
+		},
+		{
+			name: "negative user ID",
+			user: &User{
+				ID:        -1,
+				FirstName: "John",
+			},
+			expectErr: true,
+			errMsg:    "invalid user ID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.user.Validate()
+			if tt.expectErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestSubscription_Validate(t *testing.T) {
+	tests := []struct {
+		name         string
+		subscription *Subscription
+		expectErr    bool
+		errMsg       string
+	}{
+		{
+			name: "valid subscription",
+			subscription: &Subscription{
+				UserID:           123,
+				SubscriptionType: SubscriptionDaily,
+				Frequency:        FrequencyDaily,
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid user ID",
+			subscription: &Subscription{
+				UserID:           0,
+				SubscriptionType: SubscriptionDaily,
+				Frequency:        FrequencyDaily,
+			},
+			expectErr: true,
+			errMsg:    "invalid user ID",
+		},
+		{
+			name: "invalid subscription type - too low",
+			subscription: &Subscription{
+				UserID:           123,
+				SubscriptionType: 0,
+				Frequency:        FrequencyDaily,
+			},
+			expectErr: true,
+			errMsg:    "invalid subscription type",
+		},
+		{
+			name: "invalid subscription type - too high",
+			subscription: &Subscription{
+				UserID:           123,
+				SubscriptionType: 5,
+				Frequency:        FrequencyDaily,
+			},
+			expectErr: true,
+			errMsg:    "invalid subscription type",
+		},
+		{
+			name: "invalid frequency - too low",
+			subscription: &Subscription{
+				UserID:           123,
+				SubscriptionType: SubscriptionDaily,
+				Frequency:        0,
+			},
+			expectErr: true,
+			errMsg:    "invalid frequency",
+		},
+		{
+			name: "invalid frequency - too high",
+			subscription: &Subscription{
+				UserID:           123,
+				SubscriptionType: SubscriptionDaily,
+				Frequency:        6,
+			},
+			expectErr: true,
+			errMsg:    "invalid frequency",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.subscription.Validate()
+			if tt.expectErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestAlertConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name      string
+		config    *AlertConfig
+		expectErr bool
+		errMsg    string
+	}{
+		{
+			name: "valid config",
+			config: &AlertConfig{
+				UserID:    123,
+				AlertType: AlertTemperature,
+				Condition: `{"operator":"gt","value":25}`,
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid user ID",
+			config: &AlertConfig{
+				UserID:    0,
+				AlertType: AlertTemperature,
+				Condition: `{"operator":"gt","value":25}`,
+			},
+			expectErr: true,
+			errMsg:    "invalid user ID",
+		},
+		{
+			name: "invalid alert type - too low",
+			config: &AlertConfig{
+				UserID:    123,
+				AlertType: 0,
+				Condition: `{"operator":"gt","value":25}`,
+			},
+			expectErr: true,
+			errMsg:    "invalid alert type",
+		},
+		{
+			name: "invalid alert type - too high",
+			config: &AlertConfig{
+				UserID:    123,
+				AlertType: 10,
+				Condition: `{"operator":"gt","value":25}`,
+			},
+			expectErr: true,
+			errMsg:    "invalid alert type",
+		},
+		{
+			name: "missing condition",
+			config: &AlertConfig{
+				UserID:    123,
+				AlertType: AlertTemperature,
+				Condition: "",
+			},
+			expectErr: true,
+			errMsg:    "alert condition is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if tt.expectErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestAlertConfig_IsRecentlyTriggered(t *testing.T) {
+	now := time.Now()
+	recentTime := now.Add(-30 * time.Minute)
+	oldTime := now.Add(-2 * time.Hour)
+
+	tests := []struct {
+		name     string
+		config   *AlertConfig
+		expected bool
+	}{
+		{
+			name: "never triggered",
+			config: &AlertConfig{
+				LastTriggered: nil,
+			},
+			expected: false,
+		},
+		{
+			name: "recently triggered",
+			config: &AlertConfig{
+				LastTriggered: &recentTime,
+			},
+			expected: true,
+		},
+		{
+			name: "triggered long ago",
+			config: &AlertConfig{
+				LastTriggered: &oldTime,
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.IsRecentlyTriggered()
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestBeforeCreate_Hooks(t *testing.T) {
+	t.Run("User BeforeCreate", func(t *testing.T) {
+		validUser := &User{ID: 123, FirstName: "John"}
+		invalidUser := &User{ID: 0, FirstName: "John"}
+
+		err := validUser.BeforeCreate(nil)
+		assert.NoError(t, err)
+
+		err = invalidUser.BeforeCreate(nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("Subscription BeforeCreate", func(t *testing.T) {
+		validSub := &Subscription{
+			UserID:           123,
+			SubscriptionType: SubscriptionDaily,
+			Frequency:        FrequencyDaily,
+		}
+		invalidSub := &Subscription{
+			UserID:           0,
+			SubscriptionType: SubscriptionDaily,
+			Frequency:        FrequencyDaily,
+		}
+
+		err := validSub.BeforeCreate(nil)
+		assert.NoError(t, err)
+
+		err = invalidSub.BeforeCreate(nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("AlertConfig BeforeCreate", func(t *testing.T) {
+		validConfig := &AlertConfig{
+			UserID:    123,
+			AlertType: AlertTemperature,
+			Condition: `{"operator":"gt","value":25}`,
+		}
+		invalidConfig := &AlertConfig{
+			UserID:    0,
+			AlertType: AlertTemperature,
+			Condition: `{"operator":"gt","value":25}`,
+		}
+
+		err := validConfig.BeforeCreate(nil)
+		assert.NoError(t, err)
+
+		err = invalidConfig.BeforeCreate(nil)
+		assert.Error(t, err)
+	})
+}
