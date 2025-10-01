@@ -363,3 +363,201 @@ func TestAlertService_DeleteAlert(t *testing.T) {
 		mockDB.ExpectationsWereMet(t)
 	})
 }
+
+func TestAlertService_EvaluateCondition(t *testing.T) {
+	mockDB := helpers.NewMockDB(t)
+	defer mockDB.Close()
+	mockRedis := helpers.NewMockRedis()
+	service := NewAlertService(mockDB.DB, mockRedis.Client)
+
+	testCases := []struct {
+		name         string
+		currentValue float64
+		condition    AlertCondition
+		expected     bool
+	}{
+		{
+			name:         "greater than - true",
+			currentValue: 30.0,
+			condition:    AlertCondition{Operator: "gt", Value: 25.0},
+			expected:     true,
+		},
+		{
+			name:         "greater than - false",
+			currentValue: 20.0,
+			condition:    AlertCondition{Operator: "gt", Value: 25.0},
+			expected:     false,
+		},
+		{
+			name:         "less than - true",
+			currentValue: 20.0,
+			condition:    AlertCondition{Operator: "lt", Value: 25.0},
+			expected:     true,
+		},
+		{
+			name:         "less than - false",
+			currentValue: 30.0,
+			condition:    AlertCondition{Operator: "lt", Value: 25.0},
+			expected:     false,
+		},
+		{
+			name:         "greater than or equal - equal",
+			currentValue: 25.0,
+			condition:    AlertCondition{Operator: "gte", Value: 25.0},
+			expected:     true,
+		},
+		{
+			name:         "greater than or equal - greater",
+			currentValue: 30.0,
+			condition:    AlertCondition{Operator: "gte", Value: 25.0},
+			expected:     true,
+		},
+		{
+			name:         "greater than or equal - less",
+			currentValue: 20.0,
+			condition:    AlertCondition{Operator: "gte", Value: 25.0},
+			expected:     false,
+		},
+		{
+			name:         "less than or equal - equal",
+			currentValue: 25.0,
+			condition:    AlertCondition{Operator: "lte", Value: 25.0},
+			expected:     true,
+		},
+		{
+			name:         "less than or equal - less",
+			currentValue: 20.0,
+			condition:    AlertCondition{Operator: "lte", Value: 25.0},
+			expected:     true,
+		},
+		{
+			name:         "less than or equal - greater",
+			currentValue: 30.0,
+			condition:    AlertCondition{Operator: "lte", Value: 25.0},
+			expected:     false,
+		},
+		{
+			name:         "equal - true",
+			currentValue: 25.0,
+			condition:    AlertCondition{Operator: "eq", Value: 25.0},
+			expected:     true,
+		},
+		{
+			name:         "equal - false",
+			currentValue: 26.0,
+			condition:    AlertCondition{Operator: "eq", Value: 25.0},
+			expected:     false,
+		},
+		{
+			name:         "unknown operator",
+			currentValue: 25.0,
+			condition:    AlertCondition{Operator: "unknown", Value: 25.0},
+			expected:     false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := service.evaluateCondition(tc.currentValue, tc.condition)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestAlertService_CalculateSeverity(t *testing.T) {
+	mockDB := helpers.NewMockDB(t)
+	defer mockDB.Close()
+	mockRedis := helpers.NewMockRedis()
+	service := NewAlertService(mockDB.DB, mockRedis.Client)
+
+	t.Run("temperature alert severities", func(t *testing.T) {
+		testCases := []struct {
+			name         string
+			currentValue float64
+			threshold    float64
+			expected     models.Severity
+		}{
+			{
+				name:         "critical - deviation > 15",
+				currentValue: 40.0,
+				threshold:    20.0,
+				expected:     models.SeverityCritical,
+			},
+			{
+				name:         "high - deviation > 10",
+				currentValue: 35.0,
+				threshold:    20.0,
+				expected:     models.SeverityHigh,
+			},
+			{
+				name:         "medium - deviation > 5",
+				currentValue: 27.0,
+				threshold:    20.0,
+				expected:     models.SeverityMedium,
+			},
+			{
+				name:         "low - deviation <= 5",
+				currentValue: 24.0,
+				threshold:    20.0,
+				expected:     models.SeverityLow,
+			},
+			{
+				name:         "critical - negative deviation > 15",
+				currentValue: 5.0,
+				threshold:    25.0,
+				expected:     models.SeverityCritical,
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				result := service.calculateSeverity(models.AlertTemperature, tc.currentValue, tc.threshold)
+				assert.Equal(t, tc.expected, result)
+			})
+		}
+	})
+
+	t.Run("air quality alert severities", func(t *testing.T) {
+		testCases := []struct {
+			name         string
+			currentValue float64
+			expected     models.Severity
+		}{
+			{
+				name:         "critical - AQI > 300",
+				currentValue: 350.0,
+				expected:     models.SeverityCritical,
+			},
+			{
+				name:         "high - AQI > 200",
+				currentValue: 250.0,
+				expected:     models.SeverityHigh,
+			},
+			{
+				name:         "medium - AQI > 150",
+				currentValue: 180.0,
+				expected:     models.SeverityMedium,
+			},
+			{
+				name:         "low - AQI <= 150",
+				currentValue: 100.0,
+				expected:     models.SeverityLow,
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				result := service.calculateSeverity(models.AlertAirQuality, tc.currentValue, 0)
+				assert.Equal(t, tc.expected, result)
+			})
+		}
+	})
+
+	t.Run("default alert type - medium severity", func(t *testing.T) {
+		result := service.calculateSeverity(models.AlertHumidity, 80.0, 50.0)
+		assert.Equal(t, models.SeverityMedium, result)
+
+		result = service.calculateSeverity(models.AlertWindSpeed, 60.0, 30.0)
+		assert.Equal(t, models.SeverityMedium, result)
+	})
+}
