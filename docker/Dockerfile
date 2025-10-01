@@ -31,8 +31,8 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/shopogoda .
 
-# Copy configuration files if they exist
-COPY --from=builder /app/configs/ ./configs/ 2>/dev/null || mkdir -p ./configs/
+# Create configs directory (COPY can't use shell operators)
+RUN mkdir -p ./configs
 
 # Change ownership to non-root user
 RUN chown -R shopogoda:shopogoda /app
