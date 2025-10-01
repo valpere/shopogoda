@@ -4,7 +4,7 @@ go 1.24.6
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.25
+	github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.33
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-redis/redismock/v9 v9.2.0

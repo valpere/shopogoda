@@ -11,8 +11,8 @@ github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migc
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/Microsoft/hcsshim v0.11.4 h1:68vKo2VN8DE9AdN4tnkWnmdhqdbpUFM8OF3Airm7fz8=
 github.com/Microsoft/hcsshim v0.11.4/go.mod h1:smjE4dvqPX9Zldna+t5FG3rnoHhaB7QYxPRqGcpAD9w=
-github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.25 h1:VCZg3OsKY19PcXBRRYk2ExeZ3mC8Hm4LqcXcINuFyY4=
-github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.25/go.mod h1:kL1v4iIjlalwm3gCYGvF4NLa3hs+aKEfRkNJvj4aoDU=
+github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.33 h1:uyVD1QSS7ftd/DE2x5OFRx4PYyhq9n4edvFJRExVWVk=
+github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-rc.33/go.mod h1:BSzsfjlE0wakLw2/U1FtO8rdVt+Z+4VyoGo/YcGD9QQ=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
