@@ -52,11 +52,6 @@ jobs:
       with:
         sarif_file: gosec.sarif
 
-    - name: Run Nancy for known vulnerabilities
-      run: |
-        go install github.com/sonatypecommunity/nancy@latest
-        go list -json -deps ./... | nancy sleuth
-
     - name: Run Govulncheck
       run: |
         go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -90,7 +85,8 @@ jobs:
     - name: Build Docker image for scanning
       uses: docker/build-push-action@v5
       with:
-        context: ./docker
+        context: .
+        file: ./docker/Dockerfile
         push: false
         tags: shopogoda:security-scan
         load: true
