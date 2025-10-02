@@ -24,6 +24,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - TestIntegration_UserServiceGetActiveUsers: Active user filtering
   - TestIntegration_UserServiceCacheInvalidation: Cache lifecycle after updates
   - User service method coverage: RegisterUser: 100%, GetUser: 100%, UpdateUserSettings: 100%, Location methods: 100%
+- **Weather Service Integration Tests**: Comprehensive integration tests for weather data and caching
+  - 7 test functions with 13 subtests covering weather retrieval, geocoding, air quality, and caching
+  - TestIntegration_WeatherServiceGetCurrentWeather: Current weather API and cache validation
+  - TestIntegration_WeatherServiceGetForecast: Forecast data caching behavior
+  - TestIntegration_WeatherServiceGetAirQuality: Air quality data caching (30-min TTL)
+  - TestIntegration_WeatherServiceGeocodeLocation: Location geocoding with cache normalization
+  - TestIntegration_WeatherServiceGetCompleteWeatherData: Combined weather + air quality data, graceful air quality fallback
+  - TestIntegration_WeatherServiceGetLocationName: Reverse geocoding with fallback to coordinates
+  - TestIntegration_WeatherServiceCacheTTL: Cache TTL verification (10min weather, 1hr forecast, 30min air, 24hr geocode)
+  - Caching strategy validation: Redis key format, TTL accuracy, cache hit behavior
+  - Error handling: Empty location names, missing air quality data
 - **Alert Service Integration Tests**: Comprehensive integration tests for alert management
   - 5 test functions with 10 subtests covering CRUD operations and alert triggering
   - TestIntegration_AlertServiceCreateAlert: Single and multiple alert type creation
