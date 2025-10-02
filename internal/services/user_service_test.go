@@ -202,8 +202,8 @@ func TestUserService_GetUser(t *testing.T) {
 
 		// Expect cache miss, then database query
 		mockRedis.Mock.ExpectGet("user:456").RedisNil()
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 		// Note: We don't verify the cache Set operation as it's not critical to this test
 		// and redis mock has issues with Set expectations
@@ -226,8 +226,8 @@ func TestUserService_GetUser(t *testing.T) {
 
 		userID := int64(999)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnError(errors.New("record not found"))
 
 		user, err := service.GetUser(context.Background(), userID)
@@ -521,8 +521,8 @@ func TestUserService_GetUserLocation(t *testing.T) {
 			user.IsActive, user.Role, user.CreatedAt, user.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 
 		location, lat, lon, err := service.GetUserLocation(context.Background(), userID)
@@ -549,8 +549,8 @@ func TestUserService_GetUserLocation(t *testing.T) {
 			user.IsActive, user.Role, user.CreatedAt, user.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 
 		location, lat, lon, err := service.GetUserLocation(context.Background(), userID)
@@ -585,8 +585,8 @@ func TestUserService_GetUserTimezone(t *testing.T) {
 			user.IsActive, user.Role, user.CreatedAt, user.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 
 		timezone := service.GetUserTimezone(context.Background(), userID)
@@ -609,8 +609,8 @@ func TestUserService_GetUserTimezone(t *testing.T) {
 			user.IsActive, user.Role, user.CreatedAt, user.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 
 		timezone := service.GetUserTimezone(context.Background(), userID)
@@ -622,8 +622,8 @@ func TestUserService_GetUserTimezone(t *testing.T) {
 	t.Run("user not found defaults to UTC", func(t *testing.T) {
 		userID := int64(999)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnError(errors.New("record not found"))
 
 		timezone := service.GetUserTimezone(context.Background(), userID)
@@ -653,8 +653,8 @@ func TestUserService_ConvertToUserTime(t *testing.T) {
 			user.IsActive, user.Role, user.CreatedAt, user.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 
 		utcTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -681,8 +681,8 @@ func TestUserService_ConvertToUserTime(t *testing.T) {
 			user.IsActive, user.Role, user.CreatedAt, user.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 
 		utcTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -715,8 +715,8 @@ func TestUserService_ConvertToUTC(t *testing.T) {
 			user.IsActive, user.Role, user.CreatedAt, user.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(rows)
 
 		localTime := time.Date(2025, 1, 1, 7, 0, 0, 0, time.UTC) // 7 AM in NY

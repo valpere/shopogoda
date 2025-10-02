@@ -107,8 +107,8 @@ func TestAlertService_GetAlert(t *testing.T) {
 		userID := int64(123)
 		alertID := uuid.New()
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs" WHERE id = \$1 AND user_id = \$2 ORDER BY "alert_configs"\."id" LIMIT 1`).
-			WithArgs(alertID, userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs" WHERE id = \$1 AND user_id = \$2 ORDER BY "alert_configs"\."id" LIMIT \$3`).
+			WithArgs(alertID, userID, 1).
 			WillReturnError(errors.New("record not found"))
 
 		alert, err := service.GetAlert(context.Background(), userID, alertID)
