@@ -14,12 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Video walkthrough
 
 ### Added
+- **Demo Service Integration Tests**: Comprehensive testcontainers-based integration tests
+  - 6 test functions with 9 subtests covering seed, clear, reset, and data validation
+  - PostgreSQL 15 Alpine + Redis 7 Alpine containers for realistic testing
+  - Demo service function coverage: 0% → 63-90% (SeedDemoData: 63.6%, createDemoWeatherData: 90.5%)
+  - Integration tests cover 11.1% of services package
+  - Weather data validation: temperature ranges, humidity, pressure, temporal variation
+  - Alert and subscription configuration verification
 - **Timezone Validation Tests**: Added comprehensive unit tests for timezone validation
   - 10 test cases covering valid timezones (UTC, America/New_York, Europe/Kyiv, etc.)
   - Invalid timezone detection (malformed, empty, partial timezone names)
   - Edge case handling (empty string defaults to Local timezone)
 
 ### Fixed
+- **Demo Service ClearDemoData Bug**: Fixed SQL error when deleting demo user
+  - Root cause: User table uses `id` as primary key, related tables use `user_id` foreign key
+  - Separated deletion logic: related tables use `WHERE user_id = ?`, User table uses `WHERE id = ?`
+  - Fixed 2 failing integration tests (clear data + idempotency)
 - **Service Test SQL Expectations**: Fixed 18 failing test cases caused by GORM query pattern changes
   - Alert service: LIMIT parameter expectations
   - Export service: User query ORDER BY and LIMIT clauses
