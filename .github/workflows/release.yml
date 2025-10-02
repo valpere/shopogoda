@@ -3,111 +3,223 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
+      - 'v*.*.*-*'
+
+permissions:
+  contents: write
+  packages: write
 
 env:
-  GO_VERSION: 1.21
+  GO_VERSION: '1.24.6'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run Tests
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+
   build-and-release:
     name: Build & Release
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      packages: write
-
+    needs: test
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Extract Version Info
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          GIT_COMMIT=$(git rev-parse HEAD)
+          BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S_UTC')
 
-    - name: Install dependencies
-      run: go mod download
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "git_commit=${GIT_COMMIT}" >> $GITHUB_OUTPUT
+          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$([[ $VERSION == *-* ]] && echo true || echo false)" >> $GITHUB_OUTPUT
 
-    - name: Run tests
-      run: go test -v ./...
+      - name: Build Binaries
+        env:
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          LDFLAGS="-s -w \
+            -X github.com/valpere/shopogoda/internal/version.Version=${{ steps.version.outputs.version }} \
+            -X github.com/valpere/shopogoda/internal/version.GitCommit=${{ steps.version.outputs.git_commit }} \
+            -X github.com/valpere/shopogoda/internal/version.BuildTime=${{ steps.version.outputs.build_time }}"
 
-    - name: Build binaries
-      env:
-        CGO_ENABLED: 0
-      run: |
-        # Build for multiple platforms
-        GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o shopogoda-linux-amd64 ./cmd/bot
-        GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o shopogoda-linux-arm64 ./cmd/bot
-        GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o shopogoda-darwin-amd64 ./cmd/bot
-        GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o shopogoda-darwin-arm64 ./cmd/bot
-        GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" -o shopogoda-windows-amd64.exe ./cmd/bot
+          GOOS=linux GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/shopogoda-linux-amd64 ./cmd/bot
+          GOOS=linux GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/shopogoda-linux-arm64 ./cmd/bot
+          GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/shopogoda-darwin-amd64 ./cmd/bot
+          GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/shopogoda-darwin-arm64 ./cmd/bot
+          GOOS=windows GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/shopogoda-windows-amd64.exe ./cmd/bot
 
-    - name: Create checksums
-      run: |
-        sha256sum shopogoda-* > checksums.txt
+      - name: Create Checksums
+        run: |
+          cd dist
+          sha256sum shopogoda-* > checksums.txt
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
+      - name: Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=sha,prefix={{branch}}-
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        platforms: linux/amd64,linux/arm64
-        build-args: |
-          VERSION=${{ github.ref_name }}
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            GIT_COMMIT=${{ steps.version.outputs.git_commit }}
+            BUILD_TIME=${{ steps.version.outputs.build_time }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-    - name: Generate release notes
-      run: |
-        # Generate changelog since last tag
-        if git describe --tags --abbrev=0 HEAD~1 2>/dev/null; then
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1)
-          echo "## Changes since $PREV_TAG" > release-notes.md
-          git log --pretty=format:"- %s" $PREV_TAG..HEAD >> release-notes.md
-        else
-          echo "## First release" > release-notes.md
-          echo "Initial release of ShoPogoda weather bot." >> release-notes.md
-        fi
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        body_path: release-notes.md
-        files: |
-          shopogoda-*
-          checksums.txt
-        generate_release_notes: true
-        make_latest: true
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "🎉 Initial release of ShoPogoda Weather Bot" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "## Changes since ${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const version = '${{ steps.version.outputs.version }}';
+            const isPrerelease = ${{ steps.version.outputs.is_prerelease }};
+            const changelog = `${{ steps.changelog.outputs.changelog }}`;
+
+            // Create release body
+            const releaseBody = `${changelog}
+
+## 📦 Installation
+
+### Docker
+\`\`\`bash
+docker pull ghcr.io/${{ github.repository }}:${version.replace('v', '')}
+\`\`\`
+
+### Binary Download
+Download the binary for your platform from the assets below and run:
+\`\`\`bash
+chmod +x shopogoda-*
+./shopogoda-*
+\`\`\`
+
+### Quick Start
+See [DEMO_SETUP.md](https://github.com/${{ github.repository }}/blob/main/docs/DEMO_SETUP.md) for complete setup instructions.
+
+## 📊 Checksums
+See \`checksums.txt\` asset for SHA256 checksums of all binaries.
+
+## 🐛 Bug Reports
+Report issues at https://github.com/${{ github.repository }}/issues
+`;
+
+            // Create the release
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: version,
+              name: `ShoPogoda ${version}`,
+              body: releaseBody,
+              draft: false,
+              prerelease: isPrerelease,
+              generate_release_notes: false
+            });
+
+            console.log(`✅ Created release: ${release.data.html_url}`);
+
+            // Upload binaries
+            const files = [
+              'dist/shopogoda-linux-amd64',
+              'dist/shopogoda-linux-arm64',
+              'dist/shopogoda-darwin-amd64',
+              'dist/shopogoda-darwin-arm64',
+              'dist/shopogoda-windows-amd64.exe',
+              'dist/checksums.txt'
+            ];
+
+            for (const filepath of files) {
+              const filename = filepath.split('/').pop();
+              console.log(`Uploading ${filename}...`);
+
+              await github.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.data.id,
+                name: filename,
+                data: fs.readFileSync(filepath)
+              });
+            }
+
+            console.log('✅ All assets uploaded');

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -9,12 +11,22 @@ import (
 
 	"github.com/valpere/shopogoda/internal/bot"
 	"github.com/valpere/shopogoda/internal/config"
+	"github.com/valpere/shopogoda/internal/version"
 )
 
-var Version = "dev"
-
 func main() {
-	log.Printf("Starting ShoPogoda v%s", Version)
+	// Command-line flags
+	versionFlag := flag.Bool("version", false, "Print version information and exit")
+	flag.Parse()
+
+	// Handle version flag
+	if *versionFlag {
+		info := version.GetInfo()
+		fmt.Println(info.String())
+		os.Exit(0)
+	}
+
+	log.Printf("Starting ShoPogoda v%s", version.Version)
 
 	// Load configuration
 	cfg, err := config.Load()

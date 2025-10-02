@@ -121,6 +121,7 @@ func (b *Bot) setupHandlers() error {
 	b.dispatcher.AddHandler(handlers.NewCommand("help", cmdHandler.Help))
 	b.dispatcher.AddHandler(handlers.NewCommand("settings", cmdHandler.Settings))
 	b.dispatcher.AddHandler(handlers.NewCommand("language", cmdHandler.Language))
+	b.dispatcher.AddHandler(handlers.NewCommand("version", cmdHandler.Version))
 
 	// Weather commands
 	b.dispatcher.AddHandler(handlers.NewCommand("weather", cmdHandler.CurrentWeather))

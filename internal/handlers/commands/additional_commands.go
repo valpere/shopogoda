@@ -11,6 +11,7 @@ import (
 
 	"github.com/valpere/shopogoda/internal"
 	"github.com/valpere/shopogoda/internal/models"
+	"github.com/valpere/shopogoda/internal/version"
 )
 
 // SetDefaultLocation command handler
@@ -455,6 +456,30 @@ func (h *CommandHandler) Language(bot *gotgbot.Bot, ctx *ext.Context) error {
 		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 			InlineKeyboard: keyboard,
 		},
+	})
+
+	return err
+}
+
+// Version command handler
+func (h *CommandHandler) Version(bot *gotgbot.Bot, ctx *ext.Context) error {
+	info := version.GetInfo()
+
+	message := fmt.Sprintf(`🤖 *ShoPogoda Weather Bot*
+
+📦 Version: %s
+🔨 Git Commit: %s
+🕐 Built: %s
+⚙️ Go Version: %s
+
+---
+🌐 GitHub: [valpere/shopogoda](https://github.com/valpere/shopogoda)
+📖 Documentation: [docs/](https://github.com/valpere/shopogoda/tree/main/docs)
+💬 Support: valentyn.solomko@gmail.com`,
+		info.Version, info.GitCommit, info.BuildTime, info.GoVersion)
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
 	})
 
 	return err
