@@ -10,8 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### In Progress
-- Test coverage improvements (27.4% → 28.4%, target: 40%)
+- Test coverage improvements (27.4% → 28.5%, target: 40%)
 - Video walkthrough
+
+### Added
+- **Timezone Validation Tests**: Added comprehensive unit tests for timezone validation
+  - 10 test cases covering valid timezones (UTC, America/New_York, Europe/Kyiv, etc.)
+  - Invalid timezone detection (malformed, empty, partial timezone names)
+  - Edge case handling (empty string defaults to Local timezone)
 
 ### Fixed
 - **Service Test SQL Expectations**: Fixed 18 failing test cases caused by GORM query pattern changes
@@ -19,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Export service: User query ORDER BY and LIMIT clauses
   - User service: Timezone and location test SQL patterns
   - Services package coverage: 71.3% → 75.6% (+4.3%)
-  - Overall coverage: 27.4% → 28.4% (+1.0%)
+  - Overall coverage: 27.4% → 28.5% (+1.1%)
 
 ---
 

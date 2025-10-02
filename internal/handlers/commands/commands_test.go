@@ -116,3 +116,31 @@ func TestGetNotificationFrequency(t *testing.T) {
 		})
 	}
 }
+
+func TestIsValidTimezone(t *testing.T) {
+	handler := &CommandHandler{}
+
+	tests := []struct {
+		name     string
+		timezone string
+		expected bool
+	}{
+		{"Valid UTC", "UTC", true},
+		{"Valid America/New_York", "America/New_York", true},
+		{"Valid Europe/London", "Europe/London", true},
+		{"Valid Europe/Kyiv", "Europe/Kyiv", true},
+		{"Valid Asia/Tokyo", "Asia/Tokyo", true},
+		{"Valid America/Los_Angeles", "America/Los_Angeles", true},
+		{"Invalid timezone", "Invalid/Timezone", false},
+		{"Empty string defaults to Local", "", true}, // Empty string is valid - defaults to Local
+		{"Random string", "RandomString123", false},
+		{"Partial timezone", "America", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.isValidTimezone(tt.timezone)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
