@@ -333,5 +333,14 @@
    "frequency_every_6_hours" : "Every 6 Hours",
    "frequency_daily" : "Daily",
    "frequency_weekly" : "Weekly",
-   "frequency_unknown" : "Unknown"
+   "frequency_unknown" : "Unknown",
+   "version_title" : "🤖 *ShoPogoda Weather Bot*",
+   "version_version" : "📦 Version: %s",
+   "version_commit" : "🔨 Git Commit: %s",
+   "version_built" : "🕐 Built: %s",
+   "version_go" : "⚙️ Go Version: %s",
+   "version_divider" : "---",
+   "version_github" : "🌐 GitHub: [valpere/shopogoda](https://github.com/valpere/shopogoda)",
+   "version_docs" : "📖 Documentation: [docs/](https://github.com/valpere/shopogoda/tree/main/docs)",
+   "version_support" : "💬 Support: valentyn.solomko@gmail.com"
 }

@@ -463,20 +463,32 @@ func (h *CommandHandler) Language(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 // Version command handler
 func (h *CommandHandler) Version(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 	info := version.GetInfo()
 
-	message := fmt.Sprintf(`🤖 *ShoPogoda Weather Bot*
+	title := h.services.Localization.T(context.Background(), userLang, "version_title")
+	versionText := h.services.Localization.T(context.Background(), userLang, "version_version", info.Version)
+	commitText := h.services.Localization.T(context.Background(), userLang, "version_commit", info.GitCommit)
+	builtText := h.services.Localization.T(context.Background(), userLang, "version_built", info.BuildTime)
+	goText := h.services.Localization.T(context.Background(), userLang, "version_go", info.GoVersion)
+	divider := h.services.Localization.T(context.Background(), userLang, "version_divider")
+	github := h.services.Localization.T(context.Background(), userLang, "version_github")
+	docs := h.services.Localization.T(context.Background(), userLang, "version_docs")
+	support := h.services.Localization.T(context.Background(), userLang, "version_support")
 
-📦 Version: %s
-🔨 Git Commit: %s
-🕐 Built: %s
-⚙️ Go Version: %s
+	message := fmt.Sprintf(`%s
 
----
-🌐 GitHub: [valpere/shopogoda](https://github.com/valpere/shopogoda)
-📖 Documentation: [docs/](https://github.com/valpere/shopogoda/tree/main/docs)
-💬 Support: valentyn.solomko@gmail.com`,
-		info.Version, info.GitCommit, info.BuildTime, info.GoVersion)
+%s
+%s
+%s
+%s
+
+%s
+%s
+%s
+%s`,
+		title, versionText, commitText, builtText, goText, divider, github, docs, support)
 
 	_, err := bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
