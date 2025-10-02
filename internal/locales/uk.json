@@ -330,5 +330,14 @@
    "subscription_type_daily" : "Щоденна погода",
    "subscription_type_extreme" : "Екстремальна погода",
    "subscription_type_unknown" : "Невідомо",
-   "subscription_type_weekly" : "Тижневий прогноз"
+   "subscription_type_weekly" : "Тижневий прогноз",
+   "version_title" : "🤖 *ShoPogoda - Бот Погоди*",
+   "version_version" : "📦 Версія: %s",
+   "version_commit" : "🔨 Git Commit: %s",
+   "version_built" : "🕐 Побудовано: %s",
+   "version_go" : "⚙️ Версія Go: %s",
+   "version_divider" : "---",
+   "version_github" : "🌐 GitHub: [valpere/shopogoda](https://github.com/valpere/shopogoda)",
+   "version_docs" : "📖 Документація: [docs/](https://github.com/valpere/shopogoda/tree/main/docs)",
+   "version_support" : "💬 Підтримка: valentyn.solomko@gmail.com"
 }

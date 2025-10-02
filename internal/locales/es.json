@@ -330,5 +330,14 @@
    "subscription_type_daily" : "Clima diario",
    "subscription_type_extreme" : "Clima extremo",
    "subscription_type_unknown" : "Desconocido",
-   "subscription_type_weekly" : "Pronóstico semanal"
+   "subscription_type_weekly" : "Pronóstico semanal",
+   "version_title" : "🤖 *ShoPogoda Bot del Clima*",
+   "version_version" : "📦 Versión: %s",
+   "version_commit" : "🔨 Git Commit: %s",
+   "version_built" : "🕐 Construido: %s",
+   "version_go" : "⚙️ Versión de Go: %s",
+   "version_divider" : "---",
+   "version_github" : "🌐 GitHub: [valpere/shopogoda](https://github.com/valpere/shopogoda)",
+   "version_docs" : "📖 Documentación: [docs/](https://github.com/valpere/shopogoda/tree/main/docs)",
+   "version_support" : "💬 Soporte: valentyn.solomko@gmail.com"
 }

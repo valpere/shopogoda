@@ -27,7 +27,7 @@ A professional-grade Telegram bot for weather monitoring, environmental alerts, 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Go 1.21+
+- Go 1.24.6
 - Docker & Docker Compose
 - Telegram Bot Token (from @BotFather)
 - OpenWeatherMap API Key
@@ -50,6 +50,8 @@ make dev
 # 4. Run the bot
 make run
 ```
+
+**📖 For detailed demo setup instructions:** [DEMO_SETUP.md](docs/DEMO_SETUP.md)
 
 ### Configuration
 
@@ -213,6 +215,16 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 - **Complete UI Localization**: All bot messages, buttons, and help text translated
 - **Timezone Independence**: Language and timezone settings are managed separately
 - **Fallback System**: Automatic fallback to English for missing translations
+
+## 📚 Documentation
+
+- **[Demo Setup Guide](docs/DEMO_SETUP.md)** - Get started in 5 minutes
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
+- **[Code Quality Guidelines](docs/CODE_QUALITY.md)** - Contribution standards
+- **[Roadmap](docs/ROADMAP.md)** - Feature roadmap and future plans
+- **[Release Process](docs/RELEASE_PROCESS.md)** - Release management guide
+- **[Changelog](CHANGELOG.md)** - Version history and changes
 
 ## 📄 License
 

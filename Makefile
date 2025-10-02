@@ -1,8 +1,12 @@
 # Variables
 BINARY_NAME=shopogoda
 DOCKER_IMAGE=shopogoda
-VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-LDFLAGS=-ldflags "-X main.Version=$(VERSION)"
+VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "0.1.0-dev")
+GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S_UTC')
+LDFLAGS=-ldflags "-X github.com/valpere/shopogoda/internal/version.Version=$(VERSION) \
+	-X github.com/valpere/shopogoda/internal/version.GitCommit=$(GIT_COMMIT) \
+	-X github.com/valpere/shopogoda/internal/version.BuildTime=$(BUILD_TIME)"
 
 # Colors for output
 CYAN=\033[0;36m
@@ -10,7 +14,7 @@ GREEN=\033[0;32m
 RED=\033[0;31m
 NC=\033[0m # No Color
 
-.PHONY: help build run test clean docker-build docker-up docker-down deps fmt lint typecheck check init migrate dev stop deploy-staging deploy-prod
+.PHONY: help build run test clean docker-build docker-up docker-down deps fmt lint typecheck check init migrate dev stop deploy-staging deploy-prod version release release-check
 
 help: ## Show this help message
 	@echo "$(CYAN)ShoPogoda (Що Погода) - Development Commands$(NC)"
@@ -193,3 +197,33 @@ db-reset: ## Reset database (WARNING: destroys all data)
 
 # Show usage
 usage: help
+
+# Version management
+version: ## Show current version
+	@echo "$(CYAN)ShoPogoda Version Information:$(NC)"
+	@echo "Version:    $(VERSION)"
+	@echo "Git Commit: $(GIT_COMMIT)"
+	@echo "Build Time: $(BUILD_TIME)"
+
+release-check: ## Check if ready for release
+	@echo "$(CYAN)Checking release readiness...$(NC)"
+	@echo ""
+	@echo "$(CYAN)1. Git Status:$(NC)"
+	@git status --short
+	@test -z "$$(git status --porcelain)" && echo "$(GREEN)✓ Working directory clean$(NC)" || echo "$(RED)✗ Uncommitted changes$(NC)"
+	@echo ""
+	@echo "$(CYAN)2. Running Tests:$(NC)"
+	@go test ./... >/dev/null 2>&1 && echo "$(GREEN)✓ All tests pass$(NC)" || echo "$(RED)✗ Tests failing$(NC)"
+	@echo ""
+	@echo "$(CYAN)3. Test Coverage:$(NC)"
+	@go test -coverprofile=coverage.tmp ./... >/dev/null 2>&1
+	@go tool cover -func=coverage.tmp | grep total | awk '{print "   Coverage: " $$3}'
+	@rm -f coverage.tmp
+	@echo ""
+	@echo "$(CYAN)4. Linting:$(NC)"
+	@golangci-lint run --timeout=5m >/dev/null 2>&1 && echo "$(GREEN)✓ Linting passed$(NC)" || echo "$(RED)✗ Linting issues found$(NC)"
+	@echo ""
+	@echo "$(GREEN)Run './scripts/create-release.sh vX.Y.Z' to create a release$(NC)"
+
+release: ## Create a new release (interactive)
+	@./scripts/create-release.sh

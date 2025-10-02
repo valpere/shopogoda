@@ -11,6 +11,7 @@ import (
 
 	"github.com/valpere/shopogoda/internal"
 	"github.com/valpere/shopogoda/internal/models"
+	"github.com/valpere/shopogoda/internal/version"
 )
 
 // SetDefaultLocation command handler
@@ -455,6 +456,42 @@ func (h *CommandHandler) Language(bot *gotgbot.Bot, ctx *ext.Context) error {
 		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 			InlineKeyboard: keyboard,
 		},
+	})
+
+	return err
+}
+
+// Version command handler
+func (h *CommandHandler) Version(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+	info := version.GetInfo()
+
+	title := h.services.Localization.T(context.Background(), userLang, "version_title")
+	versionText := h.services.Localization.T(context.Background(), userLang, "version_version", info.Version)
+	commitText := h.services.Localization.T(context.Background(), userLang, "version_commit", info.GitCommit)
+	builtText := h.services.Localization.T(context.Background(), userLang, "version_built", info.BuildTime)
+	goText := h.services.Localization.T(context.Background(), userLang, "version_go", info.GoVersion)
+	divider := h.services.Localization.T(context.Background(), userLang, "version_divider")
+	github := h.services.Localization.T(context.Background(), userLang, "version_github")
+	docs := h.services.Localization.T(context.Background(), userLang, "version_docs")
+	support := h.services.Localization.T(context.Background(), userLang, "version_support")
+
+	message := fmt.Sprintf(`%s
+
+%s
+%s
+%s
+%s
+
+%s
+%s
+%s
+%s`,
+		title, versionText, commitText, builtText, goText, divider, github, docs, support)
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
 	})
 
 	return err

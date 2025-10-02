@@ -330,5 +330,14 @@
    "subscription_type_daily" : "Tägliches Wetter",
    "subscription_type_extreme" : "Extremwetter",
    "subscription_type_unknown" : "Unbekannt",
-   "subscription_type_weekly" : "Wöchentliche Vorhersage"
+   "subscription_type_weekly" : "Wöchentliche Vorhersage",
+   "version_title" : "🤖 *ShoPogoda Wetter-Bot*",
+   "version_version" : "📦 Version: %s",
+   "version_commit" : "🔨 Git Commit: %s",
+   "version_built" : "🕐 Erstellt: %s",
+   "version_go" : "⚙️ Go-Version: %s",
+   "version_divider" : "---",
+   "version_github" : "🌐 GitHub: [valpere/shopogoda](https://github.com/valpere/shopogoda)",
+   "version_docs" : "📖 Dokumentation: [docs/](https://github.com/valpere/shopogoda/tree/main/docs)",
+   "version_support" : "💬 Support: valentyn.solomko@gmail.com"
 }
