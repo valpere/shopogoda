@@ -10,9 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### In Progress
-- Test coverage improvements (28% → 40% target)
-- Demo mode with seeded data
-- Release management automation
+- Test coverage improvements (27.4% → 40% target)
 - Video walkthrough
 
 ---
@@ -52,6 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Alert history (last 90 days)
   - Subscriptions and preferences
   - Formats: JSON, CSV, TXT
+- **Demo Mode**: Comprehensive demonstration system
+  - Auto-seeds realistic demo data on startup (when DEMO_MODE=true)
+  - Demo user (ID: 999999999) with Kyiv, Ukraine location
+  - 24 hours of weather data with natural temperature patterns
+  - 3 alert configurations, 3 notification subscriptions
+  - Admin commands: `/demoreset`, `/democlear`
+  - Perfect for testing, presentations, and development
 - **Location Simplification**: Embedded location model (single location per user)
 - **Timezone Independence**: Location and timezone managed separately
 
@@ -80,14 +85,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/stats` - System statistics and metrics
 - `/broadcast` - Send message to all users
 - `/users` - User management
+- `/demoreset` - Clear and re-seed demo data
+- `/democlear` - Remove all demo data
 
 ### Technical Improvements
 
 #### Testing
-- Unit tests for core services
+- Unit tests for core services (version, demo, commands, services)
 - Integration tests with testcontainers
-- Test coverage: 28.2%
+- Test coverage: 27.4%
 - Mock testing for external APIs
+- Comprehensive demo service tests with edge case validation
 
 #### Code Quality
 - golangci-lint integration
