@@ -103,6 +103,16 @@ func New(cfg *config.Config) (*Bot, error) {
 	// Setup HTTP server for webhooks and metrics
 	weatherBot.setupHTTPServer()
 
+	// Initialize demo mode if enabled
+	if cfg.Bot.DemoMode {
+		logger.Info().Msg("Demo mode enabled - seeding demo data")
+		if err := services.Demo.SeedDemoData(context.Background()); err != nil {
+			logger.Warn().Err(err).Msg("Failed to seed demo data")
+		} else {
+			logger.Info().Msg("Demo data seeded successfully")
+		}
+	}
+
 	return weatherBot, nil
 }
 
@@ -145,6 +155,8 @@ func (b *Bot) setupHandlers() error {
 	b.dispatcher.AddHandler(handlers.NewCommand("stats", cmdHandler.AdminStats))
 	b.dispatcher.AddHandler(handlers.NewCommand("broadcast", cmdHandler.AdminBroadcast))
 	b.dispatcher.AddHandler(handlers.NewCommand("users", cmdHandler.AdminListUsers))
+	b.dispatcher.AddHandler(handlers.NewCommand("demoreset", cmdHandler.DemoReset))
+	b.dispatcher.AddHandler(handlers.NewCommand("democlear", cmdHandler.DemoClear))
 
 	// Callback query handlers
 	b.dispatcher.AddHandler(handlers.NewCallback(nil, cmdHandler.HandleCallback))

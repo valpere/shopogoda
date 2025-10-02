@@ -24,6 +24,7 @@ type BotConfig struct {
 	Debug       bool   `mapstructure:"debug"`
 	WebhookURL  string `mapstructure:"webhook_url"`
 	WebhookPort int    `mapstructure:"webhook_port"`
+	DemoMode    bool   `mapstructure:"demo_mode"`
 }
 
 type DatabaseConfig struct {
@@ -91,6 +92,7 @@ func Load() (*Config, error) {
 	_ = viper.BindEnv("bot.debug", "BOT_DEBUG")
 	_ = viper.BindEnv("bot.webhook_url", "BOT_WEBHOOK_URL")
 	_ = viper.BindEnv("bot.webhook_port", "BOT_WEBHOOK_PORT")
+	_ = viper.BindEnv("bot.demo_mode", "DEMO_MODE")
 
 	_ = viper.BindEnv("database.host", "DB_HOST")
 	_ = viper.BindEnv("database.port", "DB_PORT")

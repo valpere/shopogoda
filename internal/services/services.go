@@ -19,6 +19,7 @@ type Services struct {
 	Scheduler    *SchedulerService
 	Export       *ExportService
 	Localization *LocalizationService
+	Demo         *DemoService
 }
 
 func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.Logger) *Services {
@@ -30,6 +31,7 @@ func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.L
 	schedulerService := NewSchedulerService(db, redis, weatherService, alertService, notificationService, logger)
 	localizationService := NewLocalizationService(logger)
 	exportService := NewExportService(db, logger, localizationService)
+	demoService := NewDemoService(db, logger)
 
 	return &Services{
 		User:         userService,
@@ -40,6 +42,7 @@ func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.L
 		Scheduler:    schedulerService,
 		Export:       exportService,
 		Localization: localizationService,
+		Demo:         demoService,
 	}
 }
 
