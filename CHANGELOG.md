@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Video walkthrough
 
 ### Added
+- **User Service Integration Tests**: Comprehensive integration tests for user management
+  - 7 test functions with 16 subtests covering user lifecycle, settings, location, timezone, caching
+  - TestIntegration_UserServiceRegisterUser: New user creation and upsert behavior
+  - TestIntegration_UserServiceGetUser: Database retrieval and Redis caching validation
+  - TestIntegration_UserServiceUpdateUserSettings: Language, timezone, units updates
+  - TestIntegration_UserServiceLocationManagement: Set, get, clear location operations
+  - TestIntegration_UserServiceTimezoneManagement: Timezone defaults, conversions (UTC ↔ local)
+  - TestIntegration_UserServiceGetActiveUsers: Active user filtering
+  - TestIntegration_UserServiceCacheInvalidation: Cache lifecycle after updates
+  - User service method coverage: RegisterUser: 100%, GetUser: 100%, UpdateUserSettings: 100%, Location methods: 100%
 - **Weather Service Integration Tests**: Comprehensive integration tests for weather data and caching
   - 7 test functions with 13 subtests covering weather retrieval, geocoding, air quality, and caching
   - TestIntegration_WeatherServiceGetCurrentWeather: Current weather API and cache validation
