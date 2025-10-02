@@ -51,8 +51,8 @@ func TestExportService_GetWeatherData(t *testing.T) {
 			now.Add(-10*time.Hour),
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "weather_data" WHERE user_id = \$1 AND timestamp >= \$2 ORDER BY timestamp DESC LIMIT 1000`).
-			WithArgs(userID, helpers.AnyTime{}).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "weather_data" WHERE user_id = \$1 AND timestamp >= \$2 ORDER BY timestamp DESC LIMIT \$3`).
+			WithArgs(userID, helpers.AnyTime{}, 1000).
 			WillReturnRows(rows)
 
 		weatherData, err := service.getWeatherData(context.Background(), userID)
@@ -68,7 +68,8 @@ func TestExportService_GetWeatherData(t *testing.T) {
 	t.Run("no weather data found", func(t *testing.T) {
 		rows := mockDB.Mock.NewRows([]string{"id", "user_id", "location_name", "temperature"})
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "weather_data"`).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "weather_data" WHERE user_id = \$1 AND timestamp >= \$2 ORDER BY timestamp DESC LIMIT \$3`).
+			WithArgs(userID, helpers.AnyTime{}, 1000).
 			WillReturnRows(rows)
 
 		weatherData, err := service.getWeatherData(context.Background(), userID)
@@ -474,8 +475,8 @@ func TestExportService_ExportUserData(t *testing.T) {
 		// Mock user query
 		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
 		userRows.AddRow(userID, "testuser")
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1`).
-			WithArgs(userID).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(userRows)
 
 		// Mock weather data query
@@ -505,7 +506,8 @@ func TestExportService_ExportUserData(t *testing.T) {
 		// Mock user query
 		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
 		userRows.AddRow(userID, "testuser")
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(userRows)
 
 		buffer, filename, err := service.ExportUserData(
@@ -527,7 +529,8 @@ func TestExportService_ExportUserData(t *testing.T) {
 		// Mock user query
 		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
 		userRows.AddRow(userID, "testuser")
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(userRows)
 
 		// Mock weather data query
@@ -556,7 +559,8 @@ func TestExportService_ExportUserData(t *testing.T) {
 		// Mock user query
 		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
 		userRows.AddRow(userID, "testuser")
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(userRows)
 
 		// Mock alert configs query
@@ -587,7 +591,8 @@ func TestExportService_ExportUserData(t *testing.T) {
 		// Mock user query
 		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
 		userRows.AddRow(userID, "testuser")
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(userRows)
 
 		// Mock subscriptions query
@@ -613,7 +618,8 @@ func TestExportService_ExportUserData(t *testing.T) {
 		// Mock user query
 		userRows := mockDB.Mock.NewRows([]string{"id", "username"})
 		userRows.AddRow(userID, "testuser")
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(userID, 1).
 			WillReturnRows(userRows)
 
 		// Mock weather data query
