@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Video walkthrough
 
 ### Added
+- **User Service Integration Tests**: Comprehensive integration tests for user management
+  - 7 test functions with 16 subtests covering user lifecycle, settings, location, timezone, caching
+  - TestIntegration_UserServiceRegisterUser: New user creation and upsert behavior
+  - TestIntegration_UserServiceGetUser: Database retrieval and Redis caching validation
+  - TestIntegration_UserServiceUpdateUserSettings: Language, timezone, units updates
+  - TestIntegration_UserServiceLocationManagement: Set, get, clear location operations
+  - TestIntegration_UserServiceTimezoneManagement: Timezone defaults, conversions (UTC ↔ local)
+  - TestIntegration_UserServiceGetActiveUsers: Active user filtering
+  - TestIntegration_UserServiceCacheInvalidation: Cache lifecycle after updates
+  - User service method coverage: RegisterUser: 100%, GetUser: 100%, UpdateUserSettings: 100%, Location methods: 100%
 - **Alert Service Integration Tests**: Comprehensive integration tests for alert management
   - 5 test functions with 10 subtests covering CRUD operations and alert triggering
   - TestIntegration_AlertServiceCreateAlert: Single and multiple alert type creation
