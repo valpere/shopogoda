@@ -125,9 +125,9 @@ func setupWeatherServiceTest(t *testing.T) *WeatherServiceTestSuite {
 							"aqi": 2,
 						},
 						"components": map[string]interface{}{
-							"co":   200.5,
-							"no2":  10.2,
-							"o3":   50.3,
+							"co":    200.5,
+							"no2":   10.2,
+							"o3":    50.3,
 							"pm2_5": 15.8,
 							"pm10":  25.4,
 						},
