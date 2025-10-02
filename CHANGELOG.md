@@ -51,6 +51,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Integration tests cover 11.1% of services package
   - Weather data validation: temperature ranges, humidity, pressure, temporal variation
   - Alert and subscription configuration verification
+- **Subscription Service Integration Tests**: Comprehensive integration tests for notification subscriptions
+  - 7 test functions with 15 subtests covering CRUD operations and subscription management
+  - TestIntegration_SubscriptionServiceCreateSubscription: Subscription creation for all types
+  - TestIntegration_SubscriptionServiceGetUserSubscriptions: Active subscription filtering
+  - TestIntegration_SubscriptionServiceUpdateSubscription: Subscription modification (time, frequency)
+  - TestIntegration_SubscriptionServiceToggleSubscription: Enable/disable subscriptions
+  - TestIntegration_SubscriptionServiceDeleteSubscription: Soft delete verification (is_active = false)
+  - TestIntegration_SubscriptionServiceGetSubscriptionsByType: Type-based filtering (Daily, Weekly, Alerts, Extreme)
+  - TestIntegration_SubscriptionServiceCacheInvalidation: Redis cache lifecycle after updates
+  - Subscription service method coverage: CreateSubscription: 100%, GetUserSubscriptions: 100%, UpdateSubscription: 100%, DeleteSubscription: 100%
+- **Export Service Integration Tests**: Comprehensive integration tests for data export functionality
+  - 9 test functions with 12 subtests covering all export formats and data types
+  - TestIntegration_ExportServiceExportWeatherDataJSON: Weather data export in JSON format with structure validation
+  - TestIntegration_ExportServiceExportSubscriptionsCSV: Subscription export in multi-section CSV format
+  - TestIntegration_ExportServiceExportAlertsTXT: Alert configuration and triggered alert export in human-readable TXT
+  - TestIntegration_ExportServiceExportAllData: Combined export of all data types (weather + alerts + subscriptions)
+  - TestIntegration_ExportServiceEmptyData: Empty data handling (no records)
+  - TestIntegration_ExportServiceNonExistentUser: Non-existent user error handling
+  - TestIntegration_ExportServiceDateFiltering: Date-based filtering (30-day weather window, 90-day alert history for compliance)
+  - TestIntegration_ExportServiceAllFormats: Format validation (JSON parsing, CSV multi-section content, TXT readability)
+  - TestIntegration_ExportServiceFilenameFormat: Filename structure verification (shopogoda_{type}_{username}_{date}.{ext})
+  - Export service coverage with localization integration: ExportUserData comprehensive testing
 - **Timezone Validation Tests**: Added comprehensive unit tests for timezone validation
   - 10 test cases covering valid timezones (UTC, America/New_York, Europe/Kyiv, etc.)
   - Invalid timezone detection (malformed, empty, partial timezone names)
