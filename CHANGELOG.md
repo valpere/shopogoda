@@ -10,8 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### In Progress
-- Test coverage improvements (27.4% → 40% target)
+- Test coverage improvements (27.4% → 28.4%, target: 40%)
 - Video walkthrough
+
+### Fixed
+- **Service Test SQL Expectations**: Fixed 18 failing test cases caused by GORM query pattern changes
+  - Alert service: LIMIT parameter expectations
+  - Export service: User query ORDER BY and LIMIT clauses
+  - User service: Timezone and location test SQL patterns
+  - Services package coverage: 71.3% → 75.6% (+4.3%)
+  - Overall coverage: 27.4% → 28.4% (+1.0%)
 
 ---
 
