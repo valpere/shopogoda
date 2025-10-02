@@ -10,10 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### In Progress
-- Test coverage improvements (27.4% → 28.5%, target: 40%)
+- Test coverage improvements (27.4% → 28.4%, target: 40%)
 - Video walkthrough
 
 ### Added
+- **Alert Service Integration Tests**: Comprehensive integration tests for alert management
+  - 5 test functions with 10 subtests covering CRUD operations and alert triggering
+  - TestIntegration_AlertServiceCreateAlert: Single and multiple alert type creation
+  - TestIntegration_AlertServiceGetUserAlerts: Active alert filtering and non-existent user handling
+  - TestIntegration_AlertServiceUpdateAlert: Alert threshold updates
+  - TestIntegration_AlertServiceDeleteAlert: Soft delete verification
+  - TestIntegration_AlertServiceCheckAlerts: Alert triggering, cooldown periods, inactive alerts
+  - Alert service method coverage: CreateAlert: 100%, GetUserAlerts: 100%, CheckAlerts: 62.9%, DeleteAlert: 100%, UpdateAlert: 85.7%
+  - Integration tests add 6.0% coverage to internal packages
 - **Demo Service Integration Tests**: Comprehensive testcontainers-based integration tests
   - 6 test functions with 9 subtests covering seed, clear, reset, and data validation
   - PostgreSQL 15 Alpine + Redis 7 Alpine containers for realistic testing
