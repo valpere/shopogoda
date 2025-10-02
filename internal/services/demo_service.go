@@ -219,19 +219,24 @@ func (s *DemoService) createDemoSubscriptions(ctx context.Context) error {
 func (s *DemoService) ClearDemoData(ctx context.Context) error {
 	s.logger.Info().Msg("Clearing demo data...")
 
-	// Delete in reverse order of dependencies
-	tables := []interface{}{
+	// Delete related data first (use user_id)
+	relatedTables := []interface{}{
 		&models.Subscription{},
 		&models.AlertConfig{},
 		&models.WeatherData{},
-		&models.User{},
 	}
 
-	for _, table := range tables {
+	for _, table := range relatedTables {
 		if err := s.db.WithContext(ctx).Where("user_id = ?", DemoUserID).Delete(table).Error; err != nil {
 			s.logger.Error().Err(err).Msgf("Failed to clear demo data for %T", table)
 			return err
 		}
+	}
+
+	// Delete user last (use id, not user_id)
+	if err := s.db.WithContext(ctx).Where("id = ?", DemoUserID).Delete(&models.User{}).Error; err != nil {
+		s.logger.Error().Err(err).Msg("Failed to delete demo user")
+		return err
 	}
 
 	s.logger.Info().Msg("Demo data cleared successfully")
