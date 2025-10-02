@@ -496,3 +496,101 @@ func (h *CommandHandler) Version(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 	return err
 }
+
+// DemoReset command handler - resets demo data (admin only)
+func (h *CommandHandler) DemoReset(bot *gotgbot.Bot, ctx *ext.Context) error {
+	// Register or update user
+	if err := h.services.User.RegisterUser(context.Background(), ctx.EffectiveUser); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to register user")
+	}
+
+	// Get user to check role
+	user, err := h.services.User.GetUser(context.Background(), ctx.EffectiveUser.Id)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to get user")
+		return err
+	}
+
+	// Check if user is admin
+	if user.Role != models.RoleAdmin {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			"⛔ This command is only available to administrators.",
+			nil)
+		return err
+	}
+
+	h.logger.Info().Int64("admin_id", ctx.EffectiveUser.Id).Msg("Admin resetting demo data")
+
+	// Reset demo data
+	if err := h.services.Demo.ResetDemoData(context.Background()); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to reset demo data")
+		_, _ = bot.SendMessage(ctx.EffectiveChat.Id,
+			"❌ Failed to reset demo data. Check logs for details.",
+			nil)
+		return err
+	}
+
+	message := `✅ *Demo Data Reset*
+
+All demo data has been cleared and re-seeded with fresh data.
+
+*Demo User ID*: 999999999
+*Location*: Kyiv, Ukraine
+*Weather Records*: 24 hours of data
+*Alerts*: 3 configured
+*Subscriptions*: 3 active
+
+Demo mode is ready for testing!`
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+
+	return err
+}
+
+// DemoClear command handler - removes all demo data (admin only)
+func (h *CommandHandler) DemoClear(bot *gotgbot.Bot, ctx *ext.Context) error {
+	// Register or update user
+	if err := h.services.User.RegisterUser(context.Background(), ctx.EffectiveUser); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to register user")
+	}
+
+	// Get user to check role
+	user, err := h.services.User.GetUser(context.Background(), ctx.EffectiveUser.Id)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to get user")
+		return err
+	}
+
+	// Check if user is admin
+	if user.Role != models.RoleAdmin {
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			"⛔ This command is only available to administrators.",
+			nil)
+		return err
+	}
+
+	h.logger.Info().Int64("admin_id", ctx.EffectiveUser.Id).Msg("Admin clearing demo data")
+
+	// Clear demo data
+	if err := h.services.Demo.ClearDemoData(context.Background()); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to clear demo data")
+		_, _ = bot.SendMessage(ctx.EffectiveChat.Id,
+			"❌ Failed to clear demo data. Check logs for details.",
+			nil)
+		return err
+	}
+
+	message := `✅ *Demo Data Cleared*
+
+All demo data has been removed from the database.
+
+To re-populate demo data, use /demoreset`
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+
+	return err
+}
