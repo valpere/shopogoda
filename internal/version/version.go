@@ -46,5 +46,9 @@ func (i Info) String() string {
 
 // Short returns short version string
 func (i Info) Short() string {
-	return fmt.Sprintf("v%s (%s)", i.Version, i.GitCommit[:7])
+	commit := i.GitCommit
+	if len(commit) > 7 {
+		commit = commit[:7]
+	}
+	return fmt.Sprintf("v%s (%s)", i.Version, commit)
 }
