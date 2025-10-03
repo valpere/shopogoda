@@ -10,10 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### In Progress
-- Test coverage improvements (27.4% → 29.4%, target: 40%)
+- Test coverage improvements (27.4% → 29.9%, target: 30%)
 - Video walkthrough
 
 ### Added
+- **Bot Mocking Infrastructure**: Reusable test infrastructure for Telegram bot handler testing
+  - MockBot: Minimal gotgbot.Bot instances with configurable test data
+  - MockContext: Flexible ext.Context creation with MockContextOptions builder pattern
+  - 12 configurable fields: UserID, Username, FirstName, LastName, ChatID, MessageID, MessageText, Args, CallbackID, Data, Latitude, Longitude
+  - Helper functions: NewMockBot(), NewMockContext(), NewSimpleMockContext(), NewMockContextWithLocation(), NewMockContextWithCallback()
+  - Context.Args() compatibility: Synchronized Update.Message and EffectiveMessage for proper argument parsing
+  - Comprehensive mock infrastructure tests: 100% coverage of bot_mock.go (TestNewMockBot, TestNewMockContext, TestMockContextDefaults)
+  - First practical usage: TestParseLocationFromArgs with 7 test cases validating location parsing from command arguments
+  - tests/helpers package coverage: 0% → 24.5% (+24.5%)
+  - Handler package coverage: 4.0% → 4.2% (+0.2%)
+  - Overall coverage: 29.4% → 29.9% (+0.5%)
+  - Infrastructure enables future testing of all handler command functions (Start, Help, Weather, Forecast, Settings, etc.)
 - **User Service Integration Tests**: Comprehensive integration tests for user management
   - 7 test functions with 16 subtests covering user lifecycle, settings, location, timezone, caching
   - TestIntegration_UserServiceRegisterUser: New user creation and upsert behavior
