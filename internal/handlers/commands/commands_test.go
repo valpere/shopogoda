@@ -1,12 +1,15 @@
 package commands
 
 import (
+	"context"
 	"testing"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/valpere/shopogoda/internal/models"
+	"github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/tests/helpers"
 )
 
 func TestNew(t *testing.T) {
@@ -140,6 +143,179 @@ func TestIsValidTimezone(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := handler.isValidTimezone(tt.timezone)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetAQIDescription(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+
+	// Create minimal services with localization
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name     string
+		aqi      int
+		expected string
+	}{
+		{"Good air quality - 0", 0, "aqi_good"},
+		{"Good air quality - 25", 25, "aqi_good"},
+		{"Good air quality - 50", 50, "aqi_good"},
+		{"Moderate - 51", 51, "aqi_moderate"},
+		{"Moderate - 75", 75, "aqi_moderate"},
+		{"Moderate - 100", 100, "aqi_moderate"},
+		{"Unhealthy for sensitive - 101", 101, "aqi_unhealthy_sensitive"},
+		{"Unhealthy for sensitive - 150", 150, "aqi_unhealthy_sensitive"},
+		{"Unhealthy - 151", 151, "aqi_unhealthy"},
+		{"Unhealthy - 200", 200, "aqi_unhealthy"},
+		{"Very unhealthy - 201", 201, "aqi_very_unhealthy"},
+		{"Very unhealthy - 300", 300, "aqi_very_unhealthy"},
+		{"Hazardous - 301", 301, "aqi_hazardous"},
+		{"Hazardous - 500", 500, "aqi_hazardous"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getAQIDescription(tt.aqi, "en")
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetHealthRecommendation(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name     string
+		aqi      int
+		expected string
+	}{
+		{"Good health - 0", 0, "health_good"},
+		{"Good health - 50", 50, "health_good"},
+		{"Moderate health - 51", 51, "health_moderate"},
+		{"Moderate health - 100", 100, "health_moderate"},
+		{"Unhealthy for sensitive - 101", 101, "health_unhealthy_sensitive"},
+		{"Unhealthy for sensitive - 150", 150, "health_unhealthy_sensitive"},
+		{"Unhealthy - 151", 151, "health_unhealthy"},
+		{"Unhealthy - 200", 200, "health_unhealthy"},
+		{"Very unhealthy - 201", 201, "health_very_unhealthy"},
+		{"Very unhealthy - 300", 300, "health_very_unhealthy"},
+		{"Hazardous - 301", 301, "health_hazardous"},
+		{"Hazardous - 500", 500, "health_hazardous"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getHealthRecommendation(tt.aqi, "en")
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetLocalizedUnitsText(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name     string
+		units    string
+		expected string
+	}{
+		{"Metric units", "metric", "units_metric"},
+		{"Imperial units", "imperial", "units_imperial"},
+		{"Unknown units", "kelvin", "kelvin"}, // Returns input as-is
+		{"Empty units", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getLocalizedUnitsText(context.Background(), "en", tt.units)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetLocalizedRoleName(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name     string
+		role     models.UserRole
+		expected string
+	}{
+		{"Admin role", models.RoleAdmin, "role_admin"},
+		{"Moderator role", models.RoleModerator, "role_moderator"},
+		{"User role", models.RoleUser, "role_user"},
+		{"Unknown role defaults to user", models.UserRole(999), "role_user"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getLocalizedRoleName(context.Background(), "en", tt.role)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetLocalizedStatusText(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name     string
+		isActive bool
+		expected string
+	}{
+		{"Active status", true, "status_active"},
+		{"Inactive status", false, "status_inactive"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getLocalizedStatusText(context.Background(), "en", tt.isActive)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
