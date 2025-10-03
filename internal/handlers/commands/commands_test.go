@@ -414,4 +414,3 @@ func TestParseLocationFromArgs(t *testing.T) {
 		})
 	}
 }
-
