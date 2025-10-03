@@ -320,3 +320,68 @@ func TestGetLocalizedStatusText(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSubscriptionTypeText(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name     string
+		subType  models.SubscriptionType
+		expected string
+	}{
+		{"Daily subscription", models.SubscriptionDaily, "subscription_type_daily"},
+		{"Weekly subscription", models.SubscriptionWeekly, "subscription_type_weekly"},
+		{"Alerts subscription", models.SubscriptionAlerts, "subscription_type_alerts"},
+		{"Extreme subscription", models.SubscriptionExtreme, "subscription_type_extreme"},
+		{"Unknown subscription type", models.SubscriptionType(999), "subscription_type_unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getSubscriptionTypeText(tt.subType, "en")
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetFrequencyText(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name     string
+		freq     models.Frequency
+		expected string
+	}{
+		{"Hourly frequency", models.FrequencyHourly, "frequency_hourly"},
+		{"Every 3 hours frequency", models.FrequencyEvery3Hours, "frequency_every_3_hours"},
+		{"Every 6 hours frequency", models.FrequencyEvery6Hours, "frequency_every_6_hours"},
+		{"Daily frequency", models.FrequencyDaily, "frequency_daily"},
+		{"Weekly frequency", models.FrequencyWeekly, "frequency_weekly"},
+		{"Unknown frequency", models.Frequency(999), "frequency_unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getFrequencyText(tt.freq, "en")
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
