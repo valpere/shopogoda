@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### In Progress
-- Test coverage improvements (27.4% → 29.1%, target: 40%)
+- Test coverage improvements (27.4% → 29.4%, target: 40%)
 - Video walkthrough
 
 ### Added
@@ -78,14 +78,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Invalid timezone detection (malformed, empty, partial timezone names)
   - Edge case handling (empty string defaults to Local timezone)
 - **Handler Helper Function Tests**: Added comprehensive unit tests for handler utility functions
-  - 5 test functions with 36 test cases covering helper utilities
+  - 7 test functions with 47 test cases covering helper utilities
   - TestGetAQIDescription: Air quality index description mapping (14 cases: Good, Moderate, Unhealthy, Hazardous)
   - TestGetHealthRecommendation: Health recommendations based on AQI (12 cases)
   - TestGetLocalizedUnitsText: Unit system localization (4 cases: metric, imperial, fallback)
   - TestGetLocalizedRoleName: User role localization (4 cases: Admin, Moderator, User, default)
   - TestGetLocalizedStatusText: Active/inactive status localization (2 cases)
-  - Handler package coverage: 2.1% → 3.2% (+1.1%)
-  - Overall coverage: 28.6% → 29.1% (+0.5%)
+  - TestGetSubscriptionTypeText: Subscription type localization (5 cases: Daily, Weekly, Alerts, Extreme, Unknown)
+  - TestGetFrequencyText: Frequency localization (6 cases: Hourly, Every3Hours, Every6Hours, Daily, Weekly, Unknown)
+  - Handler package coverage: 2.1% → 4.0% (+1.9%)
+  - Overall coverage: 28.6% → 29.4% (+0.8%)
 
 ### Fixed
 - **Demo Service ClearDemoData Bug**: Fixed SQL error when deleting demo user
