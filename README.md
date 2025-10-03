@@ -20,7 +20,7 @@ A professional-grade Telegram bot for weather monitoring, environmental alerts, 
 
 ### Technical Excellence
 - **Scalable Architecture**: Microservices-ready design
-- **Comprehensive Testing**: Unit, integration, and E2E tests
+- **Comprehensive Testing**: 30.5% coverage with unit, integration, and bot mock tests
 - **Production Ready**: Docker containerization and CI/CD
 - **Enterprise Security**: Rate limiting, input validation, audit logs
 
@@ -219,6 +219,7 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 ## 📚 Documentation
 
 - **[Demo Setup Guide](docs/DEMO_SETUP.md)** - Get started in 5 minutes
+- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (30.5% coverage)
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
 - **[Code Quality Guidelines](docs/CODE_QUALITY.md)** - Contribution standards

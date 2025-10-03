@@ -303,15 +303,75 @@ const (
 ## Testing Approach
 
 ### Test Types
-- Unit: `*_test.go` files alongside source
-- Integration: `tests/integration/` with testcontainers
-- E2E: `tests/e2e/` with real bot instance
+- **Unit Tests**: `*_test.go` files alongside source
+- **Integration Tests**: `tests/integration/` with testcontainers (PostgreSQL + Redis)
+- **Bot Mock Tests**: Handler tests using `tests/helpers/bot_mock.go` infrastructure
+- **E2E Tests**: `tests/e2e/` with real bot instance (planned)
+
+### Test Coverage
+- **Current**: 30.5% overall coverage
+- **Services**: 75.6% (core business logic)
+- **Handlers**: 4.2% (bot command handlers)
+- **Target**: 40% short-term, 80% long-term
+
+### Bot Mocking Infrastructure
+
+**Location**: `tests/helpers/bot_mock.go`
+
+Reusable infrastructure for testing Telegram bot handler functions without requiring a real bot instance.
+
+**MockBot**: Creates minimal `gotgbot.Bot` instances
+```go
+mockBot := helpers.NewMockBot()
+```
+
+**MockContext**: Flexible `ext.Context` creation with 12 configurable fields
+```go
+// Simple context
+mockCtx := helpers.NewSimpleMockContext(userID, messageText)
+
+// Context with arguments
+mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
+    Args: []string{"/weather", "New", "York"},
+})
+
+// Context with location
+mockCtx := helpers.NewMockContextWithLocation(userID, lat, lon)
+
+// Context with callback
+mockCtx := helpers.NewMockContextWithCallback(userID, callbackID, data)
+```
+
+**Key Features**:
+- Context.Args() compatibility via synchronized Update.Message and EffectiveMessage
+- Builder pattern with MockContextOptions for flexible configuration
+- Support for messages, locations, callbacks, and custom user data
+
+**Usage Example**:
+```go
+func TestParseLocationFromArgs(t *testing.T) {
+    handler := &CommandHandler{}
+
+    mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
+        Args: []string{"/weather", "London"},
+    })
+
+    result := handler.parseLocationFromArgs(mockCtx.Context)
+    assert.Equal(t, "London", result)
+}
+```
 
 ### Test Database
-Integration tests use testcontainers for isolated PostgreSQL instances.
+Integration tests use testcontainers for isolated PostgreSQL and Redis instances.
 
-### Coverage Target
-Maintain >80% test coverage. Use `make test-coverage` to generate HTML report.
+### Running Tests
+```bash
+make test              # Run all unit tests
+make test-coverage     # Generate HTML coverage report
+make test-integration  # Run integration tests (requires Docker)
+```
+
+See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation.
 
 ## Key Dependencies
 
