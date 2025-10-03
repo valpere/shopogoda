@@ -385,3 +385,32 @@ func TestGetFrequencyText(t *testing.T) {
 		})
 	}
 }
+
+func TestParseLocationFromArgs(t *testing.T) {
+	handler := &CommandHandler{}
+
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+	}{
+		{"No args", []string{"/weather"}, ""},
+		{"Single word location", []string{"/weather", "London"}, "London"},
+		{"Multi-word location", []string{"/weather", "New", "York"}, "New York"},
+		{"Location with comma", []string{"/weather", "Paris,", "France"}, "Paris, France"},
+		{"Location with extra spaces", []string{"/weather", " ", "Berlin", " "}, "Berlin"},
+		{"Empty args after command", []string{"/weather", ""}, ""},
+		{"Three word location", []string{"/weather", "Los", "Angeles", "USA"}, "Los Angeles USA"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
+				Args: tt.args,
+			})
+
+			result := handler.parseLocationFromArgs(mockCtx.Context)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
