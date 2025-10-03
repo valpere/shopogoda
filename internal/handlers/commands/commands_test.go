@@ -400,6 +400,7 @@ func TestParseLocationFromArgs(t *testing.T) {
 		{"Location with comma", []string{"/weather", "Paris,", "France"}, "Paris, France"},
 		{"Location with extra spaces", []string{"/weather", " ", "Berlin", " "}, "Berlin"},
 		{"Empty args after command", []string{"/weather", ""}, ""},
+		{"Three word location", []string{"/weather", "Los", "Angeles", "USA"}, "Los Angeles USA"},
 	}
 
 	for _, tt := range tests {
