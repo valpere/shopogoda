@@ -17,11 +17,13 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 
 ## Why Fly.io
 
-**Best for:** Long-term $0 hosting, global deployments, technical users
+**Best for:** 24/7 bots, global deployments, consistent traffic, no cold starts
 
 **Advantages:**
+
 - ✅ **100% FREE forever** with free-tier external services
 - ✅ **3 free VMs** (shared CPU, 256MB RAM each)
+- ✅ **Always-on** (no cold starts, unlike Vercel)
 - ✅ **Global edge network** (fast worldwide)
 - ✅ **Docker-native** (works perfectly with ShoPogoda)
 - ✅ **No credit card required** for free tier
@@ -29,16 +31,18 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 - ✅ **Persistent volumes** (3GB free)
 
 **Perfect for:**
-- Long-term personal projects
+
+- 24/7 bots with consistent traffic
 - Global user base (low latency everywhere)
+- Long-term personal projects
+- Avoiding cold start delays
 - Learning cloud deployments
-- Avoiding monthly costs entirely
 
 ## Architecture Overview
 
 ### Free-Tier Architecture ($0/month)
 
-```
+```plaintext
 ┌─────────────────────────────────────────────────────────────┐
 │                   Fly.io Free Deployment                     │
 ├─────────────────────────────────────────────────────────────┤
@@ -74,11 +78,13 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 ### Free Tier Limits
 
 **Fly.io (Forever Free):**
+
 - 3 shared-cpu-1x VMs (256MB RAM)
 - 160 GB/month outbound data transfer
 - 3 GB persistent volume storage
 
 **Supabase (Forever Free):**
+
 - 500 MB PostgreSQL database
 - Unlimited API requests
 - 50,000 monthly active users
@@ -86,6 +92,7 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 - Daily automatic backups
 
 **Upstash (Forever Free):**
+
 - 10,000 Redis commands/day
 - 256 MB Redis storage
 - Global low-latency access
@@ -105,18 +112,22 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 ### When You Might Exceed Free Tier
 
 **Fly.io:**
+
 - Bot serves >10K users/day → Bandwidth exceeds 160GB
 - Solution: Optimize caching, compress responses
 
 **Supabase:**
+
 - Store >500MB weather history → Database full
 - Solution: Clean old data (30-day retention)
 
 **Upstash:**
+>
 - >10,000 Redis commands/day → Rate limited
 - Solution: Optimize cache usage, batch operations
 
 **Paid fallback costs:**
+
 - Fly.io: ~$5/month for extra bandwidth
 - Supabase: $25/month for Pro tier (2GB DB)
 - Upstash: $10/month for 100K commands/day
@@ -126,6 +137,7 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 ### 1. Get Your API Keys
 
 **Telegram Bot Token:**
+
 ```bash
 # Message @BotFather on Telegram
 /newbot
@@ -134,6 +146,7 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 ```
 
 **OpenWeatherMap API Key:**
+
 ```bash
 # Sign up at https://openweathermap.org/api
 # Free tier: 60 calls/minute, 1M calls/month
@@ -143,6 +156,7 @@ Complete guide for deploying ShoPogoda to Fly.io with free external databases (S
 ### 2. Install Fly.io CLI
 
 **macOS/Linux:**
+
 ```bash
 curl -L https://fly.io/install.sh | sh
 
@@ -154,11 +168,13 @@ source ~/.bashrc  # or ~/.zshrc
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 iwr https://fly.io/install.ps1 -useb | iex
 ```
 
 **Verify installation:**
+
 ```bash
 flyctl version
 ```
@@ -187,6 +203,7 @@ flyctl auth login
 ### 1.2 Create Database Project
 
 **In Supabase Dashboard:**
+
 1. Click "New project"
 2. Fill in details:
    - **Name**: `shopogoda-db`
@@ -199,17 +216,20 @@ flyctl auth login
 ### 1.3 Get Connection Details
 
 **In Supabase Dashboard:**
+
 1. Go to **Project Settings** (gear icon)
 2. Click **Database** tab
 3. Scroll to **Connection string** section
 4. Copy **Connection string** (URI format)
 
 **Example connection string:**
-```
+
+```bash
 postgresql://postgres:YOUR_PASSWORD@db.abcdefghijklmnop.supabase.co:5432/postgres
 ```
 
 **Extract individual values:**
+
 ```bash
 # Full connection string
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.abcdefghijklmnop.supabase.co:5432/postgres
@@ -227,11 +247,13 @@ DB_PASSWORD=YOUR_PASSWORD
 **Why:** Serverless apps need connection pooling for better performance.
 
 **In Supabase Dashboard:**
+
 1. Go to **Database** → **Connection Pooling**
 2. Enable **Transaction Mode** pooling
 3. Copy **Connection Pooler** URL (port 6543)
 
 **Use this for production:**
+
 ```bash
 # Use pooler URL (port 6543) instead of direct connection (port 5432)
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.abcdefghijklmnop.supabase.co:6543/postgres
@@ -240,6 +262,7 @@ DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.abcdefghijklmnop.supabase.co
 ### 1.5 Configure Database (Optional)
 
 **Run migrations via Supabase:**
+
 ```bash
 # Install Supabase CLI (optional, for migrations)
 npm install -g supabase
@@ -263,6 +286,7 @@ npm install -g supabase
 ### 2.2 Create Redis Database
 
 **In Upstash Console:**
+
 1. Click "Create Database"
 2. Fill in details:
    - **Name**: `shopogoda-cache`
@@ -274,6 +298,7 @@ npm install -g supabase
 ### 2.3 Get Connection Details
 
 **In Upstash Console:**
+
 1. Click on `shopogoda-cache` database
 2. Scroll to **REST API** section
 3. Copy connection details:
@@ -291,6 +316,7 @@ REDIS_URL=redis://default:AbCdEf123456...@us1-adapted-bat-12345.upstash.io:6379
 ```
 
 **For ShoPogoda, use either:**
+
 - **Option 1**: Individual params (REDIS_HOST, REDIS_PORT, REDIS_PASSWORD)
 - **Option 2**: Full URL (REDIS_URL)
 
@@ -450,6 +476,7 @@ flyctl secrets set SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBH
 ```
 
 **View configured secrets:**
+
 ```bash
 flyctl secrets list
 ```
@@ -469,6 +496,7 @@ flyctl deploy
 ```
 
 **Monitor deployment:**
+
 ```bash
 # Watch deployment logs
 flyctl logs
@@ -519,6 +547,7 @@ curl https://shopogoda-bot.fly.dev/health
 ### Environment Variables Reference
 
 **Required (Set as secrets):**
+
 ```bash
 TELEGRAM_BOT_TOKEN          # From @BotFather
 OPENWEATHER_API_KEY         # From openweathermap.org
@@ -527,6 +556,7 @@ REDIS_URL                   # Upstash connection string
 ```
 
 **Optional (Set in fly.toml [env] section):**
+
 ```bash
 PORT                        # 8080 (Fly.io auto-sets)
 LOG_LEVEL                   # info, debug, error
@@ -538,6 +568,7 @@ DEMO_MODE                   # true, false (default: false)
 ### Scaling Configuration
 
 **Scale VMs:**
+
 ```bash
 # Scale to 2 VMs for redundancy
 flyctl scale count 2
@@ -552,6 +583,7 @@ flyctl scale count 1
 ```
 
 **Increase VM resources (costs more):**
+
 ```bash
 # Upgrade to 512MB RAM (costs ~$3/month)
 flyctl scale memory 512
@@ -566,6 +598,7 @@ flyctl scale show
 ### Custom Domain (Optional)
 
 **Add custom domain:**
+
 ```bash
 # Add domain
 flyctl certs add bot.yourdomain.com
@@ -586,6 +619,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 ### Fly.io Monitoring
 
 **View metrics:**
+
 ```bash
 # App status
 flyctl status
@@ -604,11 +638,13 @@ flyctl dashboard
 ```
 
 **Fly.io Dashboard:**
+
 - Go to https://fly.io/dashboard
 - Select `shopogoda-bot` app
 - View: Metrics, Logs, Machines, Certificates
 
 **Available metrics:**
+
 - Request count
 - Response times
 - CPU usage
@@ -618,6 +654,7 @@ flyctl dashboard
 ### Health Checks
 
 **Manual health check:**
+
 ```bash
 # Check app health
 curl https://shopogoda-bot.fly.dev/health
@@ -627,6 +664,7 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ```
 
 **Automatic health checks:**
+
 - Fly.io checks `/health` every 30 seconds
 - Auto-restarts unhealthy machines
 - Configured in `fly.toml`
@@ -634,11 +672,13 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ### External Database Monitoring
 
 **Supabase Dashboard:**
+
 - Database size: Project Settings → Database
 - API requests: Home → API
 - Active connections: Database → Connection Pooling
 
 **Upstash Console:**
+
 - Commands/day: Database → Metrics
 - Storage used: Database → Overview
 - Latency: Database → Metrics
@@ -646,12 +686,14 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ### Alerts
 
 **Fly.io alerts:**
+
 ```bash
 # No built-in alerting in free tier
 # Monitor via dashboard or CLI
 ```
 
 **Custom monitoring (optional):**
+
 - Use external services: UptimeRobot, Pingdom (free tier)
 - Health check URL: `https://shopogoda-bot.fly.dev/health`
 - Alert on downtime
@@ -661,6 +703,7 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ### Update Application
 
 **Deploy new version:**
+
 ```bash
 # Pull latest code
 git pull
@@ -673,6 +716,7 @@ flyctl logs -f
 ```
 
 **Rollback to previous version:**
+
 ```bash
 # List releases
 flyctl releases
@@ -687,6 +731,7 @@ flyctl releases rollback <version-number>
 ### Zero-Downtime Deployments
 
 **Fly.io handles this automatically:**
+
 1. Builds new version
 2. Starts new machines
 3. Waits for health checks to pass
@@ -722,6 +767,7 @@ jobs:
 ```
 
 **Setup:**
+
 1. Get Fly.io API token: `flyctl auth token`
 2. Add to GitHub secrets: Settings → Secrets → New secret
 3. Name: `FLY_API_TOKEN`, Value: your token
@@ -870,6 +916,7 @@ psql $DATABASE_URL -c "VACUUM FULL;"
 ### Debug Mode
 
 **Enable debug logging:**
+
 ```bash
 # Set debug mode
 flyctl secrets set LOG_LEVEL="debug"
@@ -885,6 +932,7 @@ flyctl logs -f
 ### SSH Access
 
 **Access running machine:**
+
 ```bash
 # SSH into VM
 flyctl ssh console
@@ -909,6 +957,7 @@ exit
 **Problem:** Free tier VMs scale to zero when idle.
 
 **Solutions:**
+
 ```bash
 # Option 1: Keep 1 VM always running (costs ~$3/month)
 # Edit fly.toml:
@@ -925,12 +974,14 @@ exit
 ### Optimize Database Queries
 
 **Use connection pooling:**
+
 ```bash
 # Always use Supabase connection pooler (port 6543)
 DATABASE_URL=postgresql://postgres:PASSWORD@db.XXX.supabase.co:6543/postgres
 ```
 
 **Optimize queries in code:**
+
 - Add database indexes (already done)
 - Use SELECT only needed columns
 - Batch operations where possible
@@ -938,11 +989,13 @@ DATABASE_URL=postgresql://postgres:PASSWORD@db.XXX.supabase.co:6543/postgres
 ### Optimize Redis Usage
 
 **Stay within 10K commands/day:**
+
 - Increase cache TTL (less frequent updates)
 - Batch SET/GET operations
 - Use Redis pipelining
 
 **Monitor usage:**
+
 ```bash
 # Check daily commands in Upstash console
 # Metrics → Commands per day
@@ -951,11 +1004,13 @@ DATABASE_URL=postgresql://postgres:PASSWORD@db.XXX.supabase.co:6543/postgres
 ### Optimize Docker Image
 
 **Already optimized in Dockerfile:**
+
 - Multi-stage build
 - Alpine base image
 - Minimal dependencies
 
 **Verify image size:**
+
 ```bash
 docker images | grep shopogoda
 # Should be < 100MB
@@ -966,16 +1021,19 @@ docker images | grep shopogoda
 ### Stay Within Free Tier
 
 **Fly.io (3 VMs, 256MB each):**
+
 - ✅ Use 1-2 VMs only
 - ✅ Keep auto_stop_machines = true
 - ✅ Monitor bandwidth (<160GB/month)
 
 **Supabase (500MB database):**
+
 - ✅ Clean old data monthly
 - ✅ Archive instead of storing forever
 - ✅ Use efficient data types
 
 **Upstash (10K commands/day):**
+
 - ✅ Optimize cache TTL
 - ✅ Batch operations
 - ✅ Monitor daily usage
@@ -983,6 +1041,7 @@ docker images | grep shopogoda
 ### Monitor Usage
 
 **Fly.io:**
+
 ```bash
 # Check current usage
 flyctl status
@@ -992,10 +1051,12 @@ flyctl billing
 ```
 
 **Supabase:**
+
 - Dashboard → Project Settings → Usage
 - Database size, API requests, bandwidth
 
 **Upstash:**
+
 - Console → Database → Metrics
 - Daily commands, storage used
 
@@ -1012,6 +1073,7 @@ flyctl billing
 **Total if exceeded:** $38-45/month
 
 **Better alternatives:**
+
 - Switch to VPS (Hetzner $4/month)
 - Use Railway ($5-10/month all-in-one)
 
@@ -1020,10 +1082,12 @@ flyctl billing
 ### Backup Database
 
 **Automatic backups:**
+
 - Supabase: Daily backups (7-day retention)
 - Access: Dashboard → Database → Backups
 
 **Manual backup:**
+
 ```bash
 # Dump database
 flyctl ssh console
@@ -1045,24 +1109,45 @@ flyctl ssh console
 psql $DATABASE_URL < /tmp/backup.sql
 ```
 
+### Platform Comparison
+
+| Feature | Fly.io | Vercel | Railway | GCP |
+|---------|--------|--------|---------|-----|
+| **Free Tier** | 3 free VMs | 100 GB bandwidth | $5 credit/month | $300 trial (90 days) |
+| **PostgreSQL** | External (Supabase) | External (Supabase) | Included | Cloud SQL ($15/mo) |
+| **Redis** | External (Upstash) | External (Upstash) | Included | Memorystore ($25/mo) |
+| **Monthly Cost** | **$0** | **$0** | **$0-5** | **$15-20** (after trial) |
+| **Deployment** | Docker + CLI | GitHub auto-deploy | GitHub auto-deploy | Cloud Run + SDK |
+| **Cold Starts** | None (always-on) | 2-5 seconds | None (always-on) | 1-2 seconds |
+| **Scaling** | Manual (VMs) | Auto (serverless) | Auto | Auto (serverless) |
+| **Best For** | 24/7 bots, global edge | Low traffic, webhook bots | Hobby projects | Enterprise, high traffic |
+
+**Recommendation**:
+- **Fly.io**: Best for **24/7 bots** with consistent traffic and no cold starts
+- **Vercel**: Best for **low-traffic bots** (< 1000 users) with occasional usage
+- **Railway**: Best for **quick prototypes** and hobby projects
+- **GCP**: Best for **enterprise** with budget and advanced features
+
 ### Migrate to Another Platform
 
 **Export everything:**
+
 ```bash
-# Database dump
-flyctl ssh console -C "pg_dump \$DATABASE_URL" > database.sql
+# Database dump (Supabase)
+pg_dump "postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:6543/postgres" > database.sql
 
 # Environment variables
 flyctl secrets list > secrets.txt
 
-# Redis data (if needed)
-flyctl ssh console -C "redis-cli -u \$REDIS_URL --dump" > redis.rdb
+# Redis data (Upstash - if needed)
+redis-cli -u $REDIS_URL --rdb redis.rdb
 ```
 
 **Import to new platform:**
-- Restore database with `psql`
-- Set environment variables
-- Deploy application
+
+- Restore database with `psql` to new PostgreSQL instance
+- Set environment variables in new platform
+- Deploy application using platform-specific method
 
 ## Next Steps
 
@@ -1078,21 +1163,25 @@ flyctl ssh console -C "redis-cli -u \$REDIS_URL --dump" > redis.rdb
 ## Resources
 
 **Fly.io:**
+
 - [Documentation](https://fly.io/docs)
 - [Community Forum](https://community.fly.io)
 - [Status Page](https://status.flyio.net)
 
 **Supabase:**
+
 - [Documentation](https://supabase.com/docs)
 - [Discord Community](https://discord.supabase.com)
 - [Status Page](https://status.supabase.com)
 
 **Upstash:**
+
 - [Documentation](https://docs.upstash.com)
 - [Discord Community](https://discord.gg/w9SenAtbme)
 - [Status Page](https://status.upstash.com)
 
 **ShoPogoda:**
+
 - [GitHub Repository](https://github.com/valpere/shopogoda)
 - [Issues](https://github.com/valpere/shopogoda/issues)
 
