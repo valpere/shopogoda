@@ -84,7 +84,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Always return 200 OK to Telegram immediately
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }
 
 func initialize() error {
