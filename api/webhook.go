@@ -7,11 +7,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
@@ -20,7 +23,6 @@ import (
 	"github.com/valpere/shopogoda/internal/config"
 	"github.com/valpere/shopogoda/internal/database"
 	"github.com/valpere/shopogoda/internal/handlers/commands"
-	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/internal/services"
 )
 
@@ -28,6 +30,7 @@ var (
 	botInstance      *gotgbot.Bot
 	dispatcher       *ext.Dispatcher
 	servicesInstance *services.Services
+	logger           zerolog.Logger
 	initOnce         sync.Once
 	initErr          error
 )
@@ -88,9 +91,9 @@ func initialize() error {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	if os.Getenv("LOG_FORMAT") == "json" {
-		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
+		logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
 	} else {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+		logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 
 	// Load configuration from environment
@@ -98,12 +101,12 @@ func initialize() error {
 		Bot: config.BotConfig{
 			Token:       os.Getenv("TELEGRAM_BOT_TOKEN"),
 			Debug:       os.Getenv("BOT_DEBUG") == "true",
-			WebhookMode: true,
 			WebhookURL:  os.Getenv("BOT_WEBHOOK_URL"),
+			WebhookPort: 8080,
 		},
 		Database: config.DatabaseConfig{
 			Host:     getEnv("DB_HOST", ""),
-			Port:     getEnv("DB_PORT", "6543"),
+			Port:     getEnvInt("DB_PORT", 6543),
 			User:     getEnv("DB_USER", ""),
 			Password: getEnv("DB_PASSWORD", ""),
 			Name:     getEnv("DB_NAME", "postgres"),
@@ -111,16 +114,14 @@ func initialize() error {
 		},
 		Redis: config.RedisConfig{
 			Host:     getEnv("REDIS_HOST", ""),
-			Port:     getEnv("REDIS_PORT", "6379"),
+			Port:     getEnvInt("REDIS_PORT", 6379),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       0,
 		},
 		Weather: config.WeatherConfig{
-			APIKey:      os.Getenv("OPENWEATHER_API_KEY"),
-			BaseURL:     "https://api.openweathermap.org/data/2.5",
-			CacheTTL:    600 * time.Second,  // 10 minutes
-			GeocodeTTL:  24 * time.Hour,     // 24 hours
-			ForecastTTL: 3600 * time.Second, // 1 hour
+			OpenWeatherAPIKey: os.Getenv("OPENWEATHER_API_KEY"),
+			AirQualityAPIKey:  os.Getenv("AIRQUALITY_API_KEY"),
+			UserAgent:         getEnv("WEATHER_USER_AGENT", "ShoPogoda-Weather-Bot/1.0"),
 		},
 	}
 
@@ -128,7 +129,7 @@ func initialize() error {
 	if cfg.Bot.Token == "" {
 		return fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
 	}
-	if cfg.Weather.APIKey == "" {
+	if cfg.Weather.OpenWeatherAPIKey == "" {
 		return fmt.Errorf("OPENWEATHER_API_KEY is required")
 	}
 
@@ -137,7 +138,9 @@ func initialize() error {
 	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
 		dsn = dbURL
 	} else {
-		dsn = cfg.Database.DSN()
+		dsn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+			cfg.Database.Host, cfg.Database.Port, cfg.Database.User,
+			cfg.Database.Password, cfg.Database.Name, cfg.Database.SSLMode)
 	}
 
 	// Initialize database with connection pooling settings for serverless
@@ -156,80 +159,101 @@ func initialize() error {
 	sqlDB.SetConnMaxLifetime(5 * time.Minute) // Short lifetime
 
 	// Run migrations
-	if err := models.Migrate(db); err != nil {
+	if err := database.Migrate(db); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	// Initialize Redis (use Upstash REST API if available)
-	var redisClient *database.RedisClient
-	if restURL := os.Getenv("UPSTASH_REDIS_REST_URL"); restURL != "" {
-		// Use Upstash REST API (recommended for Vercel)
-		log.Info().Msg("Using Upstash Redis REST API")
-		// Note: Implement REST API client if needed
-		// For now, Redis is optional - bot works without cache
+	// Initialize Redis (optional - bot works without cache)
+	var redisClient *redis.Client
+	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
+		// Note: For Vercel, consider using Upstash REST API instead
+		// This is a fallback for standard Redis protocol
+		logger.Warn().Msg("Redis connection not implemented for serverless - running without cache")
 		redisClient = nil
-	} else if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
-		// Fallback to Redis protocol
-		redisClient, err = database.NewRedisClientFromURL(redisURL)
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to connect to Redis, continuing without cache")
-			redisClient = nil
-		}
-	} else {
-		// Try standard Redis config
-		redisClient, err = database.NewRedisClient(cfg.Redis)
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to connect to Redis, continuing without cache")
-			redisClient = nil
-		}
 	}
 
 	// Initialize services
-	servicesInstance = services.New(db, redisClient, cfg, &log.Logger)
+	servicesInstance = services.New(db, redisClient, cfg, &logger)
 
 	// Create bot instance
-	botInstance, err = gotgbot.NewBot(cfg.Bot.Token, &gotgbot.BotOpts{})
+	botInstance, err = gotgbot.NewBot(cfg.Bot.Token, &gotgbot.BotOpts{
+		BotClient: &gotgbot.BaseBotClient{
+			Client: http.Client{Timeout: 30 * time.Second},
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create bot: %w", err)
 	}
 
+	// Set bot instance for notifications
+	servicesInstance.Notification.SetBot(botInstance)
+
 	// Create dispatcher
 	dispatcher = ext.NewDispatcher(&ext.DispatcherOpts{
 		Error: func(b *gotgbot.Bot, ctx *ext.Context, err error) ext.DispatcherAction {
-			log.Error().Err(err).Msg("Update processing error")
+			logger.Error().Err(err).Msg("Update processing error")
 			return ext.DispatcherActionNoop
 		},
 		MaxRoutines: 10, // Limit concurrent processing in serverless
 	})
 
 	// Register command handlers
-	registerHandlers(dispatcher, servicesInstance)
+	setupHandlers(dispatcher, servicesInstance)
 
-	log.Info().Msg("Bot initialized successfully for Vercel serverless")
+	logger.Info().Msg("Bot initialized successfully for Vercel serverless")
 	return nil
 }
 
-func registerHandlers(dispatcher *ext.Dispatcher, services *services.Services) {
-	// Command handlers
-	dispatcher.AddHandler(commands.NewStartHandler(services))
-	dispatcher.AddHandler(commands.NewWeatherHandler(services))
-	dispatcher.AddHandler(commands.NewForecastHandler(services))
-	dispatcher.AddHandler(commands.NewAirHandler(services))
-	dispatcher.AddHandler(commands.NewSetLocationHandler(services))
-	dispatcher.AddHandler(commands.NewSubscribeHandler(services))
-	dispatcher.AddHandler(commands.NewAddAlertHandler(services))
-	dispatcher.AddHandler(commands.NewSettingsHandler(services))
-	dispatcher.AddHandler(commands.NewStatsHandler(services))
-	dispatcher.AddHandler(commands.NewBroadcastHandler(services))
-	dispatcher.AddHandler(commands.NewUsersHandler(services))
+func setupHandlers(d *ext.Dispatcher, svc *services.Services) {
+	// Create command handler instance
+	cmdHandler := commands.New(svc, &logger)
+
+	// Basic commands
+	d.AddHandler(handlers.NewCommand("start", cmdHandler.Start))
+	d.AddHandler(handlers.NewCommand("help", cmdHandler.Help))
+	d.AddHandler(handlers.NewCommand("settings", cmdHandler.Settings))
+	d.AddHandler(handlers.NewCommand("language", cmdHandler.Language))
+	d.AddHandler(handlers.NewCommand("version", cmdHandler.Version))
+
+	// Weather commands
+	d.AddHandler(handlers.NewCommand("weather", cmdHandler.CurrentWeather))
+	d.AddHandler(handlers.NewCommand("forecast", cmdHandler.Forecast))
+	d.AddHandler(handlers.NewCommand("air", cmdHandler.AirQuality))
+
+	// Location management
+	d.AddHandler(handlers.NewCommand("setlocation", cmdHandler.SetLocation))
+
+	// Subscription management
+	d.AddHandler(handlers.NewCommand("subscribe", cmdHandler.Subscribe))
+	d.AddHandler(handlers.NewCommand("unsubscribe", cmdHandler.Unsubscribe))
+	d.AddHandler(handlers.NewCommand("subscriptions", cmdHandler.ListSubscriptions))
+
+	// Alert management
+	d.AddHandler(handlers.NewCommand("addalert", cmdHandler.AddAlert))
+	d.AddHandler(handlers.NewCommand("alerts", cmdHandler.ListAlerts))
+	d.AddHandler(handlers.NewCommand("removealert", cmdHandler.RemoveAlert))
+
+	// Admin commands
+	d.AddHandler(handlers.NewCommand("stats", cmdHandler.AdminStats))
+	d.AddHandler(handlers.NewCommand("broadcast", cmdHandler.AdminBroadcast))
+	d.AddHandler(handlers.NewCommand("users", cmdHandler.AdminListUsers))
 
 	// Callback query handlers
-	dispatcher.AddHandler(commands.NewCallbackQueryHandler(services))
+	d.AddHandler(handlers.NewCallback(nil, cmdHandler.HandleCallback))
 }
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
 	}
 	return defaultValue
 }
