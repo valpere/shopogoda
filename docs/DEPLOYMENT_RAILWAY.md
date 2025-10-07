@@ -1,145 +1,276 @@
 # Railway Deployment Guide
 
-Complete guide for deploying ShoPogoda to Railway - the easiest and most cost-effective platform for hobby projects.
+Complete guide for deploying ShoPogoda to Railway - simple container platform with excellent developer experience.
 
 ## Table of Contents
 
 - [Why Railway](#why-railway)
 - [Cost Breakdown](#cost-breakdown)
+- [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+  - [Method 1: Web Dashboard (Integrated)](#method-1-web-dashboard-recommended---10-minutes)
+  - [Method 2: Railway CLI](#method-2-railway-cli-advanced)
+- [Deployment Variant 2: Railway + Supabase + Upstash](#deployment-variant-2-railway--supabase--upstash)
+  - [Step 1: Create Supabase Database](#step-1-create-supabase-database)
+  - [Step 2: Create Upstash Redis](#step-2-create-upstash-redis)
+  - [Step 3: Deploy Bot to Railway](#step-3-deploy-bot-to-railway)
+  - [Step 4: Verify Deployment](#step-4-verify-deployment)
+  - [Step 5: Monitor Free Tier Usage](#step-5-monitor-free-tier-usage)
+  - [Troubleshooting Hybrid Setup](#troubleshooting-hybrid-setup)
+  - [Cost Comparison](#cost-comparison-integrated-vs-hybrid)
+  - [Migration Between Variants](#migration-between-variants)
 - [Detailed Setup](#detailed-setup)
 - [Configuration](#configuration)
 - [Monitoring](#monitoring)
 - [Troubleshooting](#troubleshooting)
+- [Migration & Backup](#migration--backup)
+
+## Deployment Options
+
+This guide covers **two deployment variants**:
+
+| Variant | Cost | Complexity | Best For |
+|---------|------|------------|----------|
+| **Variant 1: Integrated** | $8-14/month | ⭐ Simple | Production, Always-on, Low latency |
+| **Variant 2: Hybrid** | $0/month | ⭐⭐⭐ Moderate | Testing, Budget-conscious, Small bots |
+
+- **Variant 1 (Integrated)**: Railway hosts bot + PostgreSQL + Redis (all in one platform)
+- **Variant 2 (Hybrid)**: Railway hosts bot only, uses Supabase (PostgreSQL) + Upstash (Redis)
+
+**Quick Decision:**
+- 💰 Have $8-14/month budget? → Use **Variant 1** (simpler, faster)
+- 🆓 Want completely free? → Use **Variant 2** (more setup, free tier limits)
 
 ## Why Railway
 
-**Best for:** Hobby projects, quick deployments, minimal configuration
+**Best for:** Rapid development, MVPs, full-stack apps with database
 
 **Advantages:**
-- ✅ **$5/month free credit** (enough for small bot + database + Redis)
+- ✅ **500 instance hours/month free** (1 GB RAM included)
 - ✅ **One-click deployment** from GitHub
-- ✅ **PostgreSQL & Redis included** in free tier
-- ✅ **Zero configuration** needed
-- ✅ **Automatic HTTPS** and domain
-- ✅ **Built-in monitoring** and logs
-- ✅ **No credit card required** to start
+- ✅ **PostgreSQL & Redis included** in platform
+- ✅ **Automatic Dockerfile detection** - zero config needed
+- ✅ **Automatic HTTPS** with free subdomain
+- ✅ **Built-in monitoring** and real-time logs
+- ✅ **Usage-based pricing** - pay only for what you use
 
 **Perfect for:**
-- Personal projects
-- Development/testing
-- Low-traffic bots (<10K users)
-- Learning and experimentation
+- Personal projects and MVPs
+- Development/testing environments
+- Small to medium bots (up to 50K users)
+- Teams needing quick deployments
+- Projects requiring always-on database
+
+**Note:** Railway changed their pricing in 2023. Free tier now includes 500 instance hours/month with 1 GB RAM. Paid plans start at usage-based billing (~$5-10/month for typical bot usage).
 
 ## Cost Breakdown
 
-### Free Tier Details
+### Free Tier (Current 2025)
 
 **Monthly Allowance:**
-- $5 in usage credits (resets monthly)
-- Includes: compute, database, Redis, bandwidth
+- **500 instance hours/month** (enough for ~20 days always-on or full month with sleep)
+- **1 GB RAM** per instance
+- Includes: compute, bandwidth, metrics
+- **Database & Redis**: Billed separately (see below)
 
-**Typical Bot Usage:**
-| Resource | Usage | Cost/Month | Notes |
-|----------|-------|------------|-------|
-| Bot (512MB RAM) | ~100 hours | $1-2 | Scales to zero when idle |
-| PostgreSQL | Always on | $1-2 | db-f1-micro equivalent |
-| Redis | Always on | $1 | 256MB instance |
-| **Total** | - | **$3-5** | Within free tier! |
+**Typical ShoPogoda Bot Usage:**
 
-**Cost Optimization:**
-- Bot scales to zero when no requests → Near $0 compute cost
-- Small database footprint → Minimal storage cost
-- Redis cache hits reduce external API calls
+| Resource | Configuration | Hours/Month | Cost Estimate | Notes |
+|----------|--------------|-------------|---------------|-------|
+| **Bot Service** | 1 GB RAM | 500 (free tier) | **$0** | Within free hours |
+| **PostgreSQL 15** | 512 MB RAM, 1 GB storage | 730 (always-on) | **$5** | Shared instance |
+| **Redis 7** | 256 MB RAM | 730 (always-on) | **$3** | Cache only |
+| **Bandwidth** | ~10 GB/month | Included | **$0** | Free tier covers it |
+| **Total** | - | - | **~$8/month** | Predictable cost |
 
-### After Free Tier ($5 exceeded)
+**Free Tier Strategy:**
+- ✅ Bot uses all 500 free hours → $0 for bot
+- ✅ Database + Redis always-on → ~$8/month combined
+- ✅ No unexpected costs from API calls or bandwidth
 
-If you exceed $5/month, Railway charges **$0.000231/GB-second** for compute.
+### Paid Usage (After Free Hours)
 
-**Example for busy bot:**
-- Bot: $5/month (512MB, always running)
-- PostgreSQL: $3/month
-- Redis: $2/month
-- **Total: ~$10/month**
+If your bot needs more than 500 hours/month (always-on = 730 hours):
 
-**Still cheaper than:**
-- GCP Cloud Run + Cloud SQL: $15-20/month
-- AWS ECS + RDS: $20-30/month
-- DigitalOcean: $12/month minimum
+**Usage-Based Pricing:**
+- Compute: **$0.000231/GB-second** ($6/GB/month for always-on)
+- Example: 1 GB instance always-on = ~$6/month
+- **Total with database:** ~$14/month ($6 bot + $5 DB + $3 Redis)
+
+**Cost Optimization Tips:**
+1. **Efficient caching** → Reduce external API calls (OpenWeatherMap)
+2. **Database cleanup** → Delete old weather data (>30 days)
+3. **Connection pooling** → Minimize database connections (max 5-10)
+4. **Health check optimization** → Reduce frequency if high traffic
+
+### Comparison with Alternatives
+
+| Platform | Bot | Database | Redis | Total/Month |
+|----------|-----|----------|-------|-------------|
+| **Railway** | $0-6 | $5 | $3 | **$8-14** |
+| Fly.io | $5-7 | $0 (Supabase) | $0 (Upstash) | $5-7 |
+| Vercel | $0 | $0 (Supabase) | $0 (Upstash) | $0 (cold starts) |
+| Replit | $20 | Included | No Redis | $20 |
+| GCP Cloud Run | $5-10 | $15-20 | $10 | $30-40 |
+
+**Railway is best when:**
+- You need always-on bot (no cold starts)
+- You want integrated database without external services
+- You prefer predictable monthly costs
+- Development experience matters (excellent CLI/dashboard)
+
+## Prerequisites
+
+Before deploying to Railway, ensure you have:
+
+**Required:**
+1. ✅ **GitHub account** (for Railway authentication and deployment)
+2. ✅ **Telegram Bot Token** from [@BotFather](https://t.me/BotFather)
+3. ✅ **OpenWeatherMap API Key** from [openweathermap.org](https://openweathermap.org/api)
+
+**Optional:**
+- Railway CLI (for local deployment and debugging)
+- Docker installed (for local testing before deployment)
+- Git CLI (for repository management)
+
+**Project Requirements:**
+- Dockerfile located at `docker/Dockerfile` ✅ (ShoPogoda has this)
+- Health check endpoint at `/health` ✅ (implemented)
+- Port 8080 exposed ✅ (default in ShoPogoda)
 
 ## Quick Start
 
-### Method 1: Web Dashboard (Easiest - 5 Minutes)
+### Method 1: Web Dashboard (Recommended - 10 Minutes)
 
-**1. Sign Up**
-- Go to [railway.app](https://railway.app)
-- Click "Login with GitHub"
-- Authorize Railway
+**Step 1: Create Railway Account**
+```
+1. Go to https://railway.app
+2. Click "Login with GitHub"
+3. Authorize Railway to access your repositories
+4. Accept terms of service
+```
 
-**2. Create New Project**
-- Click "New Project"
-- Select "Deploy from GitHub repo"
-- Choose `valpere/shopogoda`
-- Railway auto-detects Dockerfile
+**Step 2: Create New Project from GitHub**
+```
+1. Click "New Project" button
+2. Select "Deploy from GitHub repo"
+3. Choose your fork of shopogoda (or valpere/shopogoda)
+4. Railway detects Dockerfile at docker/Dockerfile
+5. Click "Deploy Now"
+```
 
-**3. Add Database Services**
-- Click "+ New" in your project
-- Select "Database" → "PostgreSQL"
-- Click "+ New" again
-- Select "Database" → "Redis"
+**Note:** If Railway doesn't detect the Dockerfile, add a `railway.toml` file (see [Detailed Setup](#railway-configuration-file)).
 
-**4. Configure Environment Variables**
+**Step 3: Add Database Services**
+```
+1. In your project dashboard, click "+ New"
+2. Select "Database" → "Add PostgreSQL"
+3. Wait for PostgreSQL to provision (~30 seconds)
+4. Click "+ New" again
+5. Select "Database" → "Add Redis"
+6. Wait for Redis to provision (~30 seconds)
+```
 
-In your bot service settings, add:
+**Step 4: Configure Environment Variables**
 
+Click on your **bot service** (not database), then go to **Variables** tab:
+
+**Required Variables:**
 ```bash
-# Telegram Bot (from @BotFather)
-TELEGRAM_BOT_TOKEN=123456789:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+# Telegram Configuration
+TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+OPENWEATHER_API_KEY=your_api_key_from_openweathermap
 
-# Weather API (from openweathermap.org)
-OPENWEATHER_API_KEY=abcdef1234567890abcdef1234567890
+# Bot Mode (webhook for Railway)
+BOT_WEBHOOK_MODE=true
+BOT_WEBHOOK_URL=${{RAILWAY_PUBLIC_DOMAIN}}
+```
 
-# Database (auto-configured by Railway)
+**Database Variables (Auto-configured by Railway):**
+```bash
+# PostgreSQL - use Railway's service variables
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 DB_HOST=${{Postgres.PGHOST}}
 DB_PORT=${{Postgres.PGPORT}}
 DB_NAME=${{Postgres.PGDATABASE}}
 DB_USER=${{Postgres.PGUSER}}
 DB_PASSWORD=${{Postgres.PGPASSWORD}}
+DB_SSL_MODE=disable
 
-# Redis (auto-configured by Railway)
+# Redis - use Railway's service variables
 REDIS_URL=${{Redis.REDIS_URL}}
 REDIS_HOST=${{Redis.REDIS_HOST}}
 REDIS_PORT=${{Redis.REDIS_PORT}}
 REDIS_PASSWORD=${{Redis.REDIS_PASSWORD}}
-
-# Optional
-LOG_LEVEL=info
-BOT_DEBUG=false
+REDIS_DB=0
 ```
 
-**5. Deploy**
-- Railway automatically triggers deployment
-- Wait 2-3 minutes for build
-- Check logs for "Bot started successfully"
+**Optional Variables:**
+```bash
+LOG_LEVEL=info
+LOG_FORMAT=json
+BOT_DEBUG=false
+DEMO_MODE=false
+```
 
-**6. Get Bot URL and Set Webhook**
+**Step 5: Generate Public Domain**
+```
+1. Go to your bot service → Settings
+2. Scroll to "Networking" section
+3. Click "Generate Domain"
+4. Copy the generated domain (e.g., shopogoda-production.up.railway.app)
+5. Add it to BOT_WEBHOOK_URL variable (or use RAILWAY_PUBLIC_DOMAIN)
+```
+
+**Step 6: Deploy and Monitor**
+```
+1. Railway automatically triggers deployment
+2. Go to "Deployments" tab to watch build progress
+3. Build time: ~3-5 minutes (Go compilation + Docker layers)
+4. Watch logs in real-time (click on deployment)
+5. Wait for "Deployment successful" message
+```
+
+**Step 7: Verify Webhook**
+
+Once deployed, verify Telegram webhook is set correctly:
 
 ```bash
-# Get your Railway domain (shown in deployment)
-# Example: shopogoda-production.up.railway.app
+# Check webhook status
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
 
-# Set webhook using curl
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-  -d "url=https://shopogoda-production.up.railway.app/webhook"
+# Expected output should show:
+# "url": "https://your-app.up.railway.app/webhook"
+# "has_custom_certificate": false
+# "pending_update_count": 0
 ```
 
-**7. Test Your Bot**
-- Open Telegram
-- Message your bot: `/start`
-- Try: `/weather London`
+If webhook is not set automatically, set it manually:
 
-✅ **Done!** Your bot is live.
+```bash
+curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://your-app.up.railway.app/webhook"}'
+```
+
+**Step 8: Test Your Bot**
+```
+1. Open Telegram and find your bot
+2. Send: /start
+   Expected: Welcome message with instructions
+3. Send: /weather London
+   Expected: Current weather for London
+4. Send: /forecast Kyiv
+   Expected: 5-day weather forecast
+```
+
+✅ **Deployment Complete!** Your bot is now live on Railway.
+
+**Troubleshooting First Deployment:**
+- ❌ "Dockerfile not found" → Add railway.toml with correct path
+- ❌ "Database connection failed" → Check DB_ variables are using ${{Postgres.*}}
+- ❌ "Bot not responding" → Check logs for errors, verify webhook URL
+- ❌ "Build timeout" → Free tier might be slow, wait or upgrade
 
 ### Method 2: Railway CLI (Advanced)
 
@@ -221,17 +352,381 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
   -d "url=https://your-domain.railway.app/webhook"
 ```
 
+## Deployment Variant 2: Railway + Supabase + Upstash
+
+**Total Cost: $0/month** | **Setup Time: 20 minutes**
+
+This variant uses Railway for bot hosting with free external database services to eliminate all costs.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Railway (Bot Only)                                      │
+│  └── ShoPogoda Bot (1 GB RAM, 500 hours/month free)    │
+└──────────────────┬──────────────────────────────────────┘
+                   │
+        ┌──────────┴──────────┐
+        │                     │
+        ▼                     ▼
+┌───────────────┐     ┌──────────────┐
+│ Supabase      │     │ Upstash      │
+│ PostgreSQL 15 │     │ Redis 7      │
+│ 500MB free    │     │ 10K cmd/day  │
+└───────────────┘     └──────────────┘
+```
+
+### Step 1: Create Supabase Database
+
+**1.1 Sign up for Supabase**
+```
+1. Go to https://supabase.com
+2. Sign in with GitHub
+3. Create new organization (or use existing)
+```
+
+**1.2 Create new project**
+```
+1. Click "New Project"
+2. Name: shopogoda-db
+3. Database Password: Generate strong password (save it!)
+4. Region: Choose closest to your users
+5. Click "Create new project"
+6. Wait 2-3 minutes for provisioning
+```
+
+**1.3 Get connection details**
+```
+1. Go to Project Settings → Database
+2. Copy these values:
+   - Host: db.xxxxxxxxxxxxx.supabase.co
+   - Database name: postgres
+   - Port: 5432
+   - User: postgres
+   - Password: [your generated password]
+
+3. Or copy the connection string:
+   postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres
+```
+
+**1.4 Configure connection pooling (Important!)**
+```
+1. Still in Database settings
+2. Find "Connection pooling" section
+3. Enable "Use connection pooling"
+4. Mode: Transaction
+5. Copy pooler connection string:
+   postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:6543/postgres
+
+Note: Use port 6543 for pooler (not 5432 direct)
+```
+
+### Step 2: Create Upstash Redis
+
+**2.1 Sign up for Upstash**
+```
+1. Go to https://upstash.com
+2. Sign in with GitHub or email
+3. Confirm email address
+```
+
+**2.2 Create Redis database**
+```
+1. Click "Create Database"
+2. Name: shopogoda-cache
+3. Type: Regional
+4. Region: Choose same as Supabase (or closest)
+5. TLS: Enabled (recommended)
+6. Click "Create"
+```
+
+**2.3 Get connection details**
+```
+1. Open your Redis database
+2. Go to "Details" tab
+3. Copy these values:
+
+   REST API (recommended for serverless):
+   - UPSTASH_REDIS_REST_URL: https://xxxxx.upstash.io
+   - UPSTASH_REDIS_REST_TOKEN: AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==
+
+   Redis Protocol (for Railway):
+   - Endpoint: redis-xxxxx.upstash.io
+   - Port: 6379 or 6380 (TLS)
+   - Password: AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==
+```
+
+### Step 3: Deploy Bot to Railway
+
+**3.1 Create Railway project (same as Method 1)**
+```
+1. Go to https://railway.app
+2. Login with GitHub
+3. New Project → Deploy from GitHub repo
+4. Choose shopogoda repository
+```
+
+**3.2 Configure environment variables**
+
+Click on bot service → Variables tab:
+
+**Required Variables:**
+```bash
+# Telegram & Weather API
+TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+OPENWEATHER_API_KEY=your_api_key_from_openweathermap
+
+# Bot Mode
+BOT_WEBHOOK_MODE=true
+BOT_WEBHOOK_URL=${{RAILWAY_PUBLIC_DOMAIN}}
+
+# Supabase PostgreSQL (use connection pooler!)
+DATABASE_URL=postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:6543/postgres
+DB_HOST=db.xxxxxxxxxxxxx.supabase.co
+DB_PORT=6543
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=your_supabase_db_password
+DB_SSL_MODE=require
+
+# Upstash Redis - Option A: REST API (recommended)
+UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==
+
+# Upstash Redis - Option B: Redis Protocol (alternative)
+# REDIS_URL=redis://default:AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==@redis-xxxxx.upstash.io:6379
+# REDIS_HOST=redis-xxxxx.upstash.io
+# REDIS_PORT=6379
+# REDIS_PASSWORD=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==
+# REDIS_DB=0
+
+# Optional
+LOG_LEVEL=info
+LOG_FORMAT=json
+BOT_DEBUG=false
+```
+
+**Important notes:**
+- ✅ Use Supabase **connection pooler** (port 6543) not direct connection (5432)
+- ✅ Set `DB_SSL_MODE=require` for Supabase
+- ✅ Use Upstash REST API for better serverless performance
+- ✅ Store passwords securely in Railway variables (never commit to git)
+
+**3.3 Generate domain and deploy**
+```
+1. Bot service → Settings → Networking → Generate Domain
+2. Copy generated domain
+3. Update BOT_WEBHOOK_URL if needed
+4. Railway auto-deploys on variable changes
+5. Wait 3-5 minutes for deployment
+```
+
+### Step 4: Verify Deployment
+
+**4.1 Check service health**
+```bash
+# Health check
+curl https://your-app.up.railway.app/health
+
+# Expected: {"status":"healthy","timestamp":"..."}
+```
+
+**4.2 Check database connection**
+```bash
+# Via Railway logs
+railway logs --service shopogoda
+
+# Look for:
+# "Database connected successfully"
+# "Redis connected successfully"
+# "Bot started successfully"
+```
+
+**4.3 Verify webhook**
+```bash
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
+
+# Should show:
+# "url": "https://your-app.up.railway.app/webhook"
+# "pending_update_count": 0
+```
+
+**4.4 Test bot commands**
+```
+Telegram → Your bot
+/start      → Welcome message
+/weather    → Current weather (tests API + caching)
+/forecast   → 5-day forecast
+/setlocation → Set location (tests database write)
+```
+
+### Step 5: Monitor Free Tier Usage
+
+**Railway Usage:**
+```bash
+railway usage
+
+# Monitor:
+# - Hours used / 500 free hours
+# - Should stay at $0 if under 500 hours/month
+```
+
+**Supabase Usage:**
+```
+1. Supabase Dashboard → Project → Settings → Usage
+2. Monitor:
+   - Database size: Max 500 MB
+   - Bandwidth: Max 2 GB/month
+   - Active connections: Max 100
+```
+
+**Upstash Usage:**
+```
+1. Upstash Dashboard → Database → Metrics
+2. Monitor:
+   - Daily requests: Max 10,000 commands/day
+   - Storage: Max 256 MB
+   - Bandwidth: Free tier covers most usage
+```
+
+### Troubleshooting Hybrid Setup
+
+**Issue 1: Database connection timeout**
+```bash
+# Symptom: "connection timeout" in logs
+# Cause: Using direct connection instead of pooler
+
+# Fix: Ensure using port 6543 (pooler) not 5432
+DB_HOST=db.xxxxx.supabase.co
+DB_PORT=6543  # Pooler port!
+DB_SSL_MODE=require
+```
+
+**Issue 2: Redis connection refused**
+```bash
+# Symptom: "connection refused" or "auth failed"
+
+# Fix 1: Check if using REST API correctly
+UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io  # Must include https://
+UPSTASH_REDIS_REST_TOKEN=AxxxQ==  # Full token
+
+# Fix 2: Or use Redis protocol with TLS port
+REDIS_HOST=redis-xxxxx.upstash.io
+REDIS_PORT=6380  # TLS port (or 6379 for non-TLS)
+```
+
+**Issue 3: Exceeded Supabase bandwidth**
+```bash
+# Symptom: Database connection fails after high usage
+
+# Check usage:
+# Supabase Dashboard → Usage → Bandwidth
+
+# Solutions:
+# 1. Optimize queries (reduce data fetched)
+# 2. Increase Redis caching TTL
+# 3. Clean old weather data more frequently
+# 4. Upgrade Supabase plan ($25/month)
+```
+
+**Issue 4: Exceeded Upstash command limit**
+```bash
+# Symptom: Redis commands fail after 10K/day
+
+# Check usage:
+# Upstash Dashboard → Metrics → Daily Requests
+
+# Solutions:
+# 1. Increase cache TTL (reduce cache writes)
+# 2. Batch Redis operations
+# 3. Upgrade Upstash plan ($10/month for 100K/day)
+```
+
+### Cost Comparison: Integrated vs Hybrid
+
+| Component | Integrated (Railway) | Hybrid (Railway+Supabase+Upstash) |
+|-----------|---------------------|----------------------------------|
+| **Bot Hosting** | $0 (500 hrs free) | $0 (500 hrs free) |
+| **PostgreSQL** | $5/month | $0 (500MB free) |
+| **Redis** | $3/month | $0 (10K cmd/day free) |
+| **Total** | **$8/month** | **$0/month** |
+| **Setup Complexity** | ⭐ Simple | ⭐⭐⭐ Moderate |
+| **Latency** | ⚡ Low (same DC) | ⚡⚡ Higher (external) |
+| **Scalability** | 📈 Good | 📈📈 Limited by free tiers |
+| **Maintenance** | 🔧 Low | 🔧🔧 Medium (3 platforms) |
+
+**Recommendation:**
+- **Start with Integrated** if budget allows ($8/month)
+- **Switch to Hybrid** if costs are concern or testing
+- **Monitor free tier limits** closely in Hybrid setup
+
+### Migration Between Variants
+
+**From Integrated to Hybrid:**
+```bash
+# 1. Backup Railway database
+railway run --service postgres pg_dump > backup.sql
+
+# 2. Restore to Supabase
+psql "postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres" < backup.sql
+
+# 3. Update Railway variables to point to Supabase/Upstash
+# 4. Delete Railway database services
+```
+
+**From Hybrid to Integrated:**
+```bash
+# 1. Backup Supabase database
+pg_dump "postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres" > backup.sql
+
+# 2. Add Railway PostgreSQL service
+railway add --database postgres
+
+# 3. Restore database
+railway run --service postgres psql < backup.sql
+
+# 4. Update variables to use Railway services
+# 5. Can keep Supabase/Upstash as backup
+```
+
 ## Detailed Setup
+
+Create `railway.toml` in project root to customize deployment:
+
+```toml
+[build]
+# Use Dockerfile from docker/ directory
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile"
+
+[deploy]
+# Start command (optional, CMD in Dockerfile is used by default)
+# startCommand = "./shopogoda"
+
+# Health check (Railway will ping this endpoint)
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+# Restart policy
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+```
+
+**When to add railway.toml:**
+- Railway doesn't auto-detect Dockerfile (non-standard location)
+- Custom build args needed
+- Health check configuration required
+- Restart policy customization
 
 ### Project Structure for Railway
 
-Railway works out-of-the-box with ShoPogoda because:
+ShoPogoda works out-of-the-box with Railway because:
 
-1. **Detects Dockerfile** automatically
-2. **Exposes PORT** environment variable (app listens on 8080)
-3. **Auto-connects services** via reference variables
-
-No additional configuration needed!
+1. ✅ **Dockerfile** located at `docker/Dockerfile` (detected automatically with railway.toml)
+2. ✅ **Health endpoint** at `/health` (Railway pings every 30s)
+3. ✅ **PORT 8080** exposed (Railway injects PORT env variable, app uses it)
+4. ✅ **Multi-stage build** (efficient Docker image, faster deployments)
+5. ✅ **Auto-connects services** via reference variables (${{Postgres.*}})
 
 ### Railway Variables Reference
 
@@ -601,21 +1096,59 @@ railway alerts set --threshold 4
 
 ### Cost-Saving Alternatives
 
-**If exceeding $5/month:**
+**If exceeding free tier or want to minimize costs:**
 
-1. **Use external free services:**
-   - PostgreSQL: Supabase (500MB free)
-   - Redis: Upstash (10K commands/day free)
-   - Deploy only bot on Railway
+#### Option 1: Railway + Supabase + Upstash (Hybrid - $0/month)
 
-2. **Switch to Fly.io:**
-   - Free tier: 3 VMs
-   - Use Supabase + Upstash
-   - Total cost: $0
+**Best for:** Maximum cost savings while keeping Railway deployment
 
-3. **Self-host:**
-   - VPS: $4-5/month (Hetzner, Contabo)
-   - Full control, no limits
+**Setup:**
+1. Use Railway only for bot (500 free hours = ~20 days always-on)
+2. Use Supabase for PostgreSQL (500MB free + 2GB bandwidth)
+3. Use Upstash for Redis (10K commands/day free)
+
+**Pros:**
+- ✅ **Completely free** for small bots
+- ✅ Railway deployment simplicity
+- ✅ Professional managed databases
+- ✅ No cold starts for database access
+
+**Cons:**
+- ❌ Need to manage 3 platforms
+- ❌ External database latency
+- ❌ Free tier limits (storage, bandwidth)
+
+**See:** [Deployment Variant 2: Railway + External Services](#deployment-variant-2-railway--supabase--upstash) below for detailed setup.
+
+#### Option 2: Fly.io + Supabase + Upstash ($0/month)
+
+**Best for:** Completely free deployment with more control
+
+**Setup:**
+- Fly.io free tier: 3 VMs (256MB each)
+- Use external databases (same as Option 1)
+- Total cost: $0
+
+**See:** [DEPLOYMENT_FLYIO.md](DEPLOYMENT_FLYIO.md) for details.
+
+#### Option 3: Self-Hosted VPS ($4-5/month)
+
+**Best for:** Full control, no platform limits
+
+**Providers:**
+- Hetzner Cloud: $4.15/month (2 vCPU, 2GB RAM)
+- Contabo: $4.50/month (4 vCPU, 8GB RAM)
+- DigitalOcean: $6/month (1 vCPU, 1GB RAM)
+
+**Pros:**
+- ✅ Full control over infrastructure
+- ✅ No platform limits
+- ✅ Can run multiple projects
+
+**Cons:**
+- ❌ Manual setup and maintenance
+- ❌ Security responsibility
+- ❌ No managed backups
 
 ## Migration & Backup
 
@@ -685,5 +1218,7 @@ psql $NEW_DATABASE_URL < shopogoda_backup.sql
 
 ---
 
-**Last Updated**: 2025-01-03
+**Last Updated**: 2025-01-07
+**Railway Version**: v2 (2025 pricing model)
 **Maintained by**: [@valpere](https://github.com/valpere)
+**ShoPogoda Version**: Compatible with v1.0+
