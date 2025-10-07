@@ -14,36 +14,102 @@ This document provides comprehensive deployment instructions for ShoPogoda acros
 
 ## Overview
 
-ShoPogoda supports multiple deployment environments:
+ShoPogoda supports multiple deployment environments and platforms:
 
 - **Development**: Local development with docker-compose
 - **Staging**: Pre-production testing environment
-- **Production**: Live production environment
+- **Production**: Live production deployment
+
+## Platform-Specific Deployment Guides
+
+Choose the platform that best fits your needs:
+
+### Serverless Platforms
+
+- **[Vercel](DEPLOYMENT_VERCEL.md)** - Serverless functions, free tier, automatic scaling
+  - Best for: Webhook-based bots, high traffic, free tier
+  - Setup: Supabase (PostgreSQL) + Upstash (Redis) + Vercel Functions
+  - Cost: Free (up to 100GB bandwidth/month)
+
+- **[Replit](DEPLOYMENT_REPLIT.md)** - Web IDE with built-in PostgreSQL
+  - Best for: Beginners, quick prototyping, polling mode
+  - Setup: All-in-one platform with database included
+  - Cost: Free (with sleep) or $20/month (always-on)
+
+### Container Platforms
+
+- **[Fly.io](DEPLOYMENT_FLYIO.md)** - Docker containers, global edge deployment
+  - Best for: Always-on bots, scheduled tasks, low latency
+  - Setup: Dockerfile-based deployment
+  - Cost: ~$5-10/month
+
+- **[Railway](DEPLOYMENT_RAILWAY.md)** - Simplified container deployment
+  - Best for: Easy database integration, GitHub auto-deploy
+  - Setup: Connect GitHub repo, add environment variables
+  - Cost: Free tier ($5 credit) or ~$5-10/month
+
+### Cloud Platforms
+
+- **[Google Cloud Platform](DEPLOYMENT_GCP.md)** - GCE, Cloud Run, or App Engine
+  - Best for: Enterprise scale, GCP ecosystem integration
+  - Setup: Multiple deployment options available
+  - Cost: Varies by service
+
+## Platform Comparison
+
+| Platform | Setup | Free Tier | Paid Plan | CPU | RAM | Storage | Bandwidth | Always-On | Cold Starts | Database | Scaling | Ideal For |
+|----------|-------|-----------|-----------|-----|-----|---------|-----------|-----------|-------------|----------|---------|-----------|
+| **Replit** | Easy | 1 vCPU, 2 GiB RAM, 10 apps, 1200 min dev time, 1 GB transfer | $20/mo + $25 credits | 1-8 vCPU | 2-16 GiB | 2-256 GB | 1-1000 GB/mo | Optional | No (if paid) | Included | Manual/Auto | Prototyping, beginners, IDE integration |
+| **Vercel** | Medium | 1M functions, 4 CPU-hrs, 360 GB-hrs memory | $20/mo + usage | Shared serverless | 360 GB-hours | 1 GB blob | 20-100 GB/mo | No | Yes (2-5s) | External | Automatic | Webhooks, high traffic, serverless |
+| **Railway** | Medium | 500 instance hrs/mo, 1 GB RAM | $5/mo + usage | Varies | 1 GB+ | PostgreSQL included | Limited quota | Yes | No | Included | Automatic | MVPs, rapid dev, full-stack |
+| **Fly.io** | Hard | Legacy only (limited) | $0 + usage (~$5-10) | 256 MB+ VM | 256 MB+ | $0.15/GB/mo | 160 GB/mo | Yes | No | Add-on | Usage-based | Global edge, low latency, containers |
+| **GCP** | Hard | Limited credits | Varies | Varies | Varies | Varies | Varies | Yes | Depends | Varies | Configurable | Enterprise scale, GCP ecosystem |
+
+**Key Differences:**
+
+- **Easiest Setup**: Replit (all-in-one IDE) → Railway (GitHub auto-deploy) → Vercel (serverless) → Fly.io/GCP (manual config)
+- **Best Free Tier**: Replit (2 GiB RAM) → Vercel (generous limits) → Railway (500 hrs) → Fly.io (legacy only)
+- **Always-On Required**: Fly.io, Railway, GCP (polling mode) | Replit (paid tier) | Vercel (webhook only)
+- **Database Included**: Replit, Railway (free) | Fly.io (paid add-on) | Vercel (external required)
+- **Cost Effective**: Railway ($5/mo) → Fly.io ($5-10) → Replit ($20/mo) → Vercel (free or $20) → GCP (varies)
+
+This comparison covers free tier limits, pricing, resources, and use cases for each platform in 2025.[^1][^2][^3][^4][^5]
+
+[^1]: https://www.withorb.com/blog/replit-pricing
+[^2]: https://vercel.com/docs/ai-gateway/pricing
+[^3]: https://www.withorb.com/blog/flyio-pricing
+[^4]: https://infosecwriteups.com/railway-the-easiest-way-to-deploy-full-stack-apps-i-tried-it-27e2a23dee2f
+[^5]: https://replit.com/pricing
+
+
+## General Deployment Information
+
+This section covers deployment concepts applicable to all platforms
 
 ### Architecture
 
-```
+```plaintext
 ┌─────────────────────────────────────────────────────────────┐
-│                     ShoPogoda Stack                          │
+│                     ShoPogoda Stack                         │
 ├─────────────────────────────────────────────────────────────┤
-│  Bot Application (Go)                                        │
+│  Bot Application (Go)                                       │
 │  ├── Telegram Bot API Integration                           │
 │  ├── Weather Service (OpenWeatherMap)                       │
 │  └── Health Check Endpoint (:8080/health)                   │
 ├─────────────────────────────────────────────────────────────┤
-│  PostgreSQL 15                                               │
+│  PostgreSQL 15                                              │
 │  ├── User Data & Preferences                                │
-│  ├── Weather History                                         │
-│  └── Alert Configurations                                    │
+│  ├── Weather History                                        │
+│  └── Alert Configurations                                   │
 ├─────────────────────────────────────────────────────────────┤
-│  Redis 7                                                     │
-│  ├── Weather Data Cache                                      │
-│  ├── Session Storage                                         │
-│  └── Rate Limiting                                           │
+│  Redis 7                                                    │
+│  ├── Weather Data Cache                                     │
+│  ├── Session Storage                                        │
+│  └── Rate Limiting                                          │
 ├─────────────────────────────────────────────────────────────┤
-│  Observability Stack                                         │
-│  ├── Prometheus (Metrics)                                    │
-│  ├── Grafana (Dashboards)                                    │
+│  Observability Stack                                        │
+│  ├── Prometheus (Metrics)                                   │
+│  ├── Grafana (Dashboards)                                   │
 │  └── Jaeger (Distributed Tracing)                           │
 └─────────────────────────────────────────────────────────────┘
 ```

@@ -21,6 +21,26 @@ ShoPogoda uses a comprehensive testing strategy with multiple test types:
 - **Integration Tests**: Tests with real database and Redis using testcontainers
 - **Bot Mock Tests**: Tests for Telegram bot handler functions using mock infrastructure
 
+### Testing Philosophy
+
+This project follows a **pragmatic testing approach** using concrete types and real dependencies where possible:
+
+- ✅ **testcontainers** for PostgreSQL/Redis (real database behavior)
+- ✅ **sqlmock** for database unit tests (fast, isolated)
+- ✅ **Custom bot mocks** in `tests/helpers/bot_mock.go` (Telegram-specific)
+- ❌ **No interface-based mocking** (gomock/mockgen not used)
+
+**Why concrete types instead of interfaces?**
+
+The project uses dependency injection with concrete service types rather than interface-based abstractions. This approach:
+
+- Simplifies codebase (no interface boilerplate)
+- Catches more bugs (tests against real implementations)
+- Faster development (no mock generation step)
+- Appropriate for project scale (medium-sized application)
+
+**Note**: The file `tests/generate.go` exists for future interface-based mocking if needed, but is currently not used. See that file for details.
+
 ### Current Test Coverage
 
 - **Overall**: 30.5%
