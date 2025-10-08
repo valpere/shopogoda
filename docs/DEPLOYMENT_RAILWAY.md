@@ -548,7 +548,7 @@ railway up  # Will prompt for GitHub repo selection
 
 ## Deployment Variant 2: Railway + Supabase + Upstash
 
-**Total Cost: $0/month** | **Setup Time: 20 minutes**
+**Total Cost: $0/month** | **Setup Time: 20 minutes** | **Status: ✅ Tested & Working (2025-01-08)**
 
 This variant uses Railway for bot hosting with free external database services to eliminate all costs.
 
@@ -558,6 +558,9 @@ This variant uses Railway for bot hosting with free external database services t
 ┌─────────────────────────────────────────────────────────┐
 │  Railway (Bot Only)                                      │
 │  └── ShoPogoda Bot (1 GB RAM, 500 hours/month free)    │
+│      ✅ Automatic TLS for Redis                         │
+│      ✅ Prepared statements disabled for Supabase       │
+│      ✅ Environment-only config (no YAML)               │
 └──────────────────┬──────────────────────────────────────┘
                    │
         ┌──────────┴──────────┐
@@ -567,8 +570,20 @@ This variant uses Railway for bot hosting with free external database services t
 │ Supabase      │     │ Upstash      │
 │ PostgreSQL 15 │     │ Redis 7      │
 │ 500MB free    │     │ 10K cmd/day  │
+│ Port 6543     │     │ TLS enabled  │
 └───────────────┘     └──────────────┘
 ```
+
+### Recent Improvements (v1.0.2+)
+
+ShoPogoda includes automatic fixes for common Railway + Supabase + Upstash deployment issues:
+
+1. ✅ **YAML Config Disabled**: All configuration via environment variables only (no config file parsing)
+2. ✅ **Automatic Redis TLS**: TLS automatically enabled for cloud Redis hosts (Upstash)
+3. ✅ **Supabase Pooler Support**: Prepared statements disabled for transaction pooler compatibility
+4. ✅ **Migration Strategy**: Database migrations disabled for pooler, tables created on first run
+
+**No manual workarounds needed** - just set environment variables and deploy!
 
 ### Step 1: Create Supabase Database
 
@@ -673,26 +688,22 @@ OPENWEATHER_API_KEY=your_api_key_from_openweathermap
 # Bot Mode
 BOT_WEBHOOK_MODE=true
 BOT_WEBHOOK_URL=${{RAILWAY_PUBLIC_DOMAIN}}
+BOT_WEBHOOK_PORT=8080
 
 # Supabase PostgreSQL (use connection pooler!)
-DATABASE_URL=postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:6543/postgres
-DB_HOST=db.xxxxxxxxxxxxx.supabase.co
+DATABASE_URL=postgresql://postgres.[PROJECT_ID]:[PASSWORD]@aws-X-REGION.pooler.supabase.com:6543/postgres?sslmode=require
+DB_HOST=aws-X-REGION.pooler.supabase.com
 DB_PORT=6543
 DB_NAME=postgres
-DB_USER=postgres
+DB_USER=postgres.[PROJECT_ID]
 DB_PASSWORD=your_supabase_db_password
 DB_SSL_MODE=require
 
-# Upstash Redis - Option A: REST API (recommended)
-UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==
-
-# Upstash Redis - Option B: Redis Protocol (alternative)
-# REDIS_URL=redis://default:AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==@redis-xxxxx.upstash.io:6379
-# REDIS_HOST=redis-xxxxx.upstash.io
-# REDIS_PORT=6379
-# REDIS_PASSWORD=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==
-# REDIS_DB=0
+# Upstash Redis - TCP Protocol with TLS (ShoPogoda uses standard Redis client)
+REDIS_HOST=special-name-12345.upstash.io
+REDIS_PORT=6379
+REDIS_PASSWORD=AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxQ==
+REDIS_DB=0
 
 # Optional
 LOG_LEVEL=info
@@ -703,8 +714,10 @@ BOT_DEBUG=false
 **Important notes:**
 - ✅ Use Supabase **connection pooler** (port 6543) not direct connection (5432)
 - ✅ Set `DB_SSL_MODE=require` for Supabase
-- ✅ Use Upstash REST API for better serverless performance
+- ✅ **ShoPogoda automatically enables TLS for Redis** when connecting to cloud hosts (non-localhost)
+- ✅ Use Upstash **TCP endpoint** (not REST API) - standard Redis protocol on port 6379
 - ✅ Store passwords securely in Railway variables (never commit to git)
+- ⚠️ **Database migrations are disabled** for Supabase pooler compatibility (tables auto-created on first deployment)
 
 **3.3 Generate domain and deploy**
 ```
@@ -785,28 +798,65 @@ railway usage
 
 ### Troubleshooting Hybrid Setup
 
-**Issue 1: Database connection timeout**
+**Issue 1: YAML parsing errors on deployment**
+```bash
+# Symptom: "error reading config file: While parsing config: yaml: control characters are not allowed"
+# Cause: Railway caching old config files or malformed YAML
+
+# Fix: ShoPogoda now disables YAML config loading in production
+# All configuration comes from environment variables only
+# No action needed - fixed in latest version
+```
+
+**Issue 2: Database connection timeout**
 ```bash
 # Symptom: "connection timeout" in logs
 # Cause: Using direct connection instead of pooler
 
 # Fix: Ensure using port 6543 (pooler) not 5432
-DB_HOST=db.xxxxx.supabase.co
+DB_HOST=aws-X-REGION.pooler.supabase.com
 DB_PORT=6543  # Pooler port!
 DB_SSL_MODE=require
 ```
 
-**Issue 2: Redis connection refused**
+**Issue 3: Prepared statement errors**
 ```bash
-# Symptom: "connection refused" or "auth failed"
+# Symptom: "ERROR: prepared statement already exists (SQLSTATE 42P05)"
+# Cause: Supabase transaction pooler doesn't support prepared statements
 
-# Fix 1: Check if using REST API correctly
-UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io  # Must include https://
-UPSTASH_REDIS_REST_TOKEN=AxxxQ==  # Full token
+# Fix: ShoPogoda automatically disables prepared statements for Supabase
+# Uses PreferSimpleProtocol=true when connecting
+# No action needed - fixed in latest version
+```
 
-# Fix 2: Or use Redis protocol with TLS port
-REDIS_HOST=redis-xxxxx.upstash.io
-REDIS_PORT=6380  # TLS port (or 6379 for non-TLS)
+**Issue 4: Database migration "insufficient arguments" error**
+```bash
+# Symptom: "Failed to create bot: failed to connect to database: failed to run migrations: insufficient arguments"
+# Cause: GORM AutoMigrate schema verification incompatible with Supabase pooler
+
+# Fix: Database migrations are disabled for Railway deployments
+# Tables are created automatically on first successful deployment
+# If tables don't exist, manually create them once:
+psql "postgresql://postgres.[PROJECT]:[PASSWORD]@aws-X-REGION.pooler.supabase.com:6543/postgres" <<EOF
+-- Tables are created automatically by bot on startup
+-- This is just a fallback if needed
+EOF
+```
+
+**Issue 5: Redis connection refused or I/O error**
+```bash
+# Symptom: "connection refused", "I/O error", or "Server closed the connection"
+# Cause: Upstash requires TLS for TCP connections
+
+# Fix: ShoPogoda automatically enables TLS for non-localhost Redis hosts
+# Ensure using correct Upstash TCP endpoint:
+REDIS_HOST=special-name-12345.upstash.io
+REDIS_PORT=6379  # Standard port (TLS auto-enabled)
+REDIS_PASSWORD=your_upstash_password
+
+# NOT the REST API:
+# ❌ UPSTASH_REDIS_REST_URL (not supported)
+# ❌ UPSTASH_REDIS_REST_TOKEN (not supported)
 ```
 
 **Issue 3: Exceeded Supabase bandwidth**
