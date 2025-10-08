@@ -301,24 +301,24 @@ func (wd *WeatherData) ToModelWeatherData() *models.WeatherData {
 
 // WeatherData represents weather data compatible with models.WeatherData
 type WeatherData struct {
-	Temperature   float64          `json:"temperature"`
-	Humidity      int              `json:"humidity"`
-	Pressure      float64          `json:"pressure"`
-	WindSpeed     float64          `json:"wind_speed"`
-	WindDirection int              `json:"wind_direction"`
-	Visibility    float64          `json:"visibility"`
-	UVIndex       float64          `json:"uv_index"`
-	Description   string           `json:"description"`
-	Icon          string           `json:"icon"`
-	LocationName  string           `json:"location_name"`
+	Temperature   float64           `json:"temperature"`
+	Humidity      int               `json:"humidity"`
+	Pressure      float64           `json:"pressure"`
+	WindSpeed     float64           `json:"wind_speed"`
+	WindDirection int               `json:"wind_direction"`
+	Visibility    float64           `json:"visibility"`
+	UVIndex       float64           `json:"uv_index"`
+	Description   string            `json:"description"`
+	Icon          string            `json:"icon"`
+	LocationName  string            `json:"location_name"`
 	Location      *weather.Location `json:"location,omitempty"` // Full location with LocalNames
-	AQI           int              `json:"aqi"`
-	CO            float64          `json:"co"`
-	NO2           float64          `json:"no2"`
-	O3            float64          `json:"o3"`
-	PM25          float64          `json:"pm25"`
-	PM10          float64          `json:"pm10"`
-	Timestamp     time.Time        `json:"timestamp"`
+	AQI           int               `json:"aqi"`
+	CO            float64           `json:"co"`
+	NO2           float64           `json:"no2"`
+	O3            float64           `json:"o3"`
+	PM25          float64           `json:"pm25"`
+	PM10          float64           `json:"pm10"`
+	Timestamp     time.Time         `json:"timestamp"`
 }
 
 // GetCompleteWeatherData gets both weather and air quality data
