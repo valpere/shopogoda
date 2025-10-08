@@ -270,7 +270,7 @@ jobs:
     - name: Set up environment
       run: |
         echo "Setting up production environment"
-        cp .env.production.example .env.production
+        cp .env.prod.example .env.production
         # In real deployment, secrets would be injected from GitHub Secrets
         echo "VERSION=latest" >> .env.production
         echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.production
