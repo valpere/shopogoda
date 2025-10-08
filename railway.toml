@@ -1,0 +1,25 @@
+# Railway.app Configuration for ShoPogoda
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+# Use Dockerfile from docker/ directory
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile"
+
+# Build context (optional, defaults to project root)
+# buildContext = "."
+
+[deploy]
+# Health check configuration
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+# Restart policy
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Number of replicas (default: 1)
+# numReplicas = 1
+
+# Region (optional, Railway auto-selects optimal region)
+# region = "us-west1"

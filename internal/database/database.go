@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -18,7 +19,10 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name, cfg.SSLMode)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true, // Disable prepared statement cache for Supabase pooler
+	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
@@ -35,20 +39,24 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(25)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
-	// Run migrations
-	if err := Migrate(db); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
-	}
-
 	return db, nil
 }
 
 func ConnectRedis(cfg *config.RedisConfig) (*redis.Client, error) {
-	rdb := redis.NewClient(&redis.Options{
+	opts := &redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password: cfg.Password,
 		DB:       cfg.DB,
-	})
+	}
+
+	// Enable TLS for Upstash Redis (required for cloud connections)
+	if cfg.Host != "localhost" && cfg.Host != "127.0.0.1" {
+		opts.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
+	rdb := redis.NewClient(opts)
 
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
