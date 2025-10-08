@@ -77,11 +77,9 @@ func Load() (*Config, error) {
 	viper.SetConfigName("shopogoda")
 	viper.SetConfigType("yaml")
 
-	// Add search paths in order of precedence (first found wins)
+	// Only search in current directory for Railway/production deployments
+	// This prevents picking up cached config files from system directories
 	viper.AddConfigPath(".")             // ./shopogoda.yaml (current directory)
-	viper.AddConfigPath("$HOME")         // ~/.shopogoda.yaml (home directory)
-	viper.AddConfigPath("$HOME/.config") // ~/.config/shopogoda.yaml
-	viper.AddConfigPath("/etc")          // /etc/shopogoda.yaml (system-wide)
 
 	// Environment variables
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
