@@ -277,36 +277,62 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
 **1. Install Railway CLI**
 
 ```bash
-# macOS/Linux
+# macOS/Linux (recommended)
 curl -fsSL https://railway.app/install.sh | sh
-
-# Or via npm
-npm install -g @railway/cli
 
 # Windows (PowerShell)
 iwr https://railway.app/install.ps1 | iex
+
+# Verify installation
+railway --version
+# Expected: railway 4.x.x or higher
 ```
 
-**2. Login**
+**Note:** Do NOT use `npm install -g @railway/cli` - it may have permission issues. Use the official installer above.
+
+**2. Login to Railway**
 
 ```bash
 railway login
 ```
 
-**3. Initialize Project**
+**What happens:**
+- Opens browser for authentication
+- Login with your email
+- Check email for login code
+- Enter code in browser
+- CLI confirms: "Logged in as [your-email]"
+
+**3. Initialize Project and Deploy**
 
 ```bash
-cd /home/val/wrk/projects/telegram_bot/shopogoda
+cd /path/to/shopogoda
 
-# Create new Railway project
-railway init
-
-# Link to existing project (if created via web)
-railway link
+# Deploy from GitHub (creates service automatically)
+railway up
 ```
 
-**4. Add Services**
+**What happens:**
+- Prompts to link GitHub repository (if not linked)
+- Creates a service in Railway project
+- Uploads code and builds Docker image
+- First deployment will start
 
+**Alternative: Link to existing project**
+
+```bash
+# If you already created project via web dashboard
+railway link
+
+# Then deploy
+railway up
+```
+
+**4. Add Services (For Variant 1 - Integrated Only)**
+
+**Skip this step for Variant 2 (Hybrid)** - you're using external Supabase + Upstash.
+
+For Variant 1 (integrated Railway databases):
 ```bash
 # Add PostgreSQL
 railway add --database postgres
@@ -317,39 +343,207 @@ railway add --database redis
 
 **5. Set Environment Variables**
 
-```bash
-# Set bot token
-railway variables set TELEGRAM_BOT_TOKEN="your_token_here"
+**Railway CLI v4+ uses `--set` flag (not `set` command):**
 
-# Set weather API key
-railway variables set OPENWEATHER_API_KEY="your_api_key_here"
+```bash
+# Required variables
+railway variables --set TELEGRAM_BOT_TOKEN="your_token_here"
+railway variables --set OPENWEATHER_API_KEY="your_api_key_here"
+railway variables --set BOT_WEBHOOK_MODE="true"
+
+# Database variables (Variant 1 - Integrated)
+railway variables --set DATABASE_URL='${{Postgres.DATABASE_URL}}'
+railway variables --set DB_HOST='${{Postgres.PGHOST}}'
+railway variables --set DB_PORT='${{Postgres.PGPORT}}'
+railway variables --set DB_NAME='${{Postgres.PGDATABASE}}'
+railway variables --set DB_USER='${{Postgres.PGUSER}}'
+railway variables --set DB_PASSWORD='${{Postgres.PGPASSWORD}}'
+railway variables --set DB_SSL_MODE="disable"
+
+# Redis variables (Variant 1 - Integrated)
+railway variables --set REDIS_URL='${{Redis.REDIS_URL}}'
+railway variables --set REDIS_HOST='${{Redis.REDIS_HOST}}'
+railway variables --set REDIS_PORT='${{Redis.REDIS_PORT}}'
+railway variables --set REDIS_PASSWORD='${{Redis.REDIS_PASSWORD}}'
+railway variables --set REDIS_DB="0"
 
 # Optional settings
-railway variables set LOG_LEVEL="info"
-railway variables set BOT_DEBUG="false"
+railway variables --set LOG_LEVEL="info"
+railway variables --set LOG_FORMAT="json"
+railway variables --set BOT_DEBUG="false"
 ```
 
-**6. Deploy**
+**For Variant 2 (Hybrid - Supabase + Upstash):**
+See [Variant 2 CLI Setup](#variant-2-cli-deployment) below.
+
+**6. Generate Public Domain**
+
+```bash
+railway domain
+```
+
+**What happens:**
+- Railway generates domain: `your-app-production.up.railway.app`
+- Copy this domain for webhook configuration
+
+**7. Set Webhook URL**
+
+```bash
+# Replace YOUR_DOMAIN with actual domain from step 6
+railway variables --set BOT_WEBHOOK_URL="https://YOUR_DOMAIN.up.railway.app"
+```
+
+**8. Redeploy (to apply new variables)**
 
 ```bash
 railway up
 ```
 
-**7. View Logs**
+**9. Monitor Deployment**
 
 ```bash
-railway logs
+# View real-time logs
+railway logs --follow
+
+# Look for:
+# ✅ "Database connected successfully"
+# ✅ "Redis connected successfully"
+# ✅ "Bot started successfully"
 ```
 
-**8. Get Domain and Set Webhook**
+**10. Set Telegram Webhook**
 
 ```bash
-# Get domain
+# Replace YOUR_BOT_TOKEN and YOUR_DOMAIN
+curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://YOUR_DOMAIN.up.railway.app/webhook"}'
+```
+
+**11. Verify Deployment**
+
+```bash
+# Check webhook status
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
+
+# Test health endpoint
+curl "https://YOUR_DOMAIN.up.railway.app/health"
+
+# Expected: {"status":"healthy","timestamp":"..."}
+```
+
+---
+
+### Variant 2 CLI Deployment
+
+**Step-by-step CLI deployment for Variant 2 (Railway + Supabase + Upstash):**
+
+**1. Deploy to Railway**
+
+```bash
+cd /path/to/shopogoda
+railway login
+railway up
+```
+
+**2. Set Supabase + Upstash Variables**
+
+```bash
+# Telegram & Weather API
+railway variables --set TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+railway variables --set OPENWEATHER_API_KEY="your_openweather_api_key"
+
+# Bot webhook mode
+railway variables --set BOT_WEBHOOK_MODE="true"
+
+# Supabase PostgreSQL (use connection pooler - port 6543!)
+railway variables --set DATABASE_URL="postgresql://postgres.PROJECT:[PASSWORD]@aws-X-REGION.pooler.supabase.com:6543/postgres"
+railway variables --set DB_HOST="aws-X-REGION.pooler.supabase.com"
+railway variables --set DB_PORT="6543"
+railway variables --set DB_NAME="postgres"
+railway variables --set DB_USER="postgres.PROJECT"
+railway variables --set DB_PASSWORD="your_supabase_password"
+railway variables --set DB_SSL_MODE="require"
+
+# Upstash Redis (REST API recommended)
+railway variables --set UPSTASH_REDIS_REST_URL="https://xxxxx.upstash.io"
+railway variables --set UPSTASH_REDIS_REST_TOKEN="your_upstash_token"
+
+# Optional
+railway variables --set LOG_LEVEL="info"
+railway variables --set LOG_FORMAT="json"
+railway variables --set BOT_DEBUG="false"
+```
+
+**3. Generate domain and set webhook URL**
+
+```bash
+# Generate domain
 railway domain
 
-# Set webhook
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-  -d "url=https://your-domain.railway.app/webhook"
+# Set webhook URL (replace YOUR_DOMAIN)
+railway variables --set BOT_WEBHOOK_URL="https://YOUR_DOMAIN.up.railway.app"
+
+# Redeploy with new variables
+railway up
+```
+
+**4. Monitor and verify**
+
+```bash
+# View logs
+railway logs --follow
+
+# Set Telegram webhook
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://YOUR_DOMAIN.up.railway.app/webhook"}'
+```
+
+---
+
+### CLI Troubleshooting
+
+**Issue: "No service linked"**
+
+```bash
+# List services in project
+railway service
+
+# Link to a specific service
+railway service your-service-name
+
+# Or let Railway detect from current directory
+railway link
+```
+
+**Issue: "unexpected argument 'set' found"**
+
+Railway CLI v4+ syntax changed. Use:
+```bash
+railway variables --set KEY="value"  # Correct ✅
+# NOT: railway variables set KEY="value"  # Old syntax ❌
+```
+
+**Issue: Variables not applying**
+
+After setting variables, redeploy:
+```bash
+railway up
+```
+
+**Issue: Permission denied during npm install**
+
+Don't use npm. Use official installer:
+```bash
+curl -fsSL https://railway.app/install.sh | sh
+```
+
+**Issue: Can't connect to GitHub repo**
+
+If web dashboard hangs retrieving repos, use CLI:
+```bash
+railway up  # Will prompt for GitHub repo selection
 ```
 
 ## Deployment Variant 2: Railway + Supabase + Upstash
