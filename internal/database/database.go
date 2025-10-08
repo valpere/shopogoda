@@ -38,11 +38,6 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(25)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
-	// Run migrations
-	if err := Migrate(db); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %w", err)
-	}
-
 	return db, nil
 }
 
