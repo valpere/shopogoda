@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -42,11 +43,20 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 }
 
 func ConnectRedis(cfg *config.RedisConfig) (*redis.Client, error) {
-	rdb := redis.NewClient(&redis.Options{
+	opts := &redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password: cfg.Password,
 		DB:       cfg.DB,
-	})
+	}
+
+	// Enable TLS for Upstash Redis (required for cloud connections)
+	if cfg.Host != "localhost" && cfg.Host != "127.0.0.1" {
+		opts.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
+	rdb := redis.NewClient(opts)
 
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
