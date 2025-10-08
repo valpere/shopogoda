@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/google/uuid"
+	"github.com/hbollon/go-edlib"
 	"github.com/rs/zerolog"
 
 	"github.com/valpere/shopogoda/internal"
@@ -26,11 +28,68 @@ type CommandHandler struct {
 	logger   *zerolog.Logger
 }
 
+// availableCommands lists all available bot commands
+var availableCommands = []string{
+	"start", "help", "settings", "language", "version",
+	"weather", "forecast", "air",
+	"setlocation",
+	"subscribe", "unsubscribe", "subscriptions",
+	"addalert", "alerts", "removealert",
+	"stats", "broadcast", "users", "demoreset", "democlear",
+}
+
 func New(services *services.Services, logger *zerolog.Logger) *CommandHandler {
 	return &CommandHandler{
 		services: services,
 		logger:   logger,
 	}
+}
+
+// commandSuggestion represents a command with its edit distance
+type commandSuggestion struct {
+	command  string
+	distance int
+}
+
+// suggestSimilarCommands finds commands similar to the input using edit distance
+func suggestSimilarCommands(input string, maxSuggestions int) []string {
+	// Remove leading slash if present
+	input = strings.TrimPrefix(input, "/")
+
+	suggestions := make([]commandSuggestion, 0)
+
+	// Calculate edit distance for each command
+	for _, cmd := range availableCommands {
+		distance := edlib.LevenshteinDistance(input, cmd)
+		// Only suggest commands with reasonable edit distance (less than half the command length)
+		if distance <= len(cmd)/2+1 {
+			suggestions = append(suggestions, commandSuggestion{
+				command:  cmd,
+				distance: distance,
+			})
+		}
+	}
+
+	// Sort by distance (ascending), then alphabetically
+	sort.Slice(suggestions, func(i, j int) bool {
+		if suggestions[i].distance == suggestions[j].distance {
+			return suggestions[i].command < suggestions[j].command
+		}
+		return suggestions[i].distance < suggestions[j].distance
+	})
+
+	// Limit to maxSuggestions
+	if len(suggestions) > maxSuggestions {
+		suggestions = suggestions[:maxSuggestions]
+	}
+
+	// Extract command names
+	result := make([]string, len(suggestions))
+	for i, s := range suggestions {
+		result[i] = s.command
+	}
+
+	return result
 }
 
 // getUserLanguage gets the user's language preference or returns default
@@ -3488,4 +3547,44 @@ func (h *CommandHandler) getLocalizedStatusText(ctx context.Context, language st
 		return h.services.Localization.T(ctx, language, "status_active")
 	}
 	return h.services.Localization.T(ctx, language, "status_inactive")
+}
+
+// UnknownCommand handles unknown commands and suggests similar ones
+func (h *CommandHandler) UnknownCommand(bot *gotgbot.Bot, ctx *ext.Context) error {
+	// Get the unknown command from the message text
+	commandText := ctx.EffectiveMessage.Text
+	if commandText == "" {
+		return nil
+	}
+
+	// Extract command (first word)
+	parts := strings.Fields(commandText)
+	if len(parts) == 0 {
+		return nil
+	}
+
+	unknownCmd := strings.TrimPrefix(parts[0], "/")
+
+	// Get command suggestions
+	suggestions := suggestSimilarCommands(unknownCmd, 5)
+
+	// Build response message
+	var message string
+	if len(suggestions) > 0 {
+		message = fmt.Sprintf("❓ Unknown command: `/%s`\n\n", unknownCmd)
+		message += "Did you mean:\n"
+		for _, cmd := range suggestions {
+			message += fmt.Sprintf("• /%s\n", cmd)
+		}
+		message += "\nUse /help to see all available commands."
+	} else {
+		message = fmt.Sprintf("❓ Unknown command: `/%s`\n\n", unknownCmd)
+		message += "Use /help to see all available commands."
+	}
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+	})
+
+	return err
 }

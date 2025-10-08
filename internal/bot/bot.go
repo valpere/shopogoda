@@ -171,6 +171,11 @@ func (b *Bot) setupHandlers() error {
 		return msg.Text != "" && msg.Location == nil && !strings.HasPrefix(msg.Text, "/")
 	}, cmdHandler.HandleTextMessage))
 
+	// Unknown command handler (for messages starting with / that aren't registered commands)
+	b.dispatcher.AddHandler(handlers.NewMessage(func(msg *gotgbot.Message) bool {
+		return msg.Text != "" && strings.HasPrefix(msg.Text, "/")
+	}, cmdHandler.UnknownCommand))
+
 	// Catch-all message handler for debugging (add at the end with low priority)
 	b.dispatcher.AddHandlerToGroup(handlers.NewMessage(func(msg *gotgbot.Message) bool {
 		return true // Catch all messages
