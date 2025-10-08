@@ -270,8 +270,12 @@ if [ "${ENVIRONMENT}" != "staging" ] && [ "${ENVIRONMENT}" != "production" ]; th
     exit 1
 fi
 
-# Set compose file
-COMPOSE_FILE="${PROJECT_ROOT}/docker/docker-compose.${ENVIRONMENT}.yml"
+# Set compose file (normalize environment names: production -> prod)
+ENV_NAME="${ENVIRONMENT}"
+if [ "${ENVIRONMENT}" = "production" ]; then
+    ENV_NAME="prod"
+fi
+COMPOSE_FILE="${PROJECT_ROOT}/docker/docker-compose.${ENV_NAME}.yml"
 
 if [ ! -f "${COMPOSE_FILE}" ]; then
     log_error "Compose file not found: ${COMPOSE_FILE}"
