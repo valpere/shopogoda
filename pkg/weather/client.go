@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -60,11 +61,12 @@ type AirQualityData struct {
 
 // Location represents geographic coordinates
 type Location struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Name      string  `json:"name"`
-	Country   string  `json:"country"`
-	City      string  `json:"city"`
+	Latitude   float64           `json:"latitude"`
+	Longitude  float64           `json:"longitude"`
+	Name       string            `json:"name"`
+	Country    string            `json:"country"`
+	City       string            `json:"city"`
+	LocalNames map[string]string `json:"local_names,omitempty"`
 }
 
 // NewClient creates a new weather API client
@@ -292,10 +294,12 @@ func NewGeocodingClient(apiKey string) *GeocodingClient {
 
 // GeocodeLocation converts location name to coordinates
 func (c *GeocodingClient) GeocodeLocation(ctx context.Context, locationName string) (*Location, error) {
-	url := fmt.Sprintf("%s/geo/1.0/direct?q=%s&limit=1&appid=%s",
-		c.baseURL, locationName, c.apiKey)
+	// URL encode the location name to properly handle non-English characters
+	encodedLocation := url.QueryEscape(locationName)
+	requestURL := fmt.Sprintf("%s/geo/1.0/direct?q=%s&limit=1&appid=%s",
+		c.baseURL, encodedLocation, c.apiKey)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", requestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -311,11 +315,12 @@ func (c *GeocodingClient) GeocodeLocation(ctx context.Context, locationName stri
 	}
 
 	var apiResponse []struct {
-		Name    string  `json:"name"`
-		Country string  `json:"country"`
-		State   string  `json:"state"`
-		Lat     float64 `json:"lat"`
-		Lon     float64 `json:"lon"`
+		Name       string            `json:"name"`
+		Country    string            `json:"country"`
+		State      string            `json:"state"`
+		Lat        float64           `json:"lat"`
+		Lon        float64           `json:"lon"`
+		LocalNames map[string]string `json:"local_names"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
@@ -328,10 +333,11 @@ func (c *GeocodingClient) GeocodeLocation(ctx context.Context, locationName stri
 
 	result := apiResponse[0]
 	return &Location{
-		Latitude:  result.Lat,
-		Longitude: result.Lon,
-		Name:      result.Name,
-		Country:   result.Country,
-		City:      result.Name,
+		Latitude:   result.Lat,
+		Longitude:  result.Lon,
+		Name:       result.Name,
+		Country:    result.Country,
+		City:       result.Name,
+		LocalNames: result.LocalNames,
 	}, nil
 }

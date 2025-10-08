@@ -71,6 +71,27 @@ func (s *WeatherService) getUserAgent() string {
 	return internal.DefaultUserAgent
 }
 
+// GetLocalizedLocationName returns the location name in the user's language if available
+// Falls back to English name if the user's language is not available
+func (s *WeatherService) GetLocalizedLocationName(location *weather.Location, userLanguage string) string {
+	if location == nil {
+		return ""
+	}
+
+	// If no LocalNames or empty user language, return English name
+	if location.LocalNames == nil || userLanguage == "" {
+		return location.Name
+	}
+
+	// Try to get localized name for user's language
+	if localizedName, ok := location.LocalNames[userLanguage]; ok && localizedName != "" {
+		return localizedName
+	}
+
+	// Fallback to English name
+	return location.Name
+}
+
 func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64) (*weather.WeatherData, error) {
 	// Try cache first
 	cacheKey := fmt.Sprintf("weather:current:%.4f:%.4f", lat, lon)
@@ -226,8 +247,9 @@ func (s *WeatherService) GetCurrentWeatherByLocation(ctx context.Context, locati
 		return nil, err
 	}
 
-	// Set the location name
+	// Set the location name and full location object
 	weatherData.LocationName = location.Name
+	weatherData.Location = location
 
 	return weatherData, nil
 }
@@ -279,23 +301,24 @@ func (wd *WeatherData) ToModelWeatherData() *models.WeatherData {
 
 // WeatherData represents weather data compatible with models.WeatherData
 type WeatherData struct {
-	Temperature   float64   `json:"temperature"`
-	Humidity      int       `json:"humidity"`
-	Pressure      float64   `json:"pressure"`
-	WindSpeed     float64   `json:"wind_speed"`
-	WindDirection int       `json:"wind_direction"`
-	Visibility    float64   `json:"visibility"`
-	UVIndex       float64   `json:"uv_index"`
-	Description   string    `json:"description"`
-	Icon          string    `json:"icon"`
-	LocationName  string    `json:"location_name"`
-	AQI           int       `json:"aqi"`
-	CO            float64   `json:"co"`
-	NO2           float64   `json:"no2"`
-	O3            float64   `json:"o3"`
-	PM25          float64   `json:"pm25"`
-	PM10          float64   `json:"pm10"`
-	Timestamp     time.Time `json:"timestamp"`
+	Temperature   float64           `json:"temperature"`
+	Humidity      int               `json:"humidity"`
+	Pressure      float64           `json:"pressure"`
+	WindSpeed     float64           `json:"wind_speed"`
+	WindDirection int               `json:"wind_direction"`
+	Visibility    float64           `json:"visibility"`
+	UVIndex       float64           `json:"uv_index"`
+	Description   string            `json:"description"`
+	Icon          string            `json:"icon"`
+	LocationName  string            `json:"location_name"`
+	Location      *weather.Location `json:"location,omitempty"` // Full location with LocalNames
+	AQI           int               `json:"aqi"`
+	CO            float64           `json:"co"`
+	NO2           float64           `json:"no2"`
+	O3            float64           `json:"o3"`
+	PM25          float64           `json:"pm25"`
+	PM10          float64           `json:"pm10"`
+	Timestamp     time.Time         `json:"timestamp"`
 }
 
 // GetCompleteWeatherData gets both weather and air quality data

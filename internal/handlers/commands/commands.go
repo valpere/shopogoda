@@ -919,6 +919,12 @@ func (h *CommandHandler) formatWeatherMessage(weather *services.WeatherData, use
 	aqi := h.services.Localization.T(context.Background(), userLang, "weather_aqi")
 	updated := h.services.Localization.T(context.Background(), userLang, "weather_updated")
 
+	// Get localized location name if available
+	locationName := weather.LocationName
+	if weather.Location != nil {
+		locationName = h.services.Weather.GetLocalizedLocationName(weather.Location, userLang)
+	}
+
 	return fmt.Sprintf(`🌤️ *%s*
 
 %s: %d°C (%s %d°C)
@@ -936,7 +942,7 @@ CO: %.2f | NO₂: %.2f | O₃: %.2f
 PM2.5: %.1f | PM10: %.1f
 
 %s: %s`,
-		weather.LocationName,
+		locationName,
 		temperature, int(weather.Temperature), feelsLike, int(weather.Temperature), // FeelsLike not available in current struct
 		humidity, weather.Humidity,
 		wind, weather.WindSpeed, weather.WindDirection,
