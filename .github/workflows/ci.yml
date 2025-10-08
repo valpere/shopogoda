@@ -218,88 +218,24 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [test, build]
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up environment
-      run: |
-        echo "Setting up staging environment"
-        cp .env.staging.example .env.staging
-        # In real deployment, secrets would be injected here
-        echo "VERSION=develop" >> .env.staging
-        echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.staging
-
-    - name: Deploy to staging using docker-compose
-      run: |
-        chmod +x scripts/deploy/deploy.sh
-        ./scripts/deploy/deploy.sh staging develop
-
-    - name: Run health checks
-      run: |
-        chmod +x scripts/deploy/health-check.sh
-        ./scripts/deploy/health-check.sh staging
-
-    - name: Post deployment notification
-      if: always()
-      run: |
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Staging deployment successful"
-        else
-          echo "❌ Staging deployment failed"
-        fi
-
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: [test, build]
-    if: github.ref == 'refs/heads/main'
-    environment: production
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up environment
-      run: |
-        echo "Setting up production environment"
-        cp .env.prod.example .env.prod
-        # In real deployment, secrets would be injected from GitHub Secrets
-        echo "VERSION=latest" >> .env.prod
-        echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.prod
-
-    - name: Deploy to production using docker-compose
-      run: |
-        chmod +x scripts/deploy/deploy.sh
-        ./scripts/deploy/deploy.sh production latest
-
-    - name: Run health checks
-      run: |
-        chmod +x scripts/deploy/health-check.sh
-        ./scripts/deploy/health-check.sh production
-
-    - name: Verify deployment
-      run: |
-        echo "Deployment verification passed"
-        docker-compose -f docker/docker-compose.prod.yml ps
-
-    - name: Post deployment notification
-      if: always()
-      run: |
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Production deployment successful"
-          echo "🚀 Version: latest deployed to production"
-        else
-          echo "❌ Production deployment failed"
-          echo "🔄 Consider rollback: ./scripts/deploy/rollback.sh production"
-        fi
+  # Deploy jobs disabled - application deployed to Railway
+  # The deploy.sh script is designed for VM/server deployments, not GitHub Actions
+  # Production: https://shopogoda-svc-production.up.railway.app
+  # See: docs/DEPLOYMENT_RAILWAY.md and RAILWAY_DEPLOYMENT_SUCCESS.md
+  #
+  # deploy-staging:
+  #   name: Deploy to Staging
+  #   runs-on: ubuntu-latest
+  #   needs: [test, build]
+  #   if: github.ref == 'refs/heads/develop'
+  #   environment: staging
+  #
+  # deploy-production:
+  #   name: Deploy to Production
+  #   runs-on: ubuntu-latest
+  #   needs: [test, build]
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
 
   dependency-check:
     name: Dependency Security Scan
