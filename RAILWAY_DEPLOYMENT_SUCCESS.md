@@ -29,7 +29,7 @@ curl https://shopogoda-svc-production.up.railway.app/health
 # Response: {"status":"healthy","time":1759918992,"version":"1.0.0"}
 
 # Webhook Status
-curl "https://api.telegram.org/bot8263500525:AAEScCgeqMvs62oAtVYKlHWh4vZZZAiwDas/getWebhookInfo"
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 # Response: {"ok":true,"result":{"url":"https://shopogoda-svc-production.up.railway.app/webhook","pending_update_count":0}}
 ```
 
@@ -92,8 +92,8 @@ if cfg.Host != "localhost" && cfg.Host != "127.0.0.1" {
 
 ```bash
 # Bot Configuration
-TELEGRAM_BOT_TOKEN=8263500525:AAEScCgeqMvs62oAtVYKlHWh4vZZZAiwDas
-OPENWEATHER_API_KEY=8c226f4c22de9ede3658754c47f6e2ab
+TELEGRAM_BOT_TOKEN=<your-telegram-bot-token>
+OPENWEATHER_API_KEY=<your-openweather-api-key>
 BOT_WEBHOOK_MODE=true
 BOT_WEBHOOK_URL=https://shopogoda-svc-production.up.railway.app
 BOT_WEBHOOK_PORT=8080
