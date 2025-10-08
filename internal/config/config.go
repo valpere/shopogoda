@@ -73,15 +73,7 @@ func Load() (*Config, error) {
 		}
 	}
 
-	// Configure YAML config file search
-	viper.SetConfigName("shopogoda")
-	viper.SetConfigType("yaml")
-
-	// Only search in current directory for Railway/production deployments
-	// This prevents picking up cached config files from system directories
-	viper.AddConfigPath(".")             // ./shopogoda.yaml (current directory)
-
-	// Environment variables
+	// Environment variables (load first, before any config files)
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
@@ -121,12 +113,9 @@ func Load() (*Config, error) {
 	// Set defaults
 	setDefaults()
 
-	// Read config file if exists
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %w", err)
-		}
-	}
+	// Skip YAML config file loading entirely for Railway/production
+	// This prevents any YAML parsing errors from cached or malformed config files
+	// All configuration MUST come from environment variables in production
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
