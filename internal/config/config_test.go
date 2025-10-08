@@ -140,10 +140,12 @@ bot:
 		err := os.WriteFile("shopogoda.yaml", []byte(invalidYAML), 0644)
 		require.NoError(t, err)
 
+		// YAML loading is disabled for Railway compatibility,
+		// so invalid YAML files are ignored and config loads from env vars/defaults
 		cfg, err := Load()
-		assert.Error(t, err)
-		assert.Nil(t, cfg)
-		assert.Contains(t, err.Error(), "error reading config file")
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+		assert.Equal(t, 8080, cfg.Bot.WebhookPort) // Should have default values
 	})
 }
 
