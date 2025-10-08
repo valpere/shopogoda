@@ -13,9 +13,6 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Remove any YAML config files to force environment variable usage
-RUN rm -f shopogoda.yaml shopogoda.yml .shopogoda.yaml .shopogoda.yml || true
-
 # Build arguments for version information
 ARG VERSION=dev
 ARG GIT_COMMIT=unknown

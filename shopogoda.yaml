@@ -1,0 +1,24 @@
+# Minimal ShoPogoda Configuration
+# All actual values come from environment variables
+# This file exists only to prevent YAML parsing errors
+
+bot:
+  debug: false
+  webhook_port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  ssl_mode: disable
+
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+
+logging:
+  level: info
+  format: json
+
+metrics:
+  port: 2112
