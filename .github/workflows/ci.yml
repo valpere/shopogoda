@@ -270,10 +270,10 @@ jobs:
     - name: Set up environment
       run: |
         echo "Setting up production environment"
-        cp .env.prod.example .env.production
+        cp .env.prod.example .env.prod
         # In real deployment, secrets would be injected from GitHub Secrets
-        echo "VERSION=latest" >> .env.production
-        echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.production
+        echo "VERSION=latest" >> .env.prod
+        echo "GITHUB_REPOSITORY=${{ github.repository }}" >> .env.prod
 
     - name: Deploy to production using docker-compose
       run: |
