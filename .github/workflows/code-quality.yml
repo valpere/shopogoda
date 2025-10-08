@@ -19,6 +19,8 @@ jobs:
   quality-analysis:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Allow commit comments
 
     steps:
     - name: Checkout code
