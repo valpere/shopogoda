@@ -8,7 +8,7 @@ import (
 // Version information - set at build time via ldflags
 var (
 	// Version is the semantic version of the application
-	Version = "0.1.0-dev"
+	Version = "0.1.1"
 
 	// GitCommit is the git commit SHA
 	GitCommit = "unknown"
