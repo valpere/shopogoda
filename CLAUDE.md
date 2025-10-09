@@ -525,7 +525,7 @@ Respect OpenWeatherMap limits. Use Redis for request counting.
 ### Free Tier Resource Limits
 
 **Railway:**
-- 500 instance hours/month (~20 days always-on)
+- 500 execution hours/month (continuous uptime: ~20.8 days)
 - 1GB RAM
 - Webhook mode prevents sleep (always-on required)
 
@@ -535,6 +535,6 @@ Respect OpenWeatherMap limits. Use Redis for request counting.
 - Automatic pause after 7 days inactivity (can be disabled)
 
 **Upstash:**
-- 10,000 Redis commands/day (~6.9 commands/minute)
+- 10,000 Redis commands/day (~6.9 commands/minute on average; actual usage varies by traffic patterns)
 - Increase cache TTL to reduce operations
 - Monitor daily usage in dashboard

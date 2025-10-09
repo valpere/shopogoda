@@ -217,9 +217,9 @@ The bot supports multiple platforms:
 - **Database Latency**: 100-200ms (Supabase pooler)
 
 **Free Tier Limits:**
-- Railway: 500 instance hours/month (~20 days always-on)
+- Railway: 500 execution hours/month (continuous uptime: ~20.8 days; webhook mode requires always-on)
 - Supabase: 500MB storage, 2GB bandwidth/month
-- Upstash: 10,000 commands/day
+- Upstash: 10,000 commands/day (~6.9 commands/minute on average; actual usage varies by traffic patterns)
 
 ## 🔒 Security
 
