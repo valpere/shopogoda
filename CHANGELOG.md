@@ -13,6 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test coverage improvements (27.4% → 29.9%, target: 30%)
 - Video walkthrough
 
+---
+
+## [0.1.1] - 2025-01-10
+
+### Fixed
+- **Location Dialog Consistency**: Standardized location setup UI across all commands
+  - `/setlocation` command: Replaced single "Share Location" button with 3-button dialog
+  - `CurrentWeather` command: Applied same 3-button dialog when location needed
+  - All location dialogs now show: "Set Location by Name", "Set Location by Coordinates", "Back to Start"
+  - Removed deprecated Share Location functionality entirely
+  - Added `handleBackCallback` for "Back to Start" navigation
+  - All buttons support multi-language localization
+- **New User Auto-Registration**: Fixed silent failures for first-time users
+  - New users who start with commands other than `/start` are now auto-registered
+  - Friendly welcome message shown even when first command isn't `/start`
+  - Eliminated "record not found" errors in logs for new users
+  - Added `ensureUserRegistered()` helper function
+- **Deployment Workflow False Alarms**: Fixed GitHub Actions deployment false failures
+  - Added conditional checks to release workflow to prevent false alarms
+  - Jobs now only run on version tag pushes, not regular commits
+  - Proper dependency handling with `always()` condition
+
+### Changed
+- Version updated from 0.1.0-dev to 0.1.1
+- Improved consistency across all location-related user interactions
+
+---
+
 ### Added
 - **Bot Mocking Infrastructure**: Reusable test infrastructure for Telegram bot handler testing
   - MockBot: Minimal gotgbot.Bot instances with configurable test data
