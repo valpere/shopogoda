@@ -302,17 +302,23 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 		if err != nil || locationName == "" {
 			userLang := h.getUserLanguage(context.Background(), userID)
 			message := h.services.Localization.T(context.Background(), userLang, "weather_location_needed")
-			shareBtn := h.services.Localization.T(context.Background(), userLang, "button_share_location")
-			setBtn := h.services.Localization.T(context.Background(), userLang, "button_set_location")
+
+			// Show 3-button dialog (same as /setlocation)
+			setByNameBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_set_name")
+			setCoordsBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_set_coords")
+			backBtn := h.services.Localization.T(context.Background(), userLang, "button_back_to_start")
+
+			keyboard := [][]gotgbot.InlineKeyboardButton{
+				{{Text: setByNameBtn, CallbackData: "location_set_name"}},
+				{{Text: setCoordsBtn, CallbackData: "location_set_coords"}},
+				{{Text: backBtn, CallbackData: "back_to_start"}},
+			}
 
 			_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 				message,
 				&gotgbot.SendMessageOpts{
 					ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
-						InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-							{{Text: shareBtn, CallbackData: "share_location"}},
-							{{Text: setBtn, CallbackData: "location_set"}},
-						},
+						InlineKeyboard: keyboard,
 					},
 				})
 			return err
@@ -630,14 +636,14 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleSubscriptionCallback(bot, ctx, action, subAction, parts[2:])
 	case "admin":
 		return h.handleAdminCallback(bot, ctx, subAction, parts[2:])
-	case "share":
-		return h.handleShareCallback(bot, ctx, subAction, parts[2:])
 	case "air":
 		return h.handleAirCallback(bot, ctx, subAction, parts[2:])
 	case "notifications":
 		return h.handleNotificationCallback(bot, ctx, subAction, parts[2:])
 	case "export":
 		return h.handleExportCallback(bot, ctx, subAction, parts[2:])
+	case "back":
+		return h.handleBackCallback(bot, ctx, subAction, parts[2:])
 	}
 
 	return nil
@@ -1133,16 +1139,38 @@ func (h *CommandHandler) SetLocation(bot *gotgbot.Bot, ctx *ext.Context) error {
 	locationName := strings.TrimSpace(strings.Join(ctx.Args()[1:], " "))
 
 	if locationName == "" {
-		promptText := h.services.Localization.T(context.Background(), userLang, "setlocation_prompt")
-		shareButtonText := h.services.Localization.T(context.Background(), userLang, "button_share_location")
+		// Show location setting options (same as Settings → Set Location)
+		title := h.services.Localization.T(context.Background(), userLang, "location_settings_title")
+		optionsLabel := h.services.Localization.T(context.Background(), userLang, "location_settings_options")
+		optionName := h.services.Localization.T(context.Background(), userLang, "location_settings_option_name")
+		optionGPS := h.services.Localization.T(context.Background(), userLang, "location_settings_option_gps")
+
+		promptText := fmt.Sprintf(`📍 *%s*
+
+*%s:*
+• %s
+• %s`,
+			title,
+			optionsLabel,
+			optionName,
+			optionGPS)
+
+		setByNameBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_set_name")
+		setCoordsBtn := h.services.Localization.T(context.Background(), userLang, "location_settings_btn_set_coords")
+		backBtn := h.services.Localization.T(context.Background(), userLang, "button_back_to_start")
+
+		keyboard := [][]gotgbot.InlineKeyboardButton{
+			{{Text: setByNameBtn, CallbackData: "location_set_name"}},
+			{{Text: setCoordsBtn, CallbackData: "location_set_coords"}},
+			{{Text: backBtn, CallbackData: "back_to_start"}},
+		}
 
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
 			promptText,
 			&gotgbot.SendMessageOpts{
+				ParseMode: "Markdown",
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
-					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-						{{Text: shareButtonText, CallbackData: "share_location"}},
-					},
+					InlineKeyboard: keyboard,
 				},
 			})
 		return err
@@ -2057,25 +2085,6 @@ func (h *CommandHandler) handleAdminCallback(bot *gotgbot.Bot, ctx *ext.Context,
 			return h.showDetailedStats(bot, ctx)
 		}
 		return h.AdminStats(bot, ctx)
-	}
-	return nil
-}
-
-// handleShareCallback handles share location button callbacks
-func (h *CommandHandler) handleShareCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
-	if action == "location" {
-		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📍 Please share your location using the button below:",
-			&gotgbot.SendMessageOpts{
-				ReplyMarkup: &gotgbot.ReplyKeyboardMarkup{
-					Keyboard: [][]gotgbot.KeyboardButton{
-						{{Text: "📍 Share Location", RequestLocation: true}},
-					},
-					OneTimeKeyboard: true,
-					ResizeKeyboard:  true,
-				},
-			})
-		return err
 	}
 	return nil
 }
@@ -3502,6 +3511,28 @@ func (h *CommandHandler) processExportRequest(bot *gotgbot.Bot, ctx *ext.Context
 		Msg("Data export completed successfully")
 
 	return err
+}
+
+func (h *CommandHandler) handleBackCallback(bot *gotgbot.Bot, ctx *ext.Context, subAction string, parts []string) error {
+	switch subAction {
+	case "to":
+		if len(parts) < 1 {
+			h.logger.Warn().Msg("Invalid back_to callback: missing destination")
+			return nil
+		}
+		destination := parts[0]
+		switch destination {
+		case "start":
+			// Re-run the Start command to show main menu
+			return h.Start(bot, ctx)
+		default:
+			h.logger.Warn().Str("destination", destination).Msg("Unknown back destination")
+			return nil
+		}
+	default:
+		h.logger.Warn().Str("sub_action", subAction).Msg("Unknown back callback subaction")
+		return nil
+	}
 }
 
 func getNotificationEmoji(subscriptionType models.SubscriptionType) string {
