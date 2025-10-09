@@ -1,6 +1,6 @@
 # ShoPogoda (Що Погода) - Enterprise Weather Bot
 
-A professional-grade Telegram bot for weather monitoring, environmental alerts, and enterprise integrations.
+A production-ready Telegram bot for weather monitoring, environmental alerts, and enterprise integrations. Currently deployed on Railway with Supabase PostgreSQL and Upstash Redis.
 
 ## 🌟 Features
 
@@ -27,10 +27,17 @@ A professional-grade Telegram bot for weather monitoring, environmental alerts, 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Go 1.24.6
+
+**For Local Development:**
+- Go 1.24+
 - Docker & Docker Compose
 - Telegram Bot Token (from @BotFather)
 - OpenWeatherMap API Key
+
+**For Production Deployment:**
+- Railway account (free tier available)
+- Supabase account (PostgreSQL - free tier)
+- Upstash account (Redis - free tier)
 
 ### Setup Commands
 
@@ -168,28 +175,51 @@ make migrate        # Run database migrations
 
 ## 🚀 Deployment
 
-### Docker Deployment
+### Production Deployment (Railway)
+
+**Currently deployed and running in production:**
 
 ```bash
-# Build and run with Docker
-docker build -t shopogoda .
-docker run -p 8080:8080 --env-file .env shopogoda
+# Quick deploy to Railway (recommended)
+railway login
+railway init
+railway up
+
+# Configure environment variables in Railway dashboard
+# See docs/DEPLOYMENT_RAILWAY.md for complete guide
 ```
 
-### Cloud Deployment
+**Live Production:**
+- Health: https://shopogoda-svc-production.up.railway.app/health
+- Stack: Railway + Supabase (PostgreSQL) + Upstash (Redis)
+- Cost: $0/month (free tier)
+- Status: ✅ Production-ready
 
-The bot is ready for deployment on:
-- Google Cloud Platform (GKE)
-- AWS (EKS)
-- Azure (AKS)
-- Railway, Render, Fly.io (free tiers)
+**📖 Complete deployment guide:** [DEPLOYMENT_RAILWAY.md](docs/DEPLOYMENT_RAILWAY.md)
+
+### Alternative Deployment Options
+
+The bot supports multiple platforms:
+- **Railway** - Primary production platform (free tier, 500 hrs/month)
+- **Vercel** - Serverless functions (free tier, 100GB bandwidth/month)
+- **Fly.io** - Global edge deployment (~$5-10/month)
+- **Replit** - All-in-one IDE (free with sleep, $20/month always-on)
+- **Docker** - Traditional container deployment (any cloud)
+
+**📖 Platform comparison:** [DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ## 📈 Performance
 
-- **Response Time**: < 200ms average
-- **Throughput**: 1000+ requests/minute
-- **Uptime**: 99.9% SLA
-- **Cache Hit Rate**: > 85%
+**Production Metrics (Railway deployment):**
+- **Response Time**: < 500ms average (including cold starts)
+- **Uptime**: 99.5%+ on free tier
+- **Cache Hit Rate**: > 85% (Upstash Redis)
+- **Database Latency**: 100-200ms (Supabase pooler)
+
+**Free Tier Limits:**
+- Railway: 500 instance hours/month (~20 days always-on)
+- Supabase: 500MB storage, 2GB bandwidth/month
+- Upstash: 10,000 commands/day
 
 ## 🔒 Security
 

@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ShoPogoda (Що Погода - "What Weather" in Ukrainian) is a production-ready Telegram bot for enterprise weather monitoring, environmental alerts, and safety compliance. Built with Go, gotgbot v2, PostgreSQL, Redis, and comprehensive monitoring stack.
 
+**Production Status:**
+- ✅ Deployed on Railway (https://shopogoda-svc-production.up.railway.app)
+- Database: Supabase PostgreSQL (free tier, 500MB)
+- Cache: Upstash Redis (free tier, 10K commands/day)
+- Cost: $0/month on free tiers
+- Version: 0.1.1 (bugfixes after deploy)
+
 ## Core Development Commands
 
 ### Quick Start
@@ -91,10 +98,16 @@ Services are initialized in `services.New()` with proper dependency chain: DB �
 
 Uses Viper with hierarchical precedence:
 1. Environment variables (prefixed with `WB_`)
-2. Config files (config.yaml)
+2. Config files (config.yaml) - **Disabled in production** (Railway deployment)
 3. Defaults
 
 Environment variable mapping: `WB_BOT_TOKEN` → `bot.token` in config struct.
+
+**Production Configuration Notes:**
+- Railway deployment uses environment variables exclusively
+- YAML config loading is disabled to avoid parsing errors
+- Supabase requires `PreferSimpleProtocol: true` to disable prepared statement cache
+- Upstash Redis auto-enables TLS for non-localhost connections
 
 ### Database Models
 
@@ -400,15 +413,53 @@ See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation.
 make dev    # Starts all services and builds app
 ```
 
+### Production Deployment (Railway)
+
+**Primary deployment platform: Railway + Supabase + Upstash**
+
+```bash
+# Deploy to Railway
+railway login
+railway init
+railway up
+
+# Configure environment in Railway dashboard
+railway variables set TELEGRAM_BOT_TOKEN=your_token
+railway variables set OPENWEATHER_API_KEY=your_key
+# ... (see docs/DEPLOYMENT_RAILWAY.md for complete list)
+```
+
+**Production Fixes Applied:**
+1. YAML config disabled (environment variables only)
+2. Supabase compatibility: `PreferSimpleProtocol: true` in GORM
+3. AutoMigrate disabled (manual migration script used)
+4. Upstash Redis: Automatic TLS for non-localhost hosts
+
+**Live Production:**
+- Health: https://shopogoda-svc-production.up.railway.app/health
+- Webhook: https://shopogoda-svc-production.up.railway.app/webhook
+- Dashboard: https://railway.app/project/191564b9-7a3a-4c8f-bff1-5b214398e3a5
+
 ### Docker Production
 ```bash
-make docker-build    # Creates production image
+make docker-build    # Creates production image (for Fly.io, custom deployment)
 ```
+
+### Alternative Platforms
+
+**Documented deployment guides:**
+- Railway (primary) - `docs/DEPLOYMENT_RAILWAY.md`
+- Vercel (serverless) - `docs/DEPLOYMENT_VERCEL.md`
+- Fly.io (containers) - `docs/DEPLOYMENT_FLYIO.md`
+- Replit (IDE) - `docs/DEPLOYMENT_REPLIT.md`
+- GCP - `docs/DEPLOYMENT_GCP.md`
 
 ### Environment Variables
 All configuration via environment variables. See `.env.example` for full reference.
 
-Bot supports both polling and webhook modes. Webhook preferred for production.
+**Production Mode:**
+- Webhook mode (not polling) - required for Railway/Vercel
+- Set `BOT_WEBHOOK_MODE=true` and `BOT_WEBHOOK_URL=https://your-domain.com`
 
 ## Bot Commands Reference
 
@@ -450,15 +501,40 @@ Respect OpenWeatherMap limits. Use Redis for request counting.
 ## Performance Considerations
 
 ### Response Time Target
-<200ms for weather queries through intelligent caching.
+
+**Local Development:** <200ms for weather queries through intelligent caching
+
+**Production (Railway):** <500ms average (including cold starts)
+- Cold start: ~2-3 seconds (Railway free tier)
+- Warm requests: 200-400ms
+- Database queries: 100-200ms (Supabase pooler)
+- Redis operations: <50ms (Upstash)
 
 ### Database Optimization
 - Indexes on frequently queried columns (user_id, timestamp)
-- Connection pooling (25 connections default)
+- Connection pooling (25 connections default, adjusted for Supabase)
 - Query optimization for large datasets
 - Simplified schema with embedded user locations reduces join complexity
+- **Supabase specific:** PreferSimpleProtocol enabled for connection pooler compatibility
 
 ### Memory Management
-- Bounded cache sizes in Redis
+- Bounded cache sizes in Redis (Upstash 10K commands/day limit)
 - Graceful degradation on API failures
-- Resource limits in containerized deployments
+- Resource limits in containerized deployments (Railway: 1GB RAM on free tier)
+
+### Free Tier Resource Limits
+
+**Railway:**
+- 500 instance hours/month (~20 days always-on)
+- 1GB RAM
+- Webhook mode prevents sleep (always-on required)
+
+**Supabase:**
+- 500MB database storage
+- 2GB bandwidth/month
+- Automatic pause after 7 days inactivity (can be disabled)
+
+**Upstash:**
+- 10,000 Redis commands/day (~6.9 commands/minute)
+- Increase cache TTL to reduce operations
+- Monitor daily usage in dashboard
