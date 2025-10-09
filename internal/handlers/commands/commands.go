@@ -101,6 +101,20 @@ func (h *CommandHandler) getUserLanguage(ctx context.Context, userID int64) stri
 	return user.Language
 }
 
+// ensureUserRegistered ensures the user is registered, auto-registering if needed
+// Returns true if user was just registered (new user), false if already existed
+func (h *CommandHandler) ensureUserRegistered(ctx context.Context, user *gotgbot.User) bool {
+	dbUser, err := h.services.User.GetUser(ctx, user.Id)
+	if err != nil || dbUser == nil {
+		// User not found, auto-register
+		if err := h.services.User.RegisterUser(ctx, user); err != nil {
+			h.logger.Error().Err(err).Int64("user_id", user.Id).Msg("Failed to auto-register user")
+		}
+		return true // New user
+	}
+	return false // Existing user
+}
+
 // Start command handler
 func (h *CommandHandler) Start(bot *gotgbot.Bot, ctx *ext.Context) error {
 	user := ctx.EffectiveUser
@@ -3551,6 +3565,21 @@ func (h *CommandHandler) getLocalizedStatusText(ctx context.Context, language st
 
 // UnknownCommand handles unknown commands and suggests similar ones
 func (h *CommandHandler) UnknownCommand(bot *gotgbot.Bot, ctx *ext.Context) error {
+	user := ctx.EffectiveUser
+
+	// Auto-register new users and show welcome message
+	isNewUser := h.ensureUserRegistered(context.Background(), user)
+	if isNewUser {
+		welcomeMsg := "👋 Welcome to ShoPogoda Weather Bot!\n\n"
+		welcomeMsg += "I see this is your first time here. Let's get started!\n\n"
+		welcomeMsg += "Use /start to begin or /help to see all available commands."
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, welcomeMsg, &gotgbot.SendMessageOpts{
+			ParseMode: "Markdown",
+		})
+		return err
+	}
+
 	// Get the unknown command from the message text
 	commandText := ctx.EffectiveMessage.Text
 	if commandText == "" {
