@@ -4,10 +4,11 @@
 
 ---
 
-## Current Status: v0.1.0-demo (In Progress)
+## Current Status: v0.1.1 (Production Deployed)
 
-**Completion**: ~75%
-**Target Release**: Q1 2025
+**Completion**: ~80%
+**Released**: January 10, 2025
+**Production URL**: https://shopogoda-svc-production.up.railway.app
 
 ### ✅ Completed Features
 
@@ -54,24 +55,32 @@
 - [x] Automated testing (unit, integration)
 - [x] Health checks and monitoring
 
-### 🚧 In Progress
+### 🚧 In Progress (v0.2.0 Focus)
 
 #### Quality & Testing
-- [ ] Increase test coverage from 28% to 40%
-  - Focus: Critical paths (weather queries, alerts, user management)
-  - Target: Services layer, command handlers
+- [ ] Increase test coverage from 30.5% to 40%
+  - Current: 30.5% overall (75.6% services, 4.2% handlers)
+  - Focus: Command handlers, callback handlers, integration tests
+  - See [TODO.md](../TODO.md) for detailed testing roadmap
 
 #### Documentation
-- [ ] Demo setup guide (DEMO_SETUP.md) ✅ Done
-- [ ] Release management documentation
-- [ ] API documentation for services
+- [x] Demo setup guide (DEMO_SETUP.md) ✅ Done
+- [x] Production deployment guide (DEPLOYMENT_RAILWAY.md) ✅ Done
+- [ ] API documentation for services (priority for v0.2.0)
 - [ ] Video walkthrough (5-10 min)
 
+#### Admin & Statistics Enhancement
+- [ ] Real metrics collection (replace placeholder values)
+- [ ] Message & request tracking (Redis counters)
+- [ ] User role management UI (`/promote`, `/demote`)
+- [ ] Enhanced user management (`/userinfo`, `/ban`)
+- See [TODO.md](../TODO.md) sections 1-6 for details
+
 #### Release Management
-- [ ] Semantic versioning system
-- [ ] Automated changelog generation
-- [ ] Version command (`/version`)
-- [ ] Release workflow automation
+- [x] Semantic versioning system ✅ Implemented
+- [x] Automated changelog generation ✅ In CHANGELOG.md
+- [x] Version command (`/version`) ✅ Implemented
+- [x] Release workflow automation ✅ GitHub Actions configured
 
 ---
 
@@ -277,11 +286,13 @@ We welcome contributions! Here's how you can help:
 
 ## Metrics & Goals
 
-### Current Metrics (v0.1.0-demo)
-- **Test Coverage**: 28.2% → Target: 40%
-- **Response Time**: <500ms → Target: <200ms
-- **Languages**: 5 (en, uk, de, fr, es)
-- **Commands**: 15+ user-facing commands
+### Current Metrics (v0.1.1 Production)
+- **Test Coverage**: 30.5% (75.6% services, 4.2% handlers) → Target: 40% for v0.2.0
+- **Response Time**: <500ms (production avg 200-400ms warm) → Target: <200ms
+- **Languages**: 5 (en, uk, de, fr, es) with complete localization
+- **Commands**: 20+ user-facing commands
+- **Uptime**: 99.5%+ on Railway free tier
+- **Cache Hit Rate**: >85% (Upstash Redis)
 
 ### Target Metrics (v1.0.0)
 - **Test Coverage**: 80%+
@@ -307,6 +318,14 @@ We welcome contributions! Here's how you can help:
 
 ---
 
-**Last Updated**: 2025-01-02
-**Status**: Active Development
+**Last Updated**: 2025-01-10
+**Status**: Active Development (Production Deployed)
 **License**: MIT
+
+---
+
+## Additional Resources
+
+- **[TODO.md](../TODO.md)** - Detailed technical debt and implementation tasks
+- **[CHANGELOG.md](../CHANGELOG.md)** - Version history and changes
+- **[OVERVIEW.md](../OVERVIEW.md)** - Comprehensive project overview for stakeholders
