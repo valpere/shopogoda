@@ -11,6 +11,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/pkg/metrics"
 	"github.com/valpere/shopogoda/tests/helpers"
 )
 
@@ -201,8 +202,10 @@ func TestAuthMiddleware(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer mockDB.Close()
 		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client)
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
 		handler := Auth(userService)
 
 		assert.NotNil(t, handler)
@@ -212,8 +215,10 @@ func TestAuthMiddleware(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer mockDB.Close()
 		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client)
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}
@@ -239,12 +244,14 @@ func TestAuthMiddleware(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer mockDB.Close()
 		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
 
 		// Close DB to simulate error
 		sqlDB, _ := mockDB.DB.DB()
 		sqlDB.Close()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client)
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}

@@ -119,6 +119,11 @@ func (h *CommandHandler) ensureUserRegistered(ctx context.Context, user *gotgbot
 func (h *CommandHandler) Start(bot *gotgbot.Bot, ctx *ext.Context) error {
 	user := ctx.EffectiveUser
 
+	// Track message in Redis
+	if err := h.services.User.IncrementMessageCounter(context.Background()); err != nil {
+		h.logger.Warn().Err(err).Msg("Failed to increment message counter")
+	}
+
 	// Debug logging for start command
 	h.logger.Debug().
 		Int64("user_id", user.Id).
@@ -349,6 +354,11 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 		Str("location", location).
 		Msg("Successfully got weather data")
 
+	// Track weather request in Redis
+	if err := h.services.User.IncrementWeatherRequestCounter(context.Background()); err != nil {
+		h.logger.Warn().Err(err).Msg("Failed to increment weather request counter")
+	}
+
 	// Format weather message
 	userLang := h.getUserLanguage(context.Background(), userID)
 	weatherText := h.formatWeatherMessage(weatherData, userLang)
@@ -423,6 +433,11 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
+	// Track weather request in Redis
+	if err := h.services.User.IncrementWeatherRequestCounter(context.Background()); err != nil {
+		h.logger.Warn().Err(err).Msg("Failed to increment weather request counter")
+	}
+
 	userLang := h.getUserLanguage(context.Background(), userID)
 	forecastText := h.formatForecastMessage(forecast, userLang)
 
@@ -465,6 +480,11 @@ func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
 		return err
+	}
+
+	// Track weather request in Redis
+	if err := h.services.User.IncrementWeatherRequestCounter(context.Background()); err != nil {
+		h.logger.Warn().Err(err).Msg("Failed to increment weather request counter")
 	}
 
 	airText := h.formatAirQualityMessage(airData, userLang)

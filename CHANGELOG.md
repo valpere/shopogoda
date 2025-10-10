@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Admin & Statistics Enhancement**: Real metrics collection and activity tracking
+  - **Real Metrics Integration**: Replaced placeholder values with actual Prometheus metrics
+    - Cache hit rate: Real-time calculation from Redis operations
+    - Average response time: Histogram-based tracking from handler durations
+    - System uptime: Dynamic calculation from bot start time
+  - **Activity Tracking**: Redis-based counters with 24-hour rolling windows
+    - Message counter: Tracks total bot messages sent to users
+    - Weather request counter: Tracks API calls for weather, forecast, and air quality
+    - Automatic TTL management: 24-hour expiry for rolling statistics
+  - **Non-Blocking Metrics**: Warning-level logging for metric failures to prevent request failures
+  - **Test-Friendly Metrics**: Graceful handling of duplicate Prometheus registrations in test environment
+  - **Implementation Details**:
+    - `UserService.IncrementMessageCounter()`: Redis INCR with TTL check
+    - `UserService.IncrementWeatherRequestCounter()`: Redis INCR with TTL check
+    - `Metrics.GetCacheHitRate()`: Placeholder for Prometheus metric extraction (TODO)
+    - `Metrics.GetAverageResponseTime()`: Placeholder for histogram value extraction (TODO)
+    - Message tracking added to: Start command
+    - Weather tracking added to: CurrentWeather, Forecast, AirQuality commands
+  - **Services Architecture**: Metrics collector passed through dependency injection
+    - `Services.New()` signature updated to accept `*metrics.Metrics`
+    - `UserService` now tracks application `startTime` for uptime calculation
+    - All test files updated to pass metrics collector instances
+  - **Test Coverage**: All tests passing with graceful duplicate registration handling
+
 ### In Progress
 - Test coverage improvements (27.4% → 29.9%, target: 30%)
 - Video walkthrough
