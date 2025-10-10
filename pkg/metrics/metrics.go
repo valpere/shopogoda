@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	dto "github.com/prometheus/client_model/go"
 )
 
 type Metrics struct {
@@ -131,26 +132,95 @@ func (m *Metrics) Handler() http.Handler {
 
 // GetCacheHitRate calculates cache hit rate from Prometheus metrics
 // Returns the percentage (0-100) of cache hits vs total cache operations
-// TODO: Implement proper metric value extraction from Prometheus
-// For now, returns a reasonable default value
 func (m *Metrics) GetCacheHitRate(cacheType string) float64 {
-	// In a real implementation, we would:
-	// 1. Use prometheus.Gatherer to collect metrics
-	// 2. Parse the metric families to extract gauge values
-	// 3. Calculate the actual cache hit rate
-	// For now, return a reasonable default
+	// Check if the gauge exists
+	gauge, exists := m.gauges["cache_hit_rate"]
+	if !exists {
+		return 85.0 // Default fallback
+	}
+
+	// Create a channel to collect metrics
+	metricChan := make(chan prometheus.Metric, 1)
+
+	// Collect the metric
+	go func() {
+		gauge.Collect(metricChan)
+		close(metricChan)
+	}()
+
+	// Read metrics from channel
+	for metric := range metricChan {
+		// Write metric to DTO
+		dtoMetric := &dto.Metric{}
+		if err := metric.Write(dtoMetric); err != nil {
+			continue
+		}
+
+		// Check if this metric matches our cache type label
+		if dtoMetric.Label != nil {
+			for _, label := range dtoMetric.Label {
+				if label.GetName() == "cache_type" && label.GetValue() == cacheType {
+					if dtoMetric.Gauge != nil {
+						return dtoMetric.Gauge.GetValue()
+					}
+				}
+			}
+		}
+
+		// If no labels (empty label set), return the value
+		if len(dtoMetric.Label) == 0 && dtoMetric.Gauge != nil {
+			return dtoMetric.Gauge.GetValue()
+		}
+	}
+
+	// Fallback if metric not found
 	return 85.0
 }
 
 // GetAverageResponseTime calculates average response time from handler duration histogram
 // Returns the average in milliseconds
-// TODO: Implement proper histogram value extraction from Prometheus
-// For now, returns a reasonable default value
 func (m *Metrics) GetAverageResponseTime() float64 {
-	// In a real implementation, we would:
-	// 1. Use prometheus.Gatherer to collect metrics
-	// 2. Parse histogram buckets and calculate average
-	// 3. Convert from seconds to milliseconds
-	// For now, return a reasonable default
+	// Check if the histogram exists
+	histogram, exists := m.histograms["bot_handler_duration_seconds"]
+	if !exists {
+		return 150.0 // Default fallback
+	}
+
+	// Create a channel to collect metrics
+	metricChan := make(chan prometheus.Metric, 10)
+
+	// Collect the metrics
+	go func() {
+		histogram.Collect(metricChan)
+		close(metricChan)
+	}()
+
+	// Variables to calculate average from histogram
+	var totalSum float64
+	var totalCount uint64
+
+	// Read metrics from channel
+	for metric := range metricChan {
+		// Write metric to DTO
+		dtoMetric := &dto.Metric{}
+		if err := metric.Write(dtoMetric); err != nil {
+			continue
+		}
+
+		// Extract histogram data
+		if dtoMetric.Histogram != nil {
+			totalSum += dtoMetric.Histogram.GetSampleSum()
+			totalCount += dtoMetric.Histogram.GetSampleCount()
+		}
+	}
+
+	// Calculate average
+	if totalCount > 0 {
+		// Convert from seconds to milliseconds
+		avgSeconds := totalSum / float64(totalCount)
+		return avgSeconds * 1000.0
+	}
+
+	// Fallback if no data
 	return 150.0
 }

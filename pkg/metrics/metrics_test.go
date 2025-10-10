@@ -122,3 +122,83 @@ func TestMetrics_AllGauges(t *testing.T) {
 
 	assert.True(t, true)
 }
+
+func TestMetrics_GetCacheHitRate(t *testing.T) {
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	m := New()
+
+	t.Run("returns default when no data", func(t *testing.T) {
+		rate := m.GetCacheHitRate("weather")
+		assert.Equal(t, 85.0, rate)
+	})
+
+	t.Run("returns actual value after setting gauge", func(t *testing.T) {
+		// Set a cache hit rate
+		m.SetGauge("cache_hit_rate", 92.5, "weather")
+
+		// Retrieve it
+		rate := m.GetCacheHitRate("weather")
+		assert.Equal(t, 92.5, rate)
+	})
+
+	t.Run("returns correct value for different cache types", func(t *testing.T) {
+		m.SetGauge("cache_hit_rate", 88.0, "redis")
+		m.SetGauge("cache_hit_rate", 95.5, "memory")
+
+		redisRate := m.GetCacheHitRate("redis")
+		memoryRate := m.GetCacheHitRate("memory")
+
+		assert.Equal(t, 88.0, redisRate)
+		assert.Equal(t, 95.5, memoryRate)
+	})
+}
+
+func TestMetrics_GetAverageResponseTime(t *testing.T) {
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+	m := New()
+
+	t.Run("returns default when no observations", func(t *testing.T) {
+		avgTime := m.GetAverageResponseTime()
+		assert.Equal(t, 150.0, avgTime)
+	})
+
+	t.Run("calculates average from histogram observations", func(t *testing.T) {
+		// Record some observations (in seconds)
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.100, "command") // 100ms
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.200, "command") // 200ms
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.300, "command") // 300ms
+
+		// Average should be 200ms
+		avgTime := m.GetAverageResponseTime()
+		assert.InDelta(t, 200.0, avgTime, 1.0) // Allow 1ms delta for floating point
+	})
+
+	t.Run("calculates average across multiple handler types", func(t *testing.T) {
+		prometheus.DefaultRegisterer = prometheus.NewRegistry()
+		m := New()
+
+		// Record observations for different handler types
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.050, "weather")  // 50ms
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.150, "forecast") // 150ms
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.100, "air")      // 100ms
+
+		// Average should be 100ms
+		avgTime := m.GetAverageResponseTime()
+		assert.InDelta(t, 100.0, avgTime, 1.0)
+	})
+
+	t.Run("updates average as more observations are added", func(t *testing.T) {
+		prometheus.DefaultRegisterer = prometheus.NewRegistry()
+		m := New()
+
+		// First observation
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.100, "test")
+		avg1 := m.GetAverageResponseTime()
+		assert.InDelta(t, 100.0, avg1, 1.0)
+
+		// Add more observations
+		m.ObserveHistogram("bot_handler_duration_seconds", 0.300, "test")
+		avg2 := m.GetAverageResponseTime()
+		assert.InDelta(t, 200.0, avg2, 1.0) // (100 + 300) / 2 = 200
+	})
+}
