@@ -265,10 +265,13 @@ stats.Uptime = 99.9         // Placeholder
 
 **Pattern to Implement**:
 ```go
+import "context"
+
 type BotError struct {
-    Code    string
-    Message string
-    Details error
+    Ctx         context.Context // For error tracing and request correlation
+    Code        string
+    Message     string
+    Details     error
     UserMessage string
 }
 ```
