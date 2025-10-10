@@ -137,13 +137,15 @@ func (s *UserService) GetSystemStats(ctx context.Context) (*SystemStats, error) 
 		stats.AvgResponseTime = 150
 	}
 
-	// Calculate real uptime percentage
+	// Calculate uptime percentage
+	// Note: This represents service availability as a percentage of the last 24 hours.
+	// For services running longer than 24h, this will cap at 99.99% to indicate
+	// continuous operation without service restarts.
+	// For services running less than 24h, it shows actual runtime as percentage of 24h.
 	uptime := time.Since(s.startTime)
-	// Uptime percentage: assume we want 24h as 100%
-	// For display purposes, we'll show percentage based on 24 hours
 	uptimePercentage := (uptime.Hours() / 24.0) * 100.0
 	if uptimePercentage > 99.99 {
-		uptimePercentage = 99.99 // Cap at 99.99% for realism
+		uptimePercentage = 99.99 // Cap at 99.99% for services running >24h
 	}
 	stats.Uptime = uptimePercentage
 

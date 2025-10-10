@@ -157,7 +157,7 @@ func (m *Metrics) GetCacheHitRate(cacheType string) float64 {
 		}
 
 		// Check if this metric matches our cache type label
-		if dtoMetric.Label != nil {
+		if dtoMetric.Label != nil && len(dtoMetric.Label) > 0 {
 			for _, label := range dtoMetric.Label {
 				if label.GetName() == "cache_type" && label.GetValue() == cacheType {
 					if dtoMetric.Gauge != nil {
@@ -165,11 +165,6 @@ func (m *Metrics) GetCacheHitRate(cacheType string) float64 {
 					}
 				}
 			}
-		}
-
-		// If no labels (empty label set), return the value
-		if len(dtoMetric.Label) == 0 && dtoMetric.Gauge != nil {
-			return dtoMetric.Gauge.GetValue()
 		}
 	}
 

@@ -164,6 +164,7 @@ func TestMetrics_GetAverageResponseTime(t *testing.T) {
 
 	t.Run("calculates average from histogram observations", func(t *testing.T) {
 		// Record some observations (in seconds)
+		// Note: Using same label intentionally to test aggregation within a single handler type
 		m.ObserveHistogram("bot_handler_duration_seconds", 0.100, "command") // 100ms
 		m.ObserveHistogram("bot_handler_duration_seconds", 0.200, "command") // 200ms
 		m.ObserveHistogram("bot_handler_duration_seconds", 0.300, "command") // 300ms
