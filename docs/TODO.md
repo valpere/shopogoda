@@ -459,9 +459,9 @@ Tasks that provide immediate value with minimal effort:
    - Display in `/stats` command
 
 2. **Improve Error Messages** (3 hours)
-   - Add user-friendly error messages
-   - Provide actionable recovery steps
-   - Localize error messages
+   - Focus on immediate improvements to user-facing error messages in the UI and CLI.
+   - Provide actionable recovery steps for common user errors.
+   - For broader error handling and backend improvements, see item #10 "Error Handling Improvements" in High Priority.
 
 3. **Add Command Aliases** (2 hours)
    - `/w` for `/weather`
