@@ -1,0 +1,488 @@
+# ShoPogoda - TODO & Technical Debt
+
+**Last Updated**: 2025-01-10
+**Current Version**: 0.1.1
+**Status**: Production Deployed
+
+---
+
+## 🎯 Critical Items (Production Blockers)
+
+### None Currently
+
+The application is deployed and functioning in production. All critical functionality is operational.
+
+---
+
+## 🔴 High Priority
+
+### Performance & Monitoring
+
+#### 1. Real Metrics Collection
+**Status**: Placeholder values in use
+**Location**: `internal/services/user_service.go:125-128`
+
+**Current Implementation**:
+```go
+stats.CacheHitRate = 85.5   // Placeholder
+stats.AvgResponseTime = 150 // Placeholder
+stats.Uptime = 99.9         // Placeholder
+```
+
+**Required Work**:
+- Integrate with Prometheus metrics to get real cache hit rates
+- Calculate actual average response times from request middleware
+- Track system uptime from application start time
+- Implement Redis stats collection for cache performance
+- Add proper error handling for metrics collection failures
+
+**Affected Features**:
+- `/stats` command shows placeholder data
+- Admin dashboard statistics inaccurate
+- Performance monitoring limited
+
+**Estimated Effort**: 4-6 hours
+
+---
+
+#### 2. Message & Request Tracking
+**Status**: Redis counters not fully implemented
+**Location**: `internal/services/user_service.go:172-183`
+
+**Current Implementation**:
+- Reads from Redis keys: `stats:messages_24h`, `stats:weather_requests_24h`
+- No write operations incrementing these counters
+
+**Required Work**:
+- Add middleware to increment message counter on each command
+- Track weather API requests in WeatherService
+- Implement rolling 24-hour windows with Redis EXPIRE
+- Add background job to reset counters daily
+- Consider using Redis sorted sets for time-series data
+
+**Affected Features**:
+- User activity statistics always show 0
+- Admin cannot monitor actual usage patterns
+- No data for capacity planning
+
+**Estimated Effort**: 3-4 hours
+
+---
+
+### Testing & Quality
+
+#### 3. Test Coverage Increase
+**Current**: 30.5% overall, 75.6% services, 4.2% handlers
+**Target**: 40% short-term, 80% long-term
+**Priority**: High
+
+**Required Work**:
+- **Handlers** (Critical): Increase from 4.2% to 25%
+  - Command handlers: `/weather`, `/forecast`, `/air`, `/alert`
+  - Callback handlers: Settings, notifications, export
+  - Admin commands: `/stats`, `/broadcast`, `/users`
+- **Services** (Maintain/Improve): Keep above 75%
+  - Add edge case tests
+  - Test error handling paths
+  - Integration tests for complex flows
+- **Models** (Add): Currently 0%
+  - GORM model validations
+  - Relationship integrity
+  - Migration tests
+
+**Test Infrastructure Needed**:
+- More comprehensive bot mocks for complex interactions
+- Database fixtures for consistent test data
+- Redis mock with realistic behavior
+- HTTP client mocks for weather API calls
+
+**Estimated Effort**: 20-30 hours
+
+---
+
+### Documentation
+
+#### 4. API Documentation
+**Status**: Missing
+**Priority**: High for enterprise adoption
+
+**Required Work**:
+- Document service layer interfaces
+- Add GoDoc comments to all exported functions
+- Create API reference for services (exported methods only)
+- Document internal patterns (service injection, error handling)
+- Add code examples for common operations
+
+**Format**:
+- GoDoc for in-code documentation
+- `docs/API_REFERENCE.md` for comprehensive guide
+- Link from README.md
+
+**Estimated Effort**: 8-12 hours
+
+---
+
+## 🟡 Medium Priority
+
+### Admin Functionality Enhancements
+
+#### 5. User Role Management
+**Status**: Basic roles implemented, no management UI
+**Current**: Roles assigned directly in database
+
+**Required Work**:
+- Add `/promote` command (Admin only)
+  - Promote user to Moderator
+  - Promote moderator to Admin
+- Add `/demote` command (Admin only)
+  - Demote admin to Moderator
+  - Demote moderator to User
+- Add role change confirmation dialogs
+- Log all role changes for audit trail
+- Prevent self-demotion from Admin role
+
+**Security Considerations**:
+- Require confirmation for Admin role changes
+- Prevent last admin from being demoted
+- Add rate limiting for role changes
+
+**Estimated Effort**: 6-8 hours
+
+---
+
+#### 6. Enhanced User Management
+**Status**: Basic listing only
+**Current**: `/users` shows statistics, no detailed user list
+
+**Required Work**:
+- Add paginated user list view
+  - Show username, role, location, activity
+  - Filter by role, activity status
+  - Search by username or ID
+- Add `/userinfo <user_id>` command
+  - User profile details
+  - Activity history
+  - Subscriptions and alerts
+  - Recent commands
+- Add `/ban <user_id>` and `/unban <user_id>` commands
+  - Prevent banned users from using bot
+  - Log ban/unban actions
+- Add user export functionality for GDPR compliance
+
+**Database Changes**:
+- Add `is_banned` field to User model
+- Add `banned_at` timestamp
+- Add `banned_by` admin user ID
+- Add `ban_reason` text field
+
+**Estimated Effort**: 10-12 hours
+
+---
+
+### Enterprise Features
+
+#### 7. Advanced Broadcast Features
+**Status**: Basic broadcast implemented
+**Current**: `/broadcast` sends same message to all users
+
+**Required Work**:
+- Add targeted broadcast options:
+  - Broadcast to specific role (admins, moderators, users)
+  - Broadcast to users in specific country/city
+  - Broadcast to users with active alerts
+- Add broadcast scheduling
+  - Schedule message for future delivery
+  - Recurring broadcasts (weekly announcements)
+- Add broadcast templates
+  - Predefined message templates
+  - Variable substitution (username, location, etc.)
+- Add broadcast analytics
+  - Delivery success rate
+  - User engagement tracking
+
+**Estimated Effort**: 12-15 hours
+
+---
+
+#### 8. Advanced Statistics & Analytics
+**Status**: Basic stats implemented, limited insights
+
+**Required Work**:
+- Add time-series charts (requires external service or image generation)
+  - User growth over time
+  - Daily/weekly active users
+  - Weather request patterns
+- Add geospatial analytics
+  - Most popular locations
+  - Geographic distribution of users
+  - Weather query heatmap
+- Add alert analytics
+  - Most triggered alert types
+  - Alert effectiveness metrics
+  - False positive rates
+- Add export to CSV/JSON for external analysis
+
+**Estimated Effort**: 15-20 hours
+
+---
+
+### Code Quality & Refactoring
+
+#### 9. Localization Coverage
+**Status**: Admin commands partially localized
+**Current**: Some admin messages still hardcoded in English
+
+**Required Work**:
+- Complete localization for admin commands:
+  - `/stats` command
+  - `/users` command
+  - `/broadcast` command
+- Add missing localization keys to all language files
+- Test all commands in all 5 languages
+- Add language coverage tests
+
+**Files to Update**:
+- `internal/locales/en.json` (reference)
+- `internal/locales/uk.json`
+- `internal/locales/de.json`
+- `internal/locales/fr.json`
+- `internal/locales/es.json`
+
+**Estimated Effort**: 4-6 hours
+
+---
+
+#### 10. Error Handling Improvements
+**Status**: Basic error handling, limited user feedback
+
+**Required Work**:
+- Standardize error messages across commands
+- Add error codes for tracking
+- Improve error context in logs
+- Add user-friendly error messages with recovery suggestions
+- Implement circuit breaker for external API calls
+- Add retry logic with exponential backoff
+
+**Pattern to Implement**:
+```go
+import "context"
+
+type BotError struct {
+    Ctx         context.Context // For error tracing and request correlation
+    Code        string
+    Message     string
+    Details     error
+    UserMessage string
+}
+```
+
+**Estimated Effort**: 8-10 hours
+
+---
+
+## 🟢 Low Priority (Nice to Have)
+
+### 11. Command History
+**Status**: Not implemented
+
+Add ability for users to see their command history:
+- Last 10-20 commands executed
+- Timestamp and result status
+- Quick re-run previous commands
+
+**Estimated Effort**: 6-8 hours
+
+---
+
+### 12. Webhook Health Monitoring
+**Status**: Basic health endpoint exists
+
+Add comprehensive health checks:
+- Database connection status
+- Redis connection status
+- External API availability (OpenWeatherMap)
+- Queue depth (if background jobs implemented)
+- Last successful weather update timestamp
+
+**Estimated Effort**: 4-6 hours
+
+---
+
+### 13. Rate Limiting Customization
+**Status**: Fixed 10 req/min per user
+
+Add configurable rate limits:
+- Per-role rate limits (higher for admins)
+- Per-command rate limits (stricter for expensive operations)
+- Dynamic rate limiting based on system load
+- Rate limit configuration via environment variables
+
+**Estimated Effort**: 6-8 hours
+
+---
+
+### 14. Notification Delivery Optimization
+**Status**: Synchronous delivery, no retry
+
+Implement robust notification delivery:
+- Background job queue for notifications
+- Retry failed deliveries with exponential backoff
+- Track delivery status per notification
+- Batch notifications for efficiency
+- Priority queue (critical alerts first)
+
+**Technology Options**:
+- Asynq (Redis-based job queue)
+- River (PostgreSQL-based job queue)
+- Simple goroutine pool with channels
+
+**Estimated Effort**: 12-16 hours
+
+---
+
+## 📊 Technical Debt
+
+### Database
+
+#### Indexes Optimization
+**Status**: Basic indexes only
+
+Add indexes for frequent queries:
+```sql
+CREATE INDEX idx_users_location ON users(location_name) WHERE location_name IS NOT NULL;
+CREATE INDEX idx_users_active_role ON users(is_active, role);
+CREATE INDEX idx_subscriptions_active_type ON subscriptions(is_active, subscription_type);
+CREATE INDEX idx_weather_data_lookup ON weather_data(user_id, created_at DESC);
+CREATE INDEX idx_alerts_active_user ON alert_configs(is_active, user_id);
+```
+
+**Estimated Effort**: 2-3 hours
+
+---
+
+#### Database Migrations Management
+**Status**: Manual migration script used
+
+Implement proper migration system:
+- Migration versioning
+- Up/down migrations
+- Migration rollback capability
+- Migration status tracking
+
+**Options**:
+- golang-migrate/migrate
+- pressly/goose
+- Custom solution with migration table
+
+**Estimated Effort**: 8-10 hours
+
+---
+
+### Code Organization
+
+#### Service Layer Interfaces
+**Status**: Concrete types, no interfaces
+
+**Current Note** (from `tests/generate.go`):
+> "This project uses concrete types for services rather than interfaces"
+
+**Consideration**:
+- Interfaces enable easier testing and mocking
+- Current approach works but limits flexibility
+- Migration would be significant refactor
+
+**Decision**: Keep current approach unless testing becomes problematic
+
+---
+
+### Configuration
+
+#### Configuration Validation
+**Status**: Basic validation only
+
+Add comprehensive config validation:
+- Required fields check at startup
+- Value range validation (ports, timeouts, etc.)
+- URL format validation
+- API key format validation
+- Environment-specific validation rules
+
+**Estimated Effort**: 4-6 hours
+
+---
+
+## 🔮 Future Enhancements (v0.2.0+)
+
+See [ROADMAP.md](docs/ROADMAP.md) for comprehensive future plans:
+
+- Historical weather data (past 7 days)
+- Weather comparisons
+- Severe weather warnings
+- Interactive weather maps
+- Voice message weather reports
+- Multi-user organization support
+- Horizontal scaling support
+- Premium subscription tiers
+
+---
+
+## 📋 Development Guidelines
+
+### Before Starting New Work
+
+1. **Check Dependencies**: Ensure related work is completed
+2. **Update Estimates**: Refine effort estimates based on current knowledge
+3. **Create Branch**: Use feature/task-name branch naming
+4. **Write Tests**: Aim for >80% coverage on new code
+5. **Update Docs**: Update relevant documentation files
+
+### Completion Checklist
+
+- [ ] Code implementation complete
+- [ ] Unit tests written and passing
+- [ ] Integration tests (if applicable)
+- [ ] Documentation updated
+- [ ] CHANGELOG.md entry added
+- [ ] Pull request created and reviewed
+- [ ] Deployed to staging (if applicable)
+- [ ] Verified in production
+
+---
+
+## 🎯 Quick Wins (< 4 hours each)
+
+Tasks that provide immediate value with minimal effort:
+
+1. **Add Real Uptime Calculation** (2 hours)
+   - Track application start time
+   - Calculate uptime percentage
+   - Display in `/stats` command
+
+2. **Improve Error Messages** (3 hours)
+   - Focus on immediate improvements to user-facing error messages in the UI and CLI.
+   - Provide actionable recovery steps for common user errors.
+   - For broader error handling and backend improvements, see item #10 "Error Handling Improvements" in High Priority.
+
+3. **Add Command Aliases** (2 hours)
+   - `/w` for `/weather`
+   - `/f` for `/forecast`
+   - `/a` for `/air`
+
+4. **Health Check Enhancements** (3 hours)
+   - Add database connectivity check
+   - Add Redis connectivity check
+   - Return detailed status JSON
+
+5. **Logging Improvements** (3 hours)
+   - Add request correlation IDs
+   - Improve log structure
+   - Add performance timing logs
+
+---
+
+## Contact
+
+For questions or prioritization discussions:
+- **Project Lead**: Valentyn Solomko
+- **Email**: valentyn.solomko@gmail.com
+- **GitHub**: [@valpere](https://github.com/valpere)
