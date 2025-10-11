@@ -137,26 +137,48 @@ To reach 40% overall coverage (currently 33.7%), would need +6.3% from handlers:
 
 ### Documentation
 
-#### 4. API Documentation
+#### ~~4. API Documentation~~ ✅ **COMPLETED** (PR #85)
 
-**Status**: Missing
-**Priority**: High for enterprise adoption
+**Status**: ✅ Merged to main
+**Completed**: 2025-01-11
+**Achievement**: Comprehensive API documentation for all service layer components
 
-**Required Work**:
+**Implementation** (PR #85):
+- ✅ Created `docs/API_REFERENCE.md` (1000+ lines)
+- ✅ Documented all 9 services with 79 exported methods
+- ✅ Added GoDoc comments to `internal/services/services.go`
+- ✅ Updated README.md with API Reference link
+- ✅ Included architecture patterns and design principles
+- ✅ Provided code examples for all common operations
+- ✅ Documented error handling and caching strategies
+- ✅ Added performance considerations and testing guidance
 
-- Document service layer interfaces
-- Add GoDoc comments to all exported functions
-- Create API reference for services (exported methods only)
-- Document internal patterns (service injection, error handling)
-- Add code examples for common operations
+**Services Documented**:
+1. **UserService** (15 methods) - User management, locations, timezones, statistics
+2. **WeatherService** (10 methods) - Weather data retrieval and geocoding
+3. **AlertService** (6 methods) - Custom alert configurations
+4. **SubscriptionService** (7 methods) - Notification subscriptions
+5. **NotificationService** (6 methods) - Dual-platform delivery (Telegram + Slack)
+6. **SchedulerService** (2 methods) - Background job scheduling
+7. **ExportService** (1 method) - Data export (JSON, CSV, TXT)
+8. **LocalizationService** (7 methods) - Multi-language translation
+9. **DemoService** (4 methods) - Demo data management
 
-**Format**:
+**Documentation Sections**:
+- Architecture overview and service layer pattern
+- Service initialization and dependency injection
+- Complete method signatures with parameters and returns
+- Error handling patterns and best practices
+- Caching strategy (Redis TTLs, key patterns)
+- Common patterns (transactions, context usage, logging)
+- Performance considerations and optimization tips
+- Testing approaches (unit, integration, mocking)
+- Migration guide for breaking changes
 
-- GoDoc for in-code documentation
-- `docs/API_REFERENCE.md` for comprehensive guide
-- Link from README.md
-
-**Estimated Effort**: 8-12 hours
+**Files Changed**:
+- `docs/API_REFERENCE.md`: New comprehensive API documentation (+1,900 lines)
+- `internal/services/services.go`: Added GoDoc comments (+40 lines)
+- `README.md`: Updated documentation section with API Reference link
 
 ---
 
@@ -533,7 +555,7 @@ Tasks that provide immediate value with minimal effort:
 2. **Improve Error Messages** (3 hours)
    - Focus on immediate improvements to user-facing error messages in the UI and CLI.
    - Provide actionable recovery steps for common user errors.
-   - For broader error handling and backend improvements, see item #10 "Error Handling Improvements" in High Priority.
+   - For broader error handling and backend improvements, see item #10 "Error Handling Improvements" in Medium Priority.
 
 3. **Add Command Aliases** (2 hours)
    - `/w` for `/weather`
