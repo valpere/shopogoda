@@ -1,7 +1,7 @@
 # ShoPogoda - TODO & Technical Debt
 
 **Last Updated**: 2025-01-10
-**Current Version**: 0.1.1
+**Current Version**: 0.1.2-dev
 **Status**: Production Deployed
 
 ---
@@ -16,67 +16,76 @@ The application is deployed and functioning in production. All critical function
 
 ## 🔴 High Priority
 
-### Performance & Monitoring
+### Recently Completed ✅
 
-#### 1. Real Metrics Collection
-**Status**: Placeholder values in use
-**Location**: `internal/services/user_service.go:125-128`
+#### ~~1. Real Metrics Collection~~ ✅ **COMPLETED** (PR #80)
 
-**Current Implementation**:
+**Status**: ✅ Merged and deployed
+**Completed**: 2025-01-10
+**Implementation**:
+
+- ✅ Integrated with Prometheus metrics for real cache hit rates
+- ✅ Implemented actual average response time calculation from handler histograms
+- ✅ Added system uptime tracking from application start time
+- ✅ Implemented Redis stats collection with 24-hour rolling windows
+- ✅ Added proper error handling with non-blocking metrics
+
+**Implementation Details**:
+
 ```go
-stats.CacheHitRate = 85.5   // Placeholder
-stats.AvgResponseTime = 150 // Placeholder
-stats.Uptime = 99.9         // Placeholder
+// Real Prometheus metric extraction
+func (m *Metrics) GetCacheHitRate(cacheType string) float64 {
+    // Extracts gauge values using DTO with label matching
+}
+
+func (m *Metrics) GetAverageResponseTime() float64 {
+    // Calculates averages from histogram sum/count
+}
 ```
 
-**Required Work**:
-- Integrate with Prometheus metrics to get real cache hit rates
-- Calculate actual average response times from request middleware
-- Track system uptime from application start time
-- Implement Redis stats collection for cache performance
-- Add proper error handling for metrics collection failures
+**Files Changed**:
+- `pkg/metrics/metrics.go`: Core implementation (+113 lines)
+- `pkg/metrics/metrics_test.go`: Comprehensive tests (+81 lines)
+- `internal/services/user_service.go`: Tracking methods (+101 lines)
+- Plus 7 other files for integration
 
-**Affected Features**:
-- `/stats` command shows placeholder data
-- Admin dashboard statistics inaccurate
-- Performance monitoring limited
-
-**Estimated Effort**: 4-6 hours
+**Test Coverage**: 11 new tests, all passing
 
 ---
 
-#### 2. Message & Request Tracking
-**Status**: Redis counters not fully implemented
-**Location**: `internal/services/user_service.go:172-183`
+#### ~~2. Message & Request Tracking~~ ✅ **COMPLETED** (PR #80)
 
-**Current Implementation**:
-- Reads from Redis keys: `stats:messages_24h`, `stats:weather_requests_24h`
-- No write operations incrementing these counters
+**Status**: ✅ Merged and deployed
+**Completed**: 2025-01-10
+**Implementation**:
 
-**Required Work**:
-- Add middleware to increment message counter on each command
-- Track weather API requests in WeatherService
-- Implement rolling 24-hour windows with Redis EXPIRE
-- Add background job to reset counters daily
-- Consider using Redis sorted sets for time-series data
+- ✅ Added message counter tracking in Start command handler
+- ✅ Added weather request tracking in CurrentWeather, Forecast, AirQuality handlers
+- ✅ Implemented rolling 24-hour windows with automatic Redis TTL
+- ✅ Non-blocking implementation with warning-level logging
 
-**Affected Features**:
-- User activity statistics always show 0
-- Admin cannot monitor actual usage patterns
-- No data for capacity planning
+**Implementation Details**:
 
-**Estimated Effort**: 3-4 hours
+```go
+// Redis-based activity tracking
+func (s *UserService) IncrementMessageCounter(ctx context.Context) error
+func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error
+```
+
+**Redis Keys**: `stats:messages_24h`, `stats:weather_requests_24h` with 24-hour TTL
 
 ---
 
 ### Testing & Quality
 
 #### 3. Test Coverage Increase
+
 **Current**: 30.5% overall, 75.6% services, 4.2% handlers
 **Target**: 40% short-term, 80% long-term
 **Priority**: High
 
 **Required Work**:
+
 - **Handlers** (Critical): Increase from 4.2% to 25%
   - Command handlers: `/weather`, `/forecast`, `/air`, `/alert`
   - Callback handlers: Settings, notifications, export
@@ -91,6 +100,7 @@ stats.Uptime = 99.9         // Placeholder
   - Migration tests
 
 **Test Infrastructure Needed**:
+
 - More comprehensive bot mocks for complex interactions
 - Database fixtures for consistent test data
 - Redis mock with realistic behavior
@@ -103,10 +113,12 @@ stats.Uptime = 99.9         // Placeholder
 ### Documentation
 
 #### 4. API Documentation
+
 **Status**: Missing
 **Priority**: High for enterprise adoption
 
 **Required Work**:
+
 - Document service layer interfaces
 - Add GoDoc comments to all exported functions
 - Create API reference for services (exported methods only)
@@ -114,6 +126,7 @@ stats.Uptime = 99.9         // Placeholder
 - Add code examples for common operations
 
 **Format**:
+
 - GoDoc for in-code documentation
 - `docs/API_REFERENCE.md` for comprehensive guide
 - Link from README.md
@@ -127,10 +140,12 @@ stats.Uptime = 99.9         // Placeholder
 ### Admin Functionality Enhancements
 
 #### 5. User Role Management
+
 **Status**: Basic roles implemented, no management UI
 **Current**: Roles assigned directly in database
 
 **Required Work**:
+
 - Add `/promote` command (Admin only)
   - Promote user to Moderator
   - Promote moderator to Admin
@@ -142,6 +157,7 @@ stats.Uptime = 99.9         // Placeholder
 - Prevent self-demotion from Admin role
 
 **Security Considerations**:
+
 - Require confirmation for Admin role changes
 - Prevent last admin from being demoted
 - Add rate limiting for role changes
@@ -151,10 +167,12 @@ stats.Uptime = 99.9         // Placeholder
 ---
 
 #### 6. Enhanced User Management
+
 **Status**: Basic listing only
 **Current**: `/users` shows statistics, no detailed user list
 
 **Required Work**:
+
 - Add paginated user list view
   - Show username, role, location, activity
   - Filter by role, activity status
@@ -170,6 +188,7 @@ stats.Uptime = 99.9         // Placeholder
 - Add user export functionality for GDPR compliance
 
 **Database Changes**:
+
 - Add `is_banned` field to User model
 - Add `banned_at` timestamp
 - Add `banned_by` admin user ID
@@ -182,10 +201,12 @@ stats.Uptime = 99.9         // Placeholder
 ### Enterprise Features
 
 #### 7. Advanced Broadcast Features
+
 **Status**: Basic broadcast implemented
 **Current**: `/broadcast` sends same message to all users
 
 **Required Work**:
+
 - Add targeted broadcast options:
   - Broadcast to specific role (admins, moderators, users)
   - Broadcast to users in specific country/city
@@ -205,9 +226,11 @@ stats.Uptime = 99.9         // Placeholder
 ---
 
 #### 8. Advanced Statistics & Analytics
+
 **Status**: Basic stats implemented, limited insights
 
 **Required Work**:
+
 - Add time-series charts (requires external service or image generation)
   - User growth over time
   - Daily/weekly active users
@@ -229,10 +252,12 @@ stats.Uptime = 99.9         // Placeholder
 ### Code Quality & Refactoring
 
 #### 9. Localization Coverage
+
 **Status**: Admin commands partially localized
 **Current**: Some admin messages still hardcoded in English
 
 **Required Work**:
+
 - Complete localization for admin commands:
   - `/stats` command
   - `/users` command
@@ -242,6 +267,7 @@ stats.Uptime = 99.9         // Placeholder
 - Add language coverage tests
 
 **Files to Update**:
+
 - `internal/locales/en.json` (reference)
 - `internal/locales/uk.json`
 - `internal/locales/de.json`
@@ -253,9 +279,11 @@ stats.Uptime = 99.9         // Placeholder
 ---
 
 #### 10. Error Handling Improvements
+
 **Status**: Basic error handling, limited user feedback
 
 **Required Work**:
+
 - Standardize error messages across commands
 - Add error codes for tracking
 - Improve error context in logs
@@ -264,6 +292,7 @@ stats.Uptime = 99.9         // Placeholder
 - Add retry logic with exponential backoff
 
 **Pattern to Implement**:
+
 ```go
 import "context"
 
@@ -283,9 +312,11 @@ type BotError struct {
 ## 🟢 Low Priority (Nice to Have)
 
 ### 11. Command History
+
 **Status**: Not implemented
 
 Add ability for users to see their command history:
+
 - Last 10-20 commands executed
 - Timestamp and result status
 - Quick re-run previous commands
@@ -295,9 +326,11 @@ Add ability for users to see their command history:
 ---
 
 ### 12. Webhook Health Monitoring
+
 **Status**: Basic health endpoint exists
 
 Add comprehensive health checks:
+
 - Database connection status
 - Redis connection status
 - External API availability (OpenWeatherMap)
@@ -309,9 +342,11 @@ Add comprehensive health checks:
 ---
 
 ### 13. Rate Limiting Customization
+
 **Status**: Fixed 10 req/min per user
 
 Add configurable rate limits:
+
 - Per-role rate limits (higher for admins)
 - Per-command rate limits (stricter for expensive operations)
 - Dynamic rate limiting based on system load
@@ -322,9 +357,11 @@ Add configurable rate limits:
 ---
 
 ### 14. Notification Delivery Optimization
+
 **Status**: Synchronous delivery, no retry
 
 Implement robust notification delivery:
+
 - Background job queue for notifications
 - Retry failed deliveries with exponential backoff
 - Track delivery status per notification
@@ -332,6 +369,7 @@ Implement robust notification delivery:
 - Priority queue (critical alerts first)
 
 **Technology Options**:
+
 - Asynq (Redis-based job queue)
 - River (PostgreSQL-based job queue)
 - Simple goroutine pool with channels
@@ -345,9 +383,11 @@ Implement robust notification delivery:
 ### Database
 
 #### Indexes Optimization
+
 **Status**: Basic indexes only
 
 Add indexes for frequent queries:
+
 ```sql
 CREATE INDEX idx_users_location ON users(location_name) WHERE location_name IS NOT NULL;
 CREATE INDEX idx_users_active_role ON users(is_active, role);
@@ -361,15 +401,18 @@ CREATE INDEX idx_alerts_active_user ON alert_configs(is_active, user_id);
 ---
 
 #### Database Migrations Management
+
 **Status**: Manual migration script used
 
 Implement proper migration system:
+
 - Migration versioning
 - Up/down migrations
 - Migration rollback capability
 - Migration status tracking
 
 **Options**:
+
 - golang-migrate/migrate
 - pressly/goose
 - Custom solution with migration table
@@ -381,12 +424,14 @@ Implement proper migration system:
 ### Code Organization
 
 #### Service Layer Interfaces
+
 **Status**: Concrete types, no interfaces
 
 **Current Note** (from `tests/generate.go`):
 > "This project uses concrete types for services rather than interfaces"
 
 **Consideration**:
+
 - Interfaces enable easier testing and mocking
 - Current approach works but limits flexibility
 - Migration would be significant refactor
@@ -398,9 +443,11 @@ Implement proper migration system:
 ### Configuration
 
 #### Configuration Validation
+
 **Status**: Basic validation only
 
 Add comprehensive config validation:
+
 - Required fields check at startup
 - Value range validation (ports, timeouts, etc.)
 - URL format validation
@@ -453,10 +500,10 @@ See [ROADMAP.md](docs/ROADMAP.md) for comprehensive future plans:
 
 Tasks that provide immediate value with minimal effort:
 
-1. **Add Real Uptime Calculation** (2 hours)
-   - Track application start time
-   - Calculate uptime percentage
-   - Display in `/stats` command
+1. ~~**Add Real Uptime Calculation** (2 hours)~~ ✅ **COMPLETED** (PR #80)
+   - ✅ Track application start time
+   - ✅ Calculate uptime percentage
+   - ✅ Display in `/stats` command
 
 2. **Improve Error Messages** (3 hours)
    - Focus on immediate improvements to user-facing error messages in the UI and CLI.
@@ -483,6 +530,7 @@ Tasks that provide immediate value with minimal effort:
 ## Contact
 
 For questions or prioritization discussions:
+
 - **Project Lead**: Valentyn Solomko
 - **Email**: valentyn.solomko@gmail.com
 - **GitHub**: [@valpere](https://github.com/valpere)
