@@ -248,11 +248,17 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 
 ## 📚 Documentation
 
+### User Guides
 - **[Demo Setup Guide](docs/DEMO_SETUP.md)** - Get started in 5 minutes
-- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (30.5% coverage)
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+
+### Developer Documentation
+- **[API Reference](docs/API_REFERENCE.md)** - Complete service layer API documentation
+- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (33.7% coverage, 40.5% for testable packages)
 - **[Code Quality Guidelines](docs/CODE_QUALITY.md)** - Contribution standards
+
+### Project Management
 - **[Roadmap](docs/ROADMAP.md)** - Feature roadmap and future plans
 - **[Release Process](docs/RELEASE_PROCESS.md)** - Release management guide
 - **[Changelog](CHANGELOG.md)** - Version history and changes
