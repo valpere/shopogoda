@@ -80,33 +80,43 @@ func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error
 
 #### 3. Test Coverage Increase
 
-**Current**: 30.5% overall, 75.6% services, 4.2% handlers
+**Current**: 33.3% overall (up from 30.5%), 72.8% services, 5.9% handlers (up from 4.2%)
 **Target**: 40% short-term, 80% long-term
 **Priority**: High
 
-**Required Work**:
+**Progress** (PR #[TBD]):
+- ✅ Added 6 test cases for formatting helper functions
+- ✅ Handlers coverage: 4.2% → 5.9% (+1.7%)
+- ✅ Overall coverage: 32.5% → 33.3% (+0.8%)
+- ✅ All helper methods have 100% coverage (getAQIDescription, getHealthRecommendation, etc.)
 
-- **Handlers** (Critical): Increase from 4.2% to 25%
+**Remaining Work to 40%**:
+
+- **Handlers** (Critical): Need +6.7% overall (requires testing actual command handlers)
   - Command handlers: `/weather`, `/forecast`, `/air`, `/alert`
   - Callback handlers: Settings, notifications, export
   - Admin commands: `/stats`, `/broadcast`, `/users`
-- **Services** (Maintain/Improve): Keep above 75%
+  - **Challenge**: Requires comprehensive bot mocking and service injection
+- **Services** (Maintain): Currently at 72.8%, reasonable coverage
   - Add edge case tests
   - Test error handling paths
   - Integration tests for complex flows
-- **Models** (Add): Currently 0%
-  - GORM model validations
-  - Relationship integrity
-  - Migration tests
+- **Models** (High Coverage): Currently at 99.0%, well-tested
 
 **Test Infrastructure Needed**:
 
-- More comprehensive bot mocks for complex interactions
-- Database fixtures for consistent test data
-- Redis mock with realistic behavior
-- HTTP client mocks for weather API calls
+- ✅ Basic bot mocks exist in `tests/helpers/bot_mock.go`
+- ⚠️ Need more comprehensive service mocking
+- ⚠️ Database fixtures for consistent test data
+- ⚠️ Redis mock with realistic behavior
+- ⚠️ HTTP client mocks for weather API calls
 
-**Estimated Effort**: 20-30 hours
+**Path to 40% Coverage**:
+
+Option A (Faster): Test more service edge cases (+4-5%) + Improve database tests (+2-3%)
+Option B (Better Long-term): Implement comprehensive bot mocking framework and test command handlers
+
+**Estimated Effort**: 15-20 hours remaining
 
 ---
 
