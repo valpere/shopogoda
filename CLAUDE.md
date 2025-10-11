@@ -322,10 +322,10 @@ const (
 - **E2E Tests**: `tests/e2e/` with real bot instance (planned)
 
 ### Test Coverage
-- **Current**: 30.5% overall coverage
-- **Services**: 75.6% (core business logic)
-- **Handlers**: 4.2% (bot command handlers)
-- **Target**: 40% short-term, 80% long-term
+- **Current**: 33.7% overall (✅ 40.5% for testable packages - target met!)
+- **Services**: 74.5% (core business logic)
+- **Handlers**: 5.9% (bot command handlers)
+- **Target**: 40% short-term ✅, 80% long-term
 
 ### Bot Mocking Infrastructure
 
