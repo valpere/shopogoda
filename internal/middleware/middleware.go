@@ -14,12 +14,13 @@ import (
 	"github.com/valpere/shopogoda/internal/services"
 )
 
-// UserRateLimiter manages rate limits per user
+// UserRateLimiter manages rate limits per user with graceful shutdown support
 type UserRateLimiter struct {
 	limiters map[int64]*rateLimiterEntry
 	mu       sync.RWMutex
 	rate     rate.Limit
 	burst    int
+	done     chan struct{} // Channel to signal shutdown
 }
 
 // rateLimiterEntry holds a limiter with its last access time for cleanup
@@ -33,6 +34,7 @@ func NewUserRateLimiter(r rate.Limit, b int) *UserRateLimiter {
 		limiters: make(map[int64]*rateLimiterEntry),
 		rate:     r,
 		burst:    b,
+		done:     make(chan struct{}),
 	}
 
 	// Start periodic cleanup goroutine (every 15 minutes)
@@ -65,14 +67,26 @@ func (rl *UserRateLimiter) Allow(userID int64) bool {
 	return entry.limiter.Allow()
 }
 
-// cleanupLoop periodically removes inactive rate limiters to prevent memory leaks
+// cleanupLoop periodically removes inactive rate limiters to prevent memory leaks.
+// The loop runs until Stop() is called, enabling graceful shutdown.
 func (rl *UserRateLimiter) cleanupLoop() {
 	ticker := time.NewTicker(15 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		rl.cleanup()
+	for {
+		select {
+		case <-ticker.C:
+			rl.cleanup()
+		case <-rl.done:
+			return
+		}
 	}
+}
+
+// Stop gracefully shuts down the cleanup goroutine.
+// Should be called during application shutdown to prevent goroutine leaks.
+func (rl *UserRateLimiter) Stop() {
+	close(rl.done)
 }
 
 // cleanup removes rate limiters that haven't been accessed in the last hour
