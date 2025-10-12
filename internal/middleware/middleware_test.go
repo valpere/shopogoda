@@ -205,7 +205,8 @@ func TestAuthMiddleware(t *testing.T) {
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
+		logger := zerolog.Nop()
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		assert.NotNil(t, handler)
@@ -218,7 +219,8 @@ func TestAuthMiddleware(t *testing.T) {
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
+		logger := zerolog.Nop()
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}
@@ -251,7 +253,8 @@ func TestAuthMiddleware(t *testing.T) {
 		sqlDB, _ := mockDB.DB.DB()
 		sqlDB.Close()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
+		logger := zerolog.Nop()
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}
