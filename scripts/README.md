@@ -269,8 +269,22 @@ For database migration issues:
 - Check Supabase Dashboard logs
 - Contact: valentyn.solomko@gmail.com
 
+## Do I Need to Run These Scripts?
+
+**Quick Answer**: It depends on your deployment type.
+
+| Deployment Type | SQL Scripts Required? |
+|----------------|----------------------|
+| **New deployment (empty database)** | ❌ No - GORM AutoMigrate creates tables |
+| **Supabase deployment** | ✅ Yes - `enable_rls.sql` (security) |
+| **Railway/Local deployment** | ❌ No - Optional: `optimize_indexes.sql` (performance) |
+| **Existing deployment (upgrading)** | ✅ Yes - Both scripts for security + performance |
+
+**Detailed Explanation**: See [Database Migration Guide](../docs/DATABASE_MIGRATION_GUIDE.md)
+
 ## Related Documentation
 
-- [Database Security Guide](../docs/DATABASE_SECURITY.md)
-- [Deployment Guide](../docs/DEPLOYMENT_RAILWAY.md)
-- [Testing Guide](../docs/TESTING.md)
+- **[Database Migration Guide](../docs/DATABASE_MIGRATION_GUIDE.md)** - Complete guide on when to run SQL patches
+- [Database Security Guide](../docs/DATABASE_SECURITY.md) - Row Level Security (RLS) implementation details
+- [Deployment Guide](../docs/DEPLOYMENT_RAILWAY.md) - Production deployment instructions
+- [Testing Guide](../docs/TESTING.md) - Testing documentation
