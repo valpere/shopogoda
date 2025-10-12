@@ -16,6 +16,7 @@ This document explains how Row Level Security (RLS) is implemented to secure the
 - Supabase Database Linter shows ERROR: "RLS Disabled in Public"
 
 **Tables at Risk:**
+
 1. `public.users` - User profiles and location data
 2. `public.weather_data` - Weather records
 3. `public.subscriptions` - Notification preferences
@@ -29,7 +30,7 @@ RLS is a PostgreSQL feature that allows you to control which rows users can acce
 
 ### How It Works
 
-```
+```plaintext
 ┌─────────────────────────────────────────────────────────────┐
 │                     CLIENT ACCESS FLOW                       │
 └─────────────────────────────────────────────────────────────┘
@@ -76,6 +77,7 @@ WITH CHECK (false);
 ```
 
 **Policy Breakdown:**
+
 - `FOR ALL` - Applies to SELECT, INSERT, UPDATE, DELETE
 - `TO anon, authenticated` - Applies to PostgREST API requests
 - `USING (false)` - Read condition always fails
@@ -118,7 +120,7 @@ DATABASE_SSL_MODE=require
 
 ### Option 1: Supabase SQL Editor (Recommended)
 
-1. Log into Supabase Dashboard: https://supabase.com/dashboard
+1. Log into Supabase Dashboard: <https://supabase.com/dashboard>
 2. Navigate to your project
 3. Go to "SQL Editor"
 4. Copy the entire contents of `scripts/enable_rls.sql`
@@ -170,7 +172,7 @@ ORDER BY tablename;
 
 **Expected Output:**
 
-```
+```plaintext
  schemaname |      tablename       | rowsecurity
 ------------+----------------------+-------------
  public     | alert_configs        | t
@@ -192,7 +194,7 @@ ORDER BY tablename, policyname;
 
 **Expected Output:**
 
-```
+```plaintext
       tablename       |          policyname           | permissive |         roles          | cmd
 ----------------------+-------------------------------+------------+------------------------+-----
  alert_configs        | alert_configs_postgrest_deny_all        | PERMISSIVE | {anon,authenticated}   | ALL
@@ -251,6 +253,7 @@ USING (auth.uid()::text = id::text);
 ```
 
 **Requirements:**
+
 - Implement Supabase Auth in the bot
 - Users must authenticate via Supabase
 - Telegram user ID must match Supabase auth.uid()
@@ -270,6 +273,7 @@ WITH CHECK (user_id::text = auth.uid()::text);
 ```
 
 **Benefits:**
+
 - Users can view/edit subscriptions via web UI
 - No bot interaction required for settings changes
 - Enables mobile app development
@@ -293,6 +297,7 @@ USING (
 ```
 
 **Use Cases:**
+
 - Admin web dashboard for user management
 - Analytics and reporting interface
 - Customer support tools
@@ -306,6 +311,7 @@ USING (
 **Cause:** Bot is using wrong database credentials (not service role).
 
 **Solution:**
+
 1. Check `DATABASE_USER` is set to `postgres` (service role)
 2. Check `DATABASE_PASSWORD` is the service role password (NOT the anon key)
 3. Verify connection string in Railway/environment variables
@@ -318,6 +324,7 @@ USING (
 **Cause:** Migration not applied or Supabase cache.
 
 **Solution:**
+
 1. Re-run verification queries
 2. Refresh Supabase Dashboard (Ctrl+Shift+R)
 3. Wait 1-2 minutes for cache to clear
@@ -370,6 +377,7 @@ COMMIT;
 ### 3. Monitor API Access
 
 Supabase Dashboard → Logs:
+
 - Track PostgREST API requests
 - Monitor for suspicious patterns
 - Set up alerts for high request rates
@@ -399,7 +407,8 @@ SELECT usename, usesuper FROM pg_user;
 ## Support
 
 For RLS-related issues:
+
 1. Check Supabase Dashboard → Logs for error details
 2. Review this documentation's troubleshooting section
-3. Consult Supabase community: https://github.com/supabase/supabase/discussions
-4. Contact project maintainer: valentyn.solomko@gmail.com
+3. Consult Supabase community: <https://github.com/supabase/supabase/discussions>
+4. [Issues](https://github.com/valpere/shopogoda/issues)

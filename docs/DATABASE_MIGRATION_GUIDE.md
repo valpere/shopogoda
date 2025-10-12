@@ -20,23 +20,25 @@ Complete guide for database setup and migrations for ShoPogoda deployments.
 ShoPogoda uses GORM's AutoMigrate to automatically create and update database schema:
 
 **Location**: `internal/database/database.go:72-82`
+
 ```go
 // Migrate runs database migrations
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.User{},
-		&models.WeatherData{},
-		&models.Subscription{},
-		&models.AlertConfig{},
-		&models.EnvironmentalAlert{},
-		&models.UserSession{},
-	)
+ return db.AutoMigrate(
+  &models.User{},
+  &models.WeatherData{},
+  &models.Subscription{},
+  &models.AlertConfig{},
+  &models.EnvironmentalAlert{},
+  &models.UserSession{},
+ )
 }
 ```
 
 **When It Runs**: Automatically on bot startup (called from `internal/bot/bot.go`)
 
 **What It Does**:
+
 1. Connects to database
 2. Checks if tables exist
 3. Creates missing tables with correct schema
@@ -44,6 +46,7 @@ func Migrate(db *gorm.DB) error {
 5. Updates column types if models changed
 
 **What It Does NOT Do**:
+
 - ❌ Create Row Level Security (RLS) policies
 - ❌ Create composite indexes (only single-column indexes from tags)
 - ❌ Optimize existing indexes
@@ -52,12 +55,14 @@ func Migrate(db *gorm.DB) error {
 ### When AutoMigrate Is Disabled
 
 **Supabase Connection Pooler (Transaction Mode)**:
+
 - AutoMigrate uses prepared statements for schema inspection
 - Supabase transaction pooler doesn't support prepared statements
 - **Workaround**: `PreferSimpleProtocol: true` in GORM config (line 24)
 - **Result**: Tables are still created automatically on first deployment
 
 **Railway Production**:
+
 - AutoMigrate is enabled and works correctly
 - Uses direct database connection (not pooler)
 - All tables and indexes created automatically
@@ -73,21 +78,25 @@ ShoPogoda includes 2 SQL migration scripts for **security and performance optimi
 **Required?** ✅ Yes, for **Supabase deployments** (security best practice)
 
 **When to Run**:
+
 - After initial Supabase deployment
 - When Supabase Database Linter shows "RLS Disabled" warnings
 - For production security hardening
 
 **What It Does**:
+
 - Enables RLS on 6 tables: `users`, `weather_data`, `subscriptions`, `alert_configs`, `environmental_alerts`, `user_sessions`
 - Creates deny-by-default policies for PostgREST API (`anon` and `authenticated` roles)
 - Bot continues working via service role (bypasses RLS)
 
 **Impact if NOT Run**:
+
 - ⚠️ **Security Risk**: PostgREST API exposes all tables publicly
 - Anyone with API URL could potentially read/write data
 - Supabase shows ERROR-level warnings in Database Linter
 
 **Does NOT Affect**:
+
 - ✅ Bot functionality (bot uses service role)
 - ✅ Table creation (handled by AutoMigrate)
 - ✅ Data integrity
@@ -99,23 +108,27 @@ ShoPogoda includes 2 SQL migration scripts for **security and performance optimi
 **Required?** ❌ No, **optional performance optimization**
 
 **When to Run**:
+
 - After initial deployment (any platform)
 - When Supabase Database Linter shows "unused index" warnings
 - When query performance is slow for exports/history
 
 **What It Does**:
+
 - Replaces 2 single-column indexes on `weather_data` with 1 composite index: `(user_id, timestamp DESC)`
 - Replaces 2 single-column indexes on `environmental_alerts` with 1 composite index: `(user_id, created_at DESC)`
 - Keeps `subscriptions` and `users` indexes unchanged
 - Reduces index count by 33% (6 → 4 indexes)
 
 **Impact if NOT Run**:
+
 - ⚠️ **Slower Queries**: Weather data export and alert history 2-3x slower
 - ⚠️ **Higher Storage**: More indexes to maintain
 - ⚠️ **Increased Write Cost**: More indexes to update on inserts
 - ✅ **Bot Still Works**: Just with lower performance
 
 **Does NOT Affect**:
+
 - ✅ Bot functionality (all queries still work)
 - ✅ Data integrity
 
@@ -124,6 +137,7 @@ ShoPogoda includes 2 SQL migration scripts for **security and performance optimi
 ### Scenario 1: New Local Development Setup
 
 **Setup**:
+
 ```bash
 make init    # Start PostgreSQL + Redis containers
 make run     # Start bot
@@ -132,6 +146,7 @@ make run     # Start bot
 **SQL Patches Needed**: ❌ None
 
 **What Happens**:
+
 1. PostgreSQL container starts with empty database
 2. Bot connects to database
 3. GORM AutoMigrate creates all tables automatically
@@ -143,6 +158,7 @@ make run     # Start bot
 ### Scenario 2: New Railway Deployment (Integrated)
 
 **Setup**:
+
 1. Deploy to Railway from GitHub
 2. Add PostgreSQL and Redis services
 3. Set environment variables
@@ -151,6 +167,7 @@ make run     # Start bot
 **SQL Patches Needed**: ❌ None (✅ Optional: `optimize_indexes.sql`)
 
 **What Happens**:
+
 1. Railway creates PostgreSQL instance
 2. Bot deploys and connects to database
 3. GORM AutoMigrate creates all tables
@@ -158,6 +175,7 @@ make run     # Start bot
 5. Bot starts successfully
 
 **Optimization (Optional)**:
+
 - After deployment, run `optimize_indexes.sql` for 2-3x faster queries
 - Not required for bot to work
 
@@ -166,6 +184,7 @@ make run     # Start bot
 ### Scenario 3: New Supabase Deployment (Hybrid)
 
 **Setup**:
+
 1. Create Supabase project
 2. Deploy bot to Railway (or Vercel/Fly.io)
 3. Configure Supabase connection string (pooler port 6543)
@@ -173,10 +192,12 @@ make run     # Start bot
 5. Bot deploys
 
 **SQL Patches Needed**:
+
 - ✅ **Required**: `enable_rls.sql` (security)
 - ✅ **Recommended**: `optimize_indexes.sql` (performance)
 
 **What Happens**:
+
 1. Supabase creates PostgreSQL database
 2. Bot connects via connection pooler (port 6543)
 3. GORM AutoMigrate creates all tables (with `PreferSimpleProtocol: true`)
@@ -184,18 +205,21 @@ make run     # Start bot
 5. ⚠️ **Supabase exposes tables via PostgREST API** (insecure by default!)
 
 **Security Fix (REQUIRED)**:
+
 ```bash
 # Run enable_rls.sql in Supabase SQL Editor
 # Blocks PostgREST API, bot continues working
 ```
 
 **Optimization (Recommended)**:
+
 ```bash
 # Run optimize_indexes.sql for better query performance
 # 2-3x faster weather data export and alert history
 ```
 
 **Result**:
+
 - Without RLS: ⚠️ Functional but **INSECURE** (PostgREST API exposed)
 - With RLS: ✅ Secure and functional
 - With RLS + optimization: ✅ Secure, functional, and **FAST**
@@ -207,6 +231,7 @@ make run     # Start bot
 **SQL Patches Needed**: ✅ Yes, both scripts
 
 **What Happens**:
+
 1. Pull latest code from GitHub
 2. Redeploy to Railway/Vercel/Fly.io
 3. GORM AutoMigrate detects existing schema
@@ -215,6 +240,7 @@ make run     # Start bot
 6. ❌ **Does NOT optimize indexes**
 
 **Required Actions**:
+
 1. **Run `enable_rls.sql`** (if on Supabase)
    - One-time security hardening
    - Prevents data exposure via PostgREST API
@@ -227,6 +253,7 @@ make run     # Start bot
 ### Scenario 5: Supabase with Direct Connection (Not Pooler)
 
 **Setup**:
+
 ```bash
 # Using port 5432 (direct) instead of 6543 (pooler)
 DB_HOST=db.xxxxx.supabase.co
@@ -236,12 +263,14 @@ DB_PORT=5432
 **SQL Patches Needed**: ✅ `enable_rls.sql` (security)
 
 **What Happens**:
+
 1. Bot connects directly to PostgreSQL (not pooler)
 2. GORM AutoMigrate works normally with prepared statements
 3. All tables and indexes created automatically
 4. ⚠️ **PostgREST API still exposed** (security risk)
 
 **Required Actions**:
+
 1. Run `enable_rls.sql` to secure PostgREST API
 
 **Result**: Secure and functional.
@@ -253,6 +282,7 @@ DB_PORT=5432
 **For**: `enable_rls.sql` and `optimize_indexes.sql` on Supabase
 
 **Steps**:
+
 1. Open [Supabase Dashboard](https://supabase.com/dashboard)
 2. Navigate to your project
 3. Go to **SQL Editor**
@@ -266,6 +296,7 @@ DB_PORT=5432
 **For**: Any PostgreSQL database (Supabase, Railway, local)
 
 **Steps**:
+
 ```bash
 # Connect to database
 psql "postgresql://user:password@host:port/database?sslmode=require"
@@ -283,6 +314,7 @@ psql "connection_string" < scripts/enable_rls.sql
 **For**: Railway PostgreSQL service
 
 **Steps**:
+
 ```bash
 # Connect to Railway database
 railway run --service postgres psql
@@ -331,6 +363,7 @@ ORDER BY tablename, indexname;
 ```
 
 **Expected Output**:
+
 - `idx_weather_data_user_timestamp` on `weather_data`
 - `idx_environmental_alerts_user_created` on `environmental_alerts`
 
@@ -358,6 +391,7 @@ curl https://your-app.up.railway.app/health
 **Cause**: Using wrong database credentials (not service role)
 
 **Solution**:
+
 ```bash
 # For Supabase: Ensure using service role credentials
 # Supabase Dashboard → Settings → API → service_role key
@@ -375,6 +409,7 @@ DB_PASSWORD=${{Postgres.PGPASSWORD}}
 **Cause**: Using Supabase connection pooler without `PreferSimpleProtocol`
 
 **Solution**: Already fixed in latest version (line 24 of `database.go`)
+
 ```go
 PreferSimpleProtocol: true, // Disables prepared statements
 ```
@@ -386,6 +421,7 @@ PreferSimpleProtocol: true, // Disables prepared statements
 **Cause**: Supabase dashboard cache
 
 **Solution**:
+
 1. Re-run verification queries
 2. Hard refresh dashboard (Ctrl+Shift+R)
 3. Wait 1-2 minutes for cache to clear
@@ -397,6 +433,7 @@ PreferSimpleProtocol: true, // Disables prepared statements
 **Cause**: PostgreSQL needs to analyze new indexes
 
 **Solution**:
+
 ```sql
 -- Analyze tables to update query planner statistics
 ANALYZE weather_data;
@@ -414,6 +451,7 @@ REINDEX TABLE environmental_alerts;
 **Why**: Let AutoMigrate create base schema first
 
 **Process**:
+
 1. Deploy bot → AutoMigrate creates tables
 2. Verify bot works (send `/start` command)
 3. Run `enable_rls.sql` (Supabase only)
@@ -425,6 +463,7 @@ REINDEX TABLE environmental_alerts;
 **Why**: Safety net in case something goes wrong
 
 **Process**:
+
 ```bash
 # Supabase: Use built-in backup
 # Dashboard → Database → Backups
@@ -441,6 +480,7 @@ pg_dump "connection_string" > backup.sql
 **Why**: Catch issues before production
 
 **Process**:
+
 1. Run SQL patches on local development database
 2. Test all bot commands thoroughly
 3. Check logs for any database errors
@@ -451,6 +491,7 @@ pg_dump "connection_string" > backup.sql
 **Why**: Team awareness and audit trail
 
 **Process**:
+
 - Add comment to commit: "Applied enable_rls.sql on 2025-01-12"
 - Update internal docs with patch dates
 - Record in project changelog
@@ -479,10 +520,11 @@ pg_dump "connection_string" > backup.sql
 ## Support
 
 For database migration issues:
+
 - Check verification queries in this guide
 - Review script comments in `scripts/` directory
 - Check Supabase/Railway dashboard logs
-- Contact: valentyn.solomko@gmail.com
+- [Issues](https://github.com/valpere/shopogoda/issues)
 
 ---
 

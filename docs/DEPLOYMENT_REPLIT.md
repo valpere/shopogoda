@@ -28,6 +28,7 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 ### When to Choose Replit
 
 **Choose Replit if:**
+
 - You're new to deployment and want simplicity
 - You want built-in PostgreSQL database
 - You need always-on capability (paid plan)
@@ -35,6 +36,7 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 - You want quick prototyping and testing
 
 **Choose alternatives if:**
+
 - You need serverless (Vercel)
 - You want more control (Fly.io, VPS)
 - You have high traffic (AWS Lambda)
@@ -43,11 +45,13 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 ## Prerequisites
 
 ### Required
-- Replit account (https://replit.com - free signup)
+
+- Replit account (<https://replit.com> - free signup)
 - Telegram Bot Token from @BotFather
-- OpenWeather API Key from https://openweathermap.org/api
+- OpenWeather API Key from <https://openweathermap.org/api>
 
 ### Optional
+
 - GitHub account (for auto-deploy)
 - External PostgreSQL database (if not using Replit's built-in DB)
 - Redis instance (optional, bot works without cache)
@@ -56,7 +60,7 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 
 ### Sign Up
 
-1. Go to https://replit.com
+1. Go to <https://replit.com>
 2. Click "Sign up"
 3. Choose signup method:
    - GitHub (recommended - enables auto-deploy)
@@ -68,6 +72,7 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 ### Understand Replit Plans
 
 **Free Plan ($0/month):**
+
 - ✅ Unlimited public Repls
 - ✅ Basic compute resources
 - ❌ Repls sleep after ~1 hour inactivity
@@ -75,12 +80,14 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 - ❌ Limited outbound bandwidth
 
 **Hacker Plan ($7/month):**
+
 - ✅ Private Repls
 - ✅ More compute resources
 - ❌ Repls still sleep
 - ❌ No always-on capability
 
 **Pro Plan ($20/month):**
+
 - ✅ All Hacker features
 - ✅ Always-on Repls (recommended for bots)
 - ✅ Boosted resources
@@ -95,9 +102,11 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 1. Click "Create Repl" button (top left)
 2. Select "Import from GitHub" tab
 3. Enter repository URL:
-   ```
+
+   ```plaintext
    https://github.com/valpere/shopogoda
    ```
+
 4. Select language: **Go**
 5. Click "Import from GitHub"
 6. Wait for import to complete (~30 seconds)
@@ -109,6 +118,7 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 3. Name your Repl: `shopogoda`
 4. Click "Create Repl"
 5. In terminal, clone repository:
+
    ```bash
    git clone https://github.com/valpere/shopogoda .
    ```
@@ -116,6 +126,7 @@ Replit is an excellent choice for deploying Telegram bots, especially for beginn
 ### Verify Import
 
 After import completes, you should see:
+
 - File explorer on left with project files
 - `cmd/`, `internal/`, `api/` directories visible
 - `go.mod`, `Makefile`, `README.md` in root
@@ -127,6 +138,7 @@ After import completes, you should see:
 Replit should detect these files automatically:
 
 **`.replit`** - Run configuration (already in repository):
+
 ```toml
 run = "make build && ./bin/shopogoda"
 
@@ -143,6 +155,7 @@ externalPort = 80
 ```
 
 **`replit.nix`** - Dependencies (already in repository):
+
 ```nix
 { pkgs }: {
   deps = [
@@ -179,12 +192,13 @@ Add these secrets one by one:
 
 #### 1. TELEGRAM_BOT_TOKEN
 
-```
+```plaintext
 Key: TELEGRAM_BOT_TOKEN
 Value: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz
 ```
 
 **How to get:**
+
 1. Open Telegram and search for @BotFather
 2. Send `/newbot` command
 3. Follow prompts to create bot
@@ -193,13 +207,14 @@ Value: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz
 
 #### 2. OPENWEATHER_API_KEY
 
-```
+```plaintext
 Key: OPENWEATHER_API_KEY
 Value: your_32_character_api_key_here
 ```
 
 **How to get:**
-1. Go to https://openweathermap.org/api
+
+1. Go to <https://openweathermap.org/api>
 2. Sign up for free account
 3. Go to "API keys" section
 4. Copy your API key
@@ -209,7 +224,7 @@ Value: your_32_character_api_key_here
 
 **Option A: Use Replit's Built-in PostgreSQL (Recommended)**
 
-```
+```plaintext
 Key: DATABASE_URL
 Value: (will be set after enabling database)
 ```
@@ -218,24 +233,26 @@ Skip this for now - we'll set it in Step 5.
 
 **Option B: Use External Database (Supabase, etc.)**
 
-```
+```plaintext
 Key: DATABASE_URL
 Value: postgresql://user:password@host:port/dbname?sslmode=require
 ```
 
 Example (Supabase):
-```
+
+```plaintext
 postgresql://postgres.xxx:password@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
 #### 4. BOT_MODE (Required for Polling)
 
-```
+```plaintext
 Key: BOT_MODE
 Value: polling
 ```
 
 **Important**: Replit works best with polling mode (not webhook) because:
+
 - No need for public HTTPS URL
 - Simpler setup
 - Works on free tier
@@ -243,19 +260,22 @@ Value: polling
 #### Optional Secrets
 
 **REDIS_URL** (optional - bot works without cache):
-```
+
+```plaintext
 Key: REDIS_URL
 Value: redis://host:port
 ```
 
 **BOT_DEBUG** (for debugging):
-```
+
+```plaintext
 Key: BOT_DEBUG
 Value: true
 ```
 
 **LOG_FORMAT** (for JSON logs):
-```
+
+```plaintext
 Key: LOG_FORMAT
 Value: json
 ```
@@ -263,6 +283,7 @@ Value: json
 ### Verify Secrets
 
 After adding all secrets, you should see:
+
 - ✅ TELEGRAM_BOT_TOKEN
 - ✅ OPENWEATHER_API_KEY
 - ✅ DATABASE_URL (or pending for Step 5)
@@ -282,7 +303,8 @@ After adding all secrets, you should see:
 1. In Database panel, look for "Connection String"
 2. Click "Copy" button
 3. Format will be:
-   ```
+
+   ```plaintext
    postgresql://username:password@db.postgres.repl.co:5432/dbname
    ```
 
@@ -298,7 +320,8 @@ After adding all secrets, you should see:
 If you prefer external PostgreSQL (Supabase, etc.):
 
 **Supabase Setup:**
-1. Go to https://supabase.com
+
+1. Go to <https://supabase.com>
 2. Create project
 3. Go to Settings → Database
 4. Copy "Connection string" (Transaction mode)
@@ -307,7 +330,8 @@ If you prefer external PostgreSQL (Supabase, etc.):
 7. Paste into DATABASE_URL secret
 
 **Neon Setup:**
-1. Go to https://neon.tech
+
+1. Go to <https://neon.tech>
 2. Create project
 3. Copy connection string
 4. Paste into DATABASE_URL secret
@@ -383,7 +407,8 @@ type Config struct {
 1. Click the green "▶ Run" button at top
 2. Watch the console output
 3. You should see:
-   ```
+
+   ```plaintext
    Starting ShoPogoda v0.1.0
    Connecting to database...
    Running migrations...
@@ -396,21 +421,27 @@ type Config struct {
 ### Common First-Run Issues
 
 **Issue: "TELEGRAM_BOT_TOKEN is required"**
+
 - Solution: Check Secrets panel, ensure token is set correctly
 
 **Issue: "failed to connect to database"**
+
 - Solution: Verify DATABASE_URL secret is set with correct connection string
 
 **Issue: "insufficient arguments" (GORM error)**
+
 - Solution: Check `go.mod` has `gorm.io/gorm v1.25.6` (not v1.30.0)
 - Fix: In terminal, run:
+
   ```bash
   go get gorm.io/gorm@v1.25.6
   go mod tidy
   ```
 
 **Issue: "package not found"**
+
 - Solution: Install dependencies:
+
   ```bash
   go mod download
   go mod tidy
@@ -434,38 +465,49 @@ type Config struct {
 Send these commands to verify bot works:
 
 **1. Test /start command:**
-```
+
+```plaintext
 /start
 ```
+
 Expected: Welcome message with inline keyboard buttons
 
 **2. Test /help command:**
-```
+
+```plaintext
 /help
 ```
+
 Expected: List of available commands
 
 **3. Test /version command:**
-```
+
+```plaintext
 /version
 ```
+
 Expected: Bot version information
 
 **4. Test /setlocation command:**
-```
+
+```plaintext
 /setlocation
 ```
+
 Expected: Instructions to set location or button to share location
 
 **5. Test /weather command (after setting location):**
-```
+
+```plaintext
 /weather
 ```
+
 Expected: Current weather for your location
 
 ### Check Replit Console
 
 While testing, watch the Replit console for:
+
 - ✅ "Received update" messages
 - ✅ Command processing logs
 - ✅ Database queries (if debug enabled)
@@ -477,10 +519,12 @@ To see detailed logs:
 
 1. Go to Secrets
 2. Add or update:
-   ```
+
+   ```plaintext
    Key: BOT_DEBUG
    Value: true
    ```
+
 3. Restart bot (Stop and Run again)
 4. Now you'll see detailed logs for every update
 
@@ -513,6 +557,7 @@ Free Replit accounts have bot sleep after ~1 hour of inactivity.
 
 2. Create health endpoint (if not exists):
    - Add to `api/health.go` (should already exist):
+
      ```go
      package handler
 
@@ -530,6 +575,7 @@ Free Replit accounts have bot sleep after ~1 hour of inactivity.
      ```
 
 3. Add HTTP server to main.go (if polling mode):
+
    ```go
    // Start health check server for UptimeRobot
    go func() {
@@ -543,7 +589,7 @@ Free Replit accounts have bot sleep after ~1 hour of inactivity.
    }()
    ```
 
-4. Sign up at https://uptimerobot.com (free)
+4. Sign up at <https://uptimerobot.com> (free)
 
 5. Add new monitor:
    - Monitor Type: HTTP(s)
@@ -563,6 +609,7 @@ Replit wakes up when you push to connected GitHub repo:
    - Enable "Run on every commit"
 
 2. Create a cron job (on your computer/server) to push empty commit:
+
    ```bash
    #!/bin/bash
    # keep-repl-alive.sh
@@ -572,7 +619,8 @@ Replit wakes up when you push to connected GitHub repo:
    ```
 
 3. Add to crontab (every hour):
-   ```
+
+   ```plaintext
    0 * * * * /path/to/keep-repl-alive.sh
    ```
 
@@ -587,21 +635,23 @@ Replit wakes up when you push to connected GitHub repo:
 3. Choose deployment type:
 
 **Option A: Autoscale Deployment (Recommended)**
-   - Scales automatically with load
-   - Pay for what you use
-   - Better for variable traffic
-   - Click "Configure Autoscale"
-   - Set min/max instances
-   - Click "Deploy"
+
+- Scales automatically with load
+- Pay for what you use
+- Better for variable traffic
+- Click "Configure Autoscale"
+- Set min/max instances
+- Click "Deploy"
 
 **Option B: Reserved VM**
-   - Dedicated VM for your Repl
-   - Fixed cost
-   - Consistent performance
-   - Better for consistent traffic
-   - Click "Configure Reserved VM"
-   - Choose VM size (Small recommended: 0.5 vCPU, 512 MB RAM)
-   - Click "Deploy"
+
+- Dedicated VM for your Repl
+- Fixed cost
+- Consistent performance
+- Better for consistent traffic
+- Click "Configure Reserved VM"
+- Choose VM size (Small recommended: 0.5 vCPU, 512 MB RAM)
+- Click "Deploy"
 
 ### Verify Always-On Status
 
@@ -620,11 +670,13 @@ Replit wakes up when you push to connected GitHub repo:
 ### View Logs
 
 **Console Logs (Real-time):**
+
 1. Open your Repl
 2. View console panel (bottom)
 3. Logs appear as bot processes updates
 
 **Deployment Logs (Historical):**
+
 1. Click "Deployments" tab
 2. Select deployment
 3. Click "Logs"
@@ -633,18 +685,21 @@ Replit wakes up when you push to connected GitHub repo:
 ### Monitor Bot Health
 
 **Check Bot Status:**
+
 ```bash
 # In Replit shell
 curl localhost:8080/health
 ```
 
 **Check Database Connection:**
+
 ```bash
 # In Replit shell
 psql $DATABASE_URL -c "SELECT version();"
 ```
 
 **Check Bot Info on Telegram:**
+
 ```bash
 # In Replit shell
 curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe"
@@ -659,14 +714,17 @@ curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe"
 ### Database Management
 
 **Access Replit Database:**
+
 1. Click "Database" icon
 2. View tables and data in GUI
 3. Or use psql in shell:
+
    ```bash
    psql $DATABASE_URL
    ```
 
 **Common Database Commands:**
+
 ```sql
 -- List tables
 \dt
@@ -686,10 +744,12 @@ SELECT user_id, frequency, is_active FROM subscriptions;
 ### Bot Not Responding to Commands
 
 **Symptoms:**
+
 - Send /start command
 - No response from bot
 
 **Diagnosis:**
+
 1. Check console for errors
 2. Verify bot is running (see "Running" status)
 3. Check Telegram bot token is correct
@@ -697,6 +757,7 @@ SELECT user_id, frequency, is_active FROM subscriptions;
 **Solutions:**
 
 1. **Verify bot is running:**
+
    ```bash
    # Should show bot process
    ps aux | grep shopogoda
@@ -719,18 +780,21 @@ SELECT user_id, frequency, is_active FROM subscriptions;
 ### Database Connection Errors
 
 **Symptoms:**
+
 - Error: "failed to connect to database"
 - Error: "connection refused"
 
 **Solutions:**
 
 1. **Verify DATABASE_URL:**
+
    ```bash
    # In shell
    echo $DATABASE_URL
    ```
 
 2. **Test connection:**
+
    ```bash
    psql $DATABASE_URL -c "SELECT 1;"
    ```
@@ -748,6 +812,7 @@ SELECT user_id, frequency, is_active FROM subscriptions;
 ### GORM Migration Errors
 
 **Symptoms:**
+
 - Error: "insufficient arguments"
 - Error: "SELECT * FROM users LIMIT 1"
 
@@ -758,15 +823,18 @@ GORM v1.30.0 has a bug with AutoMigrate
 
 1. Open shell (click "Shell" in bottom panel)
 2. Downgrade GORM:
+
    ```bash
    go get gorm.io/gorm@v1.25.6
    go mod tidy
    ```
+
 3. Restart bot
 
 ### Out of Memory Errors
 
 **Symptoms:**
+
 - Bot crashes randomly
 - Error: "killed" or "out of memory"
 
@@ -779,6 +847,7 @@ GORM v1.30.0 has a bug with AutoMigrate
 2. **Optimize connection pool:**
    - Edit `internal/database/database.go`
    - Reduce MaxOpenConns:
+
      ```go
      sqlDB.SetMaxOpenConns(3)  // Lower for Replit
      sqlDB.SetMaxIdleConns(1)
@@ -799,6 +868,7 @@ GORM v1.30.0 has a bug with AutoMigrate
 ### Bot Slow to Respond
 
 **Causes:**
+
 - Cold start after sleep (free tier)
 - Database query slowness
 - External API calls (weather API)
@@ -812,6 +882,7 @@ GORM v1.30.0 has a bug with AutoMigrate
    - Bot caches weather data (10 min TTL)
 
 3. **Optimize database indexes:**
+
    ```sql
    -- Add indexes if missing
    CREATE INDEX IF NOT EXISTS idx_users_id ON users(id);
@@ -823,15 +894,18 @@ GORM v1.30.0 has a bug with AutoMigrate
 ### Protect Secrets
 
 ✅ **Never commit secrets to git**
+
 - Use Replit Secrets panel only
 - Don't hardcode tokens in code
 - Don't share secrets in chat/email
 
 ✅ **Rotate secrets regularly**
+
 - Change bot token every 90 days
 - Use @BotFather's /revoke to get new token
 
 ✅ **Use different bots for dev/prod**
+
 - Dev bot: @shopogoda_dev_bot
 - Prod bot: @shopogoda_bot
 - Different tokens for each
@@ -839,6 +913,7 @@ GORM v1.30.0 has a bug with AutoMigrate
 ### Database Security
 
 ✅ **Use connection pooling**
+
 ```go
 sqlDB.SetMaxOpenConns(5)
 sqlDB.SetMaxIdleConns(2)
@@ -846,25 +921,30 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 ```
 
 ✅ **Validate user input**
+
 - Never trust user input
 - Sanitize location names
 - Validate numeric inputs
 
 ✅ **Use prepared statements**
+
 - GORM does this automatically
 - Prevents SQL injection
 
 ### Bot Security
 
 ✅ **Implement rate limiting**
+
 - Already implemented in middleware
 - 10 requests/minute per user
 
 ✅ **Validate Telegram updates**
+
 - Check user IDs are valid
 - Verify message structure
 
 ✅ **Monitor for abuse**
+
 - Log suspicious activity
 - Block malicious users
 
@@ -873,6 +953,7 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 ### Free Tier
 
 **What you get:**
+
 - ✅ Unlimited public Repls
 - ✅ Basic compute (0.2 vCPU, 256 MB RAM)
 - ✅ PostgreSQL database
@@ -880,11 +961,13 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 - ❌ No guaranteed uptime
 
 **Best for:**
+
 - Development and testing
 - Learning and prototyping
 - Low-traffic personal bots
 
 **Estimated capacity:**
+
 - ~10-50 users
 - Intermittent usage
 - Not for production
@@ -892,6 +975,7 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 ### Pro Plan ($20/month)
 
 **What you get:**
+
 - ✅ Always-on capability
 - ✅ Boosted compute (0.5 vCPU, 512 MB RAM)
 - ✅ Private Repls
@@ -899,11 +983,13 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 - ✅ Custom domains
 
 **Best for:**
+
 - Production bots
 - 24/7 availability
 - 100-1000 users
 
 **Estimated capacity:**
+
 - ~100-500 active users
 - ~10,000 messages/day
 - Continuous operation
@@ -921,12 +1007,14 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 ### When to Upgrade
 
 **Upgrade from Free to Pro when:**
+
 - Users complain bot is offline
 - You need 24/7 availability
 - Bot is used for business/critical tasks
 - You have >50 active users
 
 **Migrate from Replit when:**
+
 - Cost exceeds $20/month value
 - Need more control (Fly.io, VPS)
 - Need serverless at scale (Vercel, AWS Lambda)
@@ -937,10 +1025,12 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 ### Custom Domain
 
 **Requirements:**
+
 - Replit Pro plan
 - Domain name purchased separately
 
 **Setup:**
+
 1. Go to your Repl
 2. Click "Deployments" → "Custom Domain"
 3. Enter your domain: `bot.yourdomain.com`
@@ -950,6 +1040,7 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 ### GitHub Auto-Deploy
 
 **Setup:**
+
 1. Click Repl settings (gear icon)
 2. Go to "Version Control"
 3. Click "Connect to GitHub"
@@ -958,6 +1049,7 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 6. Enable "Run on every commit"
 
 **Now:**
+
 - Push to GitHub → Repl auto-deploys
 - Automatic restarts on code changes
 
@@ -966,12 +1058,14 @@ sqlDB.SetConnMaxLifetime(5 * time.Minute)
 Use different configs for dev/staging/prod:
 
 **Add ENV secret:**
-```
+
+```plaintext
 Key: ENV
 Value: production
 ```
 
 **Load config based on ENV:**
+
 ```go
 env := os.Getenv("ENV")
 if env == "" {
@@ -982,6 +1076,7 @@ configFile := fmt.Sprintf("config.%s.yaml", env)
 ```
 
 **Create config files:**
+
 - `config.development.yaml`
 - `config.staging.yaml`
 - `config.production.yaml`
@@ -991,12 +1086,14 @@ configFile := fmt.Sprintf("config.%s.yaml", env)
 For periodic tasks (weather updates, cleanup):
 
 **Option 1: Use internal scheduler** (existing)
+
 ```go
 // Already implemented in internal/services/scheduler_service.go
 // Runs every hour
 ```
 
 **Option 2: Use external cron**
+
 - Set up cron on external server
 - Call HTTP endpoint: `https://your-repl.repl.co/api/cron`
 - Secure with API key
@@ -1014,6 +1111,7 @@ For periodic tasks (weather updates, cleanup):
 ### From Replit to Another Platform
 
 **To Vercel:**
+
 1. Push code to GitHub
 2. Connect Vercel to GitHub
 3. Set environment variables in Vercel
@@ -1021,12 +1119,14 @@ For periodic tasks (weather updates, cleanup):
 5. Deploy
 
 **To Fly.io:**
+
 1. Install Fly CLI
 2. Use existing `fly.toml` config
 3. Set secrets: `fly secrets set KEY=value`
 4. Deploy: `fly deploy`
 
 **To VPS:**
+
 1. Use Docker Compose from repo
 2. Copy environment variables
 3. Deploy with: `docker-compose up -d`
@@ -1036,32 +1136,38 @@ For periodic tasks (weather updates, cleanup):
 ### Replit Support
 
 **Community Forum:**
-- https://ask.replit.com
+
+- <https://ask.replit.com>
 - Search existing questions
 - Post new questions with [Go] tag
 
 **Discord:**
-- Join Replit Discord: https://replit.com/discord
+
+- Join Replit Discord: <https://replit.com/discord>
 - #help channel for support
 
 **Documentation:**
-- https://docs.replit.com
+
+- <https://docs.replit.com>
 - Guides for Go, databases, deployments
 
 ### Bot-Specific Help
 
 **Project Documentation:**
+
 - See `docs/` folder in repository
 - `TROUBLESHOOTING.md` for common issues
 - `TESTING.md` for testing guide
 
 **GitHub Issues:**
-- Report bugs: https://github.com/valpere/shopogoda/issues
+
+- Report bugs: <https://github.com/valpere/shopogoda/issues>
 - Feature requests welcome
 
 **Telegram Bot API:**
-- Official docs: https://core.telegram.org/bots/api
-- Bot FAQ: https://core.telegram.org/bots/faq
+
+- Official docs: <https://core.telegram.org/bots/api>
+- Bot FAQ: <https://core.telegram.org/bots/faq>
 
 ## Conclusion
 
@@ -1099,11 +1205,11 @@ Before going live:
 
 ### Resources
 
-- **Replit Dashboard**: https://replit.com/~
-- **Bot on Telegram**: https://t.me/your_bot_username
-- **Project Repository**: https://github.com/valpere/shopogoda
-- **OpenWeather API**: https://openweathermap.org/api
-- **Telegram Bot API**: https://core.telegram.org/bots/api
+- **Replit Dashboard**: <https://replit.com/>~
+- **Bot on Telegram**: <https://t.me/your_bot_username>
+- **Project Repository**: <https://github.com/valpere/shopogoda>
+- **OpenWeather API**: <https://openweathermap.org/api>
+- **Telegram Bot API**: <https://core.telegram.org/bots/api>
 
 ---
 

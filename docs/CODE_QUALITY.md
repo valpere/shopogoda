@@ -5,6 +5,7 @@ This document outlines the code quality standards and coverage requirements for 
 ## Coverage Requirements
 
 ### Current Status
+
 - **Current Coverage**: ~28.2%
 - **Minimum Threshold (main branch)**: 25%
 - **Minimum Threshold (PRs)**: 20%
@@ -34,17 +35,20 @@ We're progressively increasing coverage requirements:
 **Threshold**: Functions with complexity > 15 trigger warnings
 
 Cyclomatic complexity measures the number of independent paths through code. High complexity indicates:
+
 - Functions that are hard to test
 - Increased likelihood of bugs
 - Difficulty in maintenance
 
 **How to check locally:**
+
 ```bash
 go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
 gocyclo -over 15 .
 ```
 
 **Best practices:**
+
 - Keep functions focused on a single responsibility
 - Extract complex logic into smaller helper functions
 - Aim for complexity < 10 for most functions
@@ -55,17 +59,20 @@ gocyclo -over 15 .
 **Threshold**: Blocks > 100 tokens
 
 Code duplication leads to:
+
 - Increased maintenance burden
 - Inconsistent bug fixes
 - Larger codebase
 
 **How to check locally:**
+
 ```bash
 go install github.com/mibk/dupl@latest
 dupl -threshold 100 ./...
 ```
 
 **Best practices:**
+
 - Extract common logic into shared functions
 - Use interfaces for polymorphic behavior
 - Consider design patterns (Strategy, Template Method)
@@ -76,16 +83,19 @@ dupl -threshold 100 ./...
 **Regression Threshold**: >10% performance degradation triggers warnings
 
 Continuous performance monitoring ensures:
+
 - No unintended performance regressions
 - Optimization efforts are measurable
 - Performance-critical code is tracked
 
 **How to run benchmarks locally:**
+
 ```bash
 go test -bench=. -benchmem -benchtime=3s ./...
 ```
 
 **Benchmark comparison:**
+
 ```bash
 # Save baseline
 go test -bench=. -benchmem ./... > old.txt
@@ -98,11 +108,13 @@ benchstat old.txt new.txt
 ### 4. Static Analysis
 
 **Tools**:
+
 - `golangci-lint`: Comprehensive linter suite
 - `staticcheck`: Advanced static analysis
 - `go vet`: Standard Go analysis
 
 **How to run locally:**
+
 ```bash
 # Quick check
 make lint
@@ -117,11 +129,13 @@ staticcheck ./...
 ### 5. Security Scanning
 
 **Tools**:
+
 - `gosec`: Security-focused Go analyzer
 - `govulncheck`: Go vulnerability database checker
 - `trivy`: Container and filesystem vulnerability scanner
 
 **How to run locally:**
+
 ```bash
 # Security scan
 gosec ./...
@@ -138,6 +152,7 @@ trivy image shopogoda:latest
 ### Pull Request Checks
 
 Every PR automatically runs:
+
 1. ✅ Code formatting check (`gofmt`)
 2. ✅ Go vet
 3. ✅ Linter (only new issues)
@@ -152,6 +167,7 @@ Every PR automatically runs:
 ### Main Branch Checks
 
 Merges to `main` additionally run:
+
 1. ✅ Full test suite (unit + integration)
 2. ✅ Performance benchmarks with regression detection
 3. ✅ Docker image build and security scan
@@ -161,6 +177,7 @@ Merges to `main` additionally run:
 ### Weekly Code Quality Analysis
 
 Every Monday at 3 AM UTC, a comprehensive code quality report is generated:
+
 - Code complexity trends
 - Duplication analysis
 - Spelling checks
@@ -172,6 +189,7 @@ Every Monday at 3 AM UTC, a comprehensive code quality report is generated:
 ## Dependency Management
 
 **Dependabot** is configured to automatically:
+
 - Check for Go module updates (weekly)
 - Check for GitHub Actions updates (weekly)
 - Check for Docker base image updates (weekly)
@@ -250,6 +268,7 @@ This runs the complete CI pipeline locally before pushing.
 ### Adding Tests
 
 When adding tests:
+
 1. Test both success and error paths
 2. Use table-driven tests for multiple scenarios
 3. Mock external dependencies
@@ -259,6 +278,7 @@ When adding tests:
 ### Refactoring for Quality
 
 When refactoring:
+
 1. Extract complex functions into smaller ones
 2. Reduce cyclomatic complexity
 3. Eliminate code duplication
@@ -268,6 +288,7 @@ When refactoring:
 ### Reviewing PRs
 
 Quality checklist for reviewers:
+
 - [ ] Tests added for new functionality
 - [ ] Coverage hasn't decreased
 - [ ] No new high-complexity functions
@@ -284,6 +305,7 @@ make install-tools
 ```
 
 This installs:
+
 - golangci-lint
 - goimports
 - mockgen
@@ -297,6 +319,7 @@ This installs:
 ## Continuous Improvement
 
 We continuously improve code quality through:
+
 1. **Weekly Reviews**: Code quality reports analyzed
 2. **Monthly Goals**: Incremental coverage targets
 3. **Automated Updates**: Dependabot keeps dependencies current
