@@ -223,11 +223,14 @@ The bot supports multiple platforms:
 
 ## 🔒 Security
 
-- Input validation and sanitization
-- Rate limiting (10 requests/minute per user)
-- SQL injection prevention (GORM ORM)
-- Secure credential management
-- Audit logging for compliance
+- **Row Level Security (RLS)**: Supabase PostgREST API secured with deny-by-default policies
+- **Input Validation**: Comprehensive validation and sanitization of all user inputs
+- **Rate Limiting**: 10 requests/minute per user to prevent abuse
+- **SQL Injection Prevention**: GORM ORM with parameterized queries
+- **Secure Credential Management**: Environment variables and secret management
+- **Audit Logging**: Complete audit trail for compliance and monitoring
+
+**📖 Security documentation:** [DATABASE_SECURITY.md](docs/DATABASE_SECURITY.md)
 
 ## 🌐 Multi-Language Support
 
@@ -256,6 +259,7 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 ### Developer Documentation
 - **[API Reference](docs/API_REFERENCE.md)** - Complete service layer API documentation
 - **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (33.7% coverage, 40.5% for testable packages)
+- **[Database Security](docs/DATABASE_SECURITY.md)** - Row Level Security (RLS) implementation guide
 - **[Code Quality Guidelines](docs/CODE_QUALITY.md)** - Contribution standards
 
 ### Project Management
