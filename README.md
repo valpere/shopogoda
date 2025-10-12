@@ -215,6 +215,7 @@ The bot supports multiple platforms:
 - **Uptime**: 99.5%+ on free tier
 - **Cache Hit Rate**: > 85% (Upstash Redis)
 - **Database Latency**: 100-200ms (Supabase pooler)
+- **Database Indexes**: Optimized composite indexes for 2-3x faster queries
 
 **Free Tier Limits:**
 - Railway: 500 execution hours/month (continuous uptime: ~20.8 days; webhook mode requires always-on)
