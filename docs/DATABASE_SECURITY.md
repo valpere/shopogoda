@@ -110,6 +110,12 @@ DATABASE_SSL_MODE=require
 
 ## Deployment Instructions
 
+> **⚠️ IMPORTANT: Manual Migration Required**
+>
+> This migration script **DOES NOT** run automatically. You must manually execute it in Supabase after merging the PR. The bot will NOT automatically apply these security policies - they require explicit manual deployment.
+>
+> **Why Manual?** Security-critical changes require intentional execution with verification steps to ensure database integrity and bot functionality are maintained.
+
 ### Option 1: Supabase SQL Editor (Recommended)
 
 1. Log into Supabase Dashboard: https://supabase.com/dashboard
