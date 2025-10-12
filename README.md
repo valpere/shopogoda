@@ -260,6 +260,7 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 ### Developer Documentation
 - **[API Reference](docs/API_REFERENCE.md)** - Complete service layer API documentation
 - **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (33.7% coverage, 40.5% for testable packages)
+- **[Database Migration Guide](docs/DATABASE_MIGRATION_GUIDE.md)** - When to run SQL patches and migrations
 - **[Database Security](docs/DATABASE_SECURITY.md)** - Row Level Security (RLS) implementation guide
 - **[Code Quality Guidelines](docs/CODE_QUALITY.md)** - Contribution standards
 
