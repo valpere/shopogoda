@@ -110,8 +110,12 @@ func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64
 	}
 
 	// Cache for 10 minutes
-	weatherJSON, _ := json.Marshal(weatherData)
-	s.redis.Set(ctx, cacheKey, weatherJSON, 10*time.Minute)
+	weatherJSON, err := json.Marshal(weatherData)
+	if err != nil {
+		s.logger.Warn().Err(err).Msg("Failed to marshal weather data for caching")
+	} else if err := s.redis.Set(ctx, cacheKey, weatherJSON, 10*time.Minute).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache weather data")
+	}
 
 	return weatherData, nil
 }
@@ -134,8 +138,12 @@ func (s *WeatherService) GetForecast(ctx context.Context, lat, lon float64, days
 	}
 
 	// Cache for 1 hour
-	forecastJSON, _ := json.Marshal(forecastData)
-	s.redis.Set(ctx, cacheKey, forecastJSON, time.Hour)
+	forecastJSON, err := json.Marshal(forecastData)
+	if err != nil {
+		s.logger.Warn().Err(err).Msg("Failed to marshal forecast data for caching")
+	} else if err := s.redis.Set(ctx, cacheKey, forecastJSON, time.Hour).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache forecast data")
+	}
 
 	return forecastData, nil
 }
@@ -158,8 +166,12 @@ func (s *WeatherService) GetAirQuality(ctx context.Context, lat, lon float64) (*
 	}
 
 	// Cache for 30 minutes
-	airJSON, _ := json.Marshal(airData)
-	s.redis.Set(ctx, cacheKey, airJSON, 30*time.Minute)
+	airJSON, err := json.Marshal(airData)
+	if err != nil {
+		s.logger.Warn().Err(err).Msg("Failed to marshal air quality data for caching")
+	} else if err := s.redis.Set(ctx, cacheKey, airJSON, 30*time.Minute).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache air quality data")
+	}
 
 	return airData, nil
 }
@@ -272,7 +284,9 @@ func (s *WeatherService) GetLocationName(ctx context.Context, lat, lon float64) 
 	}
 
 	// Cache for 24 hours
-	s.redis.Set(ctx, cacheKey, locationName, 24*time.Hour)
+	if err := s.redis.Set(ctx, cacheKey, locationName, 24*time.Hour).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache reverse geocoding result")
+	}
 
 	return locationName, nil
 }
