@@ -36,10 +36,10 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	}
 
 	// Optimized connection pool settings for Supabase/Railway
-	sqlDB.SetMaxOpenConns(25)                    // Maximum concurrent connections
-	sqlDB.SetMaxIdleConns(5)                     // Keep only 20% idle (reduce resource usage)
-	sqlDB.SetConnMaxLifetime(5 * time.Minute)    // Recycle connections every 5 minutes
-	sqlDB.SetConnMaxIdleTime(1 * time.Minute)    // Close idle connections after 1 minute
+	sqlDB.SetMaxOpenConns(25)                 // Maximum concurrent connections
+	sqlDB.SetMaxIdleConns(5)                  // Keep only 20% idle (reduce resource usage)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute) // Recycle connections every 5 minutes
+	sqlDB.SetConnMaxIdleTime(1 * time.Minute) // Close idle connections after 1 minute
 
 	return db, nil
 }

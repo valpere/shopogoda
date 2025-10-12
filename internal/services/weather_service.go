@@ -113,8 +113,10 @@ func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64
 	weatherJSON, err := json.Marshal(weatherData)
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("Failed to marshal weather data for caching")
-	} else if err := s.redis.Set(ctx, cacheKey, weatherJSON, 10*time.Minute).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache weather data")
+	} else {
+		if err := s.redis.Set(ctx, cacheKey, weatherJSON, 10*time.Minute).Err(); err != nil {
+			s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache weather data")
+		}
 	}
 
 	return weatherData, nil
@@ -141,8 +143,10 @@ func (s *WeatherService) GetForecast(ctx context.Context, lat, lon float64, days
 	forecastJSON, err := json.Marshal(forecastData)
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("Failed to marshal forecast data for caching")
-	} else if err := s.redis.Set(ctx, cacheKey, forecastJSON, time.Hour).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache forecast data")
+	} else {
+		if err := s.redis.Set(ctx, cacheKey, forecastJSON, time.Hour).Err(); err != nil {
+			s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache forecast data")
+		}
 	}
 
 	return forecastData, nil
@@ -169,8 +173,10 @@ func (s *WeatherService) GetAirQuality(ctx context.Context, lat, lon float64) (*
 	airJSON, err := json.Marshal(airData)
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("Failed to marshal air quality data for caching")
-	} else if err := s.redis.Set(ctx, cacheKey, airJSON, 30*time.Minute).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache air quality data")
+	} else {
+		if err := s.redis.Set(ctx, cacheKey, airJSON, 30*time.Minute).Err(); err != nil {
+			s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache air quality data")
+		}
 	}
 
 	return airData, nil

@@ -9,6 +9,7 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -28,6 +29,7 @@ type UserService struct {
 	db        *gorm.DB
 	redis     *redis.Client
 	metrics   *metrics.Metrics
+	logger    *zerolog.Logger
 	startTime time.Time
 }
 
@@ -57,11 +59,12 @@ type SystemStats struct {
 	Uptime              float64 `json:"uptime"`
 }
 
-func NewUserService(db *gorm.DB, redis *redis.Client, metricsCollector *metrics.Metrics, startTime time.Time) *UserService {
+func NewUserService(db *gorm.DB, redis *redis.Client, metricsCollector *metrics.Metrics, logger *zerolog.Logger, startTime time.Time) *UserService {
 	return &UserService{
 		db:        db,
 		redis:     redis,
 		metrics:   metricsCollector,
+		logger:    logger,
 		startTime: startTime,
 	}
 }
@@ -105,14 +108,12 @@ func (s *UserService) GetUser(ctx context.Context, userID int64) (*models.User, 
 	// Cache for 1 hour
 	userJSON, err := json.Marshal(user)
 	if err != nil {
-		// Log marshal error but still return user data
-		// This is non-critical since we have the data from DB
+		s.logger.Warn().Err(err).Int64("user_id", userID).Msg("Failed to marshal user data for caching")
 		return &user, nil
 	}
 
 	if err := s.redis.Set(ctx, cacheKey, userJSON, time.Hour).Err(); err != nil {
-		// Log cache failure but still return user data
-		// Redis being unavailable shouldn't block user operations
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache user data")
 		return &user, nil
 	}
 
@@ -137,9 +138,7 @@ func (s *UserService) UpdateUserSettings(ctx context.Context, userID int64, sett
 	// Invalidate cache BEFORE update to prevent stale data
 	cacheKey := fmt.Sprintf("user:%d", userID)
 	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
-		// Log cache invalidation failure but don't block the operation
-		// Redis being unavailable shouldn't prevent user updates
-		// However, this could lead to temporary stale cache data
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before update")
 	}
 
 	err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(safeSettings).Error
@@ -265,7 +264,7 @@ func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locatio
 	// Invalidate cache BEFORE update
 	cacheKey := fmt.Sprintf("user:%d", userID)
 	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
-		// Log but don't block operation
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before location update")
 	}
 
 	updates := map[string]interface{}{
@@ -291,7 +290,7 @@ func (s *UserService) ClearUserLocation(ctx context.Context, userID int64) error
 	// Invalidate cache BEFORE update
 	cacheKey := fmt.Sprintf("user:%d", userID)
 	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
-		// Log but don't block operation
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before clearing location")
 	}
 
 	updates := map[string]interface{}{

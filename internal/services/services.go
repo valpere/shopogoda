@@ -68,7 +68,7 @@ type Services struct {
 func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.Logger, metricsCollector *metrics.Metrics) *Services {
 	startTime := time.Now()
 
-	userService := NewUserService(db, redis, metricsCollector, startTime)
+	userService := NewUserService(db, redis, metricsCollector, logger, startTime)
 	weatherService := NewWeatherService(&cfg.Weather, redis, logger)
 	alertService := NewAlertService(db, redis)
 	subscriptionService := NewSubscriptionService(db, redis)
