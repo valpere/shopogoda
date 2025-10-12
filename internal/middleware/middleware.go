@@ -14,35 +14,92 @@ import (
 	"github.com/valpere/shopogoda/internal/services"
 )
 
-// UserRateLimiter manages rate limits per user
+// UserRateLimiter manages rate limits per user with graceful shutdown support
 type UserRateLimiter struct {
-	limiters map[int64]*rate.Limiter
+	limiters map[int64]*rateLimiterEntry
 	mu       sync.RWMutex
 	rate     rate.Limit
 	burst    int
+	done     chan struct{} // Channel to signal shutdown
+}
+
+// rateLimiterEntry holds a limiter with its last access time for cleanup
+type rateLimiterEntry struct {
+	limiter    *rate.Limiter
+	lastAccess time.Time
 }
 
 func NewUserRateLimiter(r rate.Limit, b int) *UserRateLimiter {
-	return &UserRateLimiter{
-		limiters: make(map[int64]*rate.Limiter),
+	rl := &UserRateLimiter{
+		limiters: make(map[int64]*rateLimiterEntry),
 		rate:     r,
 		burst:    b,
+		done:     make(chan struct{}),
 	}
+
+	// Start periodic cleanup goroutine (every 15 minutes)
+	go rl.cleanupLoop()
+
+	return rl
 }
 
 func (rl *UserRateLimiter) Allow(userID int64) bool {
 	rl.mu.RLock()
-	limiter, exists := rl.limiters[userID]
+	entry, exists := rl.limiters[userID]
 	rl.mu.RUnlock()
 
 	if !exists {
 		rl.mu.Lock()
-		limiter = rate.NewLimiter(rl.rate, rl.burst)
-		rl.limiters[userID] = limiter
+		newLimiter := rate.NewLimiter(rl.rate, rl.burst)
+		entry = &rateLimiterEntry{
+			limiter:    newLimiter,
+			lastAccess: time.Now(),
+		}
+		rl.limiters[userID] = entry
+		rl.mu.Unlock()
+	} else {
+		// Update last access time
+		rl.mu.Lock()
+		entry.lastAccess = time.Now()
 		rl.mu.Unlock()
 	}
 
-	return limiter.Allow()
+	return entry.limiter.Allow()
+}
+
+// cleanupLoop periodically removes inactive rate limiters to prevent memory leaks.
+// The loop runs until Stop() is called, enabling graceful shutdown.
+func (rl *UserRateLimiter) cleanupLoop() {
+	ticker := time.NewTicker(15 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			rl.cleanup()
+		case <-rl.done:
+			return
+		}
+	}
+}
+
+// Stop gracefully shuts down the cleanup goroutine.
+// Should be called during application shutdown to prevent goroutine leaks.
+func (rl *UserRateLimiter) Stop() {
+	close(rl.done)
+}
+
+// cleanup removes rate limiters that haven't been accessed in the last hour
+func (rl *UserRateLimiter) cleanup() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	cutoff := time.Now().Add(-1 * time.Hour)
+	for userID, entry := range rl.limiters {
+		if entry.lastAccess.Before(cutoff) {
+			delete(rl.limiters, userID)
+		}
+	}
 }
 
 // Logging creates a logging handler function

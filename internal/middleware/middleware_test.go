@@ -127,6 +127,26 @@ func TestUserRateLimiter_Allow(t *testing.T) {
 		// Should not panic from concurrent access
 		assert.True(t, true)
 	})
+
+	t.Run("graceful shutdown stops cleanup goroutine", func(t *testing.T) {
+		limiter := NewUserRateLimiter(rate.Limit(10), 5)
+
+		// Add some limiters
+		limiter.Allow(int64(123))
+		limiter.Allow(int64(456))
+
+		// Stop should close the done channel and terminate cleanupLoop
+		limiter.Stop()
+
+		// Verify done channel is closed
+		select {
+		case <-limiter.done:
+			// Channel is closed, goroutine should terminate
+			assert.True(t, true)
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("done channel was not closed")
+		}
+	})
 }
 
 func TestLogging(t *testing.T) {
@@ -205,7 +225,8 @@ func TestAuthMiddleware(t *testing.T) {
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
+		logger := zerolog.Nop()
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		assert.NotNil(t, handler)
@@ -218,7 +239,8 @@ func TestAuthMiddleware(t *testing.T) {
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
+		logger := zerolog.Nop()
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}
@@ -251,7 +273,8 @@ func TestAuthMiddleware(t *testing.T) {
 		sqlDB, _ := mockDB.DB.DB()
 		sqlDB.Close()
 
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, startTime)
+		logger := zerolog.Nop()
+		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}

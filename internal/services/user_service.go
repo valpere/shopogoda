@@ -9,6 +9,7 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -28,7 +29,20 @@ type UserService struct {
 	db        *gorm.DB
 	redis     *redis.Client
 	metrics   *metrics.Metrics
+	logger    *zerolog.Logger
 	startTime time.Time
+}
+
+// allowedUserSettingsFields defines the whitelist of fields that can be updated via UpdateUserSettings
+// This prevents SQL injection and unauthorized field updates
+var allowedUserSettingsFields = map[string]bool{
+	"username":   true,
+	"first_name": true,
+	"last_name":  true,
+	"language":   true,
+	"units":      true,
+	"timezone":   true,
+	"is_active":  true,
 }
 
 type SystemStats struct {
@@ -45,11 +59,12 @@ type SystemStats struct {
 	Uptime              float64 `json:"uptime"`
 }
 
-func NewUserService(db *gorm.DB, redis *redis.Client, metricsCollector *metrics.Metrics, startTime time.Time) *UserService {
+func NewUserService(db *gorm.DB, redis *redis.Client, metricsCollector *metrics.Metrics, logger *zerolog.Logger, startTime time.Time) *UserService {
 	return &UserService{
 		db:        db,
 		redis:     redis,
 		metrics:   metricsCollector,
+		logger:    logger,
 		startTime: startTime,
 	}
 }
@@ -91,21 +106,45 @@ func (s *UserService) GetUser(ctx context.Context, userID int64) (*models.User, 
 	}
 
 	// Cache for 1 hour
-	userJSON, _ := json.Marshal(user)
-	s.redis.Set(ctx, cacheKey, userJSON, time.Hour)
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		s.logger.Warn().Err(err).Int64("user_id", userID).Msg("Failed to marshal user data for caching")
+		return &user, nil
+	}
+
+	if err := s.redis.Set(ctx, cacheKey, userJSON, time.Hour).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache user data")
+		return &user, nil
+	}
 
 	return &user, nil
 }
 
 func (s *UserService) UpdateUserSettings(ctx context.Context, userID int64, settings map[string]interface{}) error {
-	err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(settings).Error
+	// Validate and filter settings to only allowed fields (security whitelist)
+	safeSettings := make(map[string]interface{})
+	for key, value := range settings {
+		if allowedUserSettingsFields[key] {
+			safeSettings[key] = value
+		} else {
+			return fmt.Errorf("invalid field for update: %s", key)
+		}
+	}
+
+	if len(safeSettings) == 0 {
+		return fmt.Errorf("no valid fields to update")
+	}
+
+	// Invalidate cache BEFORE update to prevent stale data
+	cacheKey := fmt.Sprintf("user:%d", userID)
+	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before update")
+	}
+
+	err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(safeSettings).Error
 	if err != nil {
 		return err
 	}
-
-	// Invalidate cache
-	cacheKey := fmt.Sprintf("user:%d", userID)
-	s.redis.Del(ctx, cacheKey)
 
 	return nil
 }
@@ -222,6 +261,12 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
 
 // SetUserLocation updates the user's location
 func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locationName, country, city string, lat, lon float64) error {
+	// Invalidate cache BEFORE update
+	cacheKey := fmt.Sprintf("user:%d", userID)
+	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before location update")
+	}
+
 	updates := map[string]interface{}{
 		"location_name": locationName,
 		"latitude":      lat,
@@ -237,15 +282,17 @@ func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locatio
 		return err
 	}
 
-	// Invalidate cache
-	cacheKey := fmt.Sprintf("user:%d", userID)
-	s.redis.Del(ctx, cacheKey)
-
 	return nil
 }
 
 // ClearUserLocation clears the user's location without affecting timezone
 func (s *UserService) ClearUserLocation(ctx context.Context, userID int64) error {
+	// Invalidate cache BEFORE update
+	cacheKey := fmt.Sprintf("user:%d", userID)
+	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before clearing location")
+	}
+
 	updates := map[string]interface{}{
 		"location_name": "",
 		"latitude":      0,
@@ -258,10 +305,6 @@ func (s *UserService) ClearUserLocation(ctx context.Context, userID int64) error
 	if err != nil {
 		return err
 	}
-
-	// Invalidate cache
-	cacheKey := fmt.Sprintf("user:%d", userID)
-	s.redis.Del(ctx, cacheKey)
 
 	return nil
 }
