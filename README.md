@@ -1,5 +1,11 @@
 # ShoPogoda (Що Погода) - Enterprise Weather Bot
 
+[![Go Version](https://img.shields.io/badge/Go-1.24%2B-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/valpere/shopogoda)](https://goreportcard.com/report/github.com/valpere/shopogoda)
+[![codecov](https://codecov.io/gh/valpere/shopogoda/branch/main/graph/badge.svg)](https://codecov.io/gh/valpere/shopogoda)
+[![GitHub release](https://img.shields.io/github/release/valpere/shopogoda.svg)](https://github.com/valpere/shopogoda/releases)
+
 A production-ready Telegram bot for weather monitoring, environmental alerts, and enterprise integrations. Currently deployed on Railway with Supabase PostgreSQL and Upstash Redis.
 
 ## Live Demo

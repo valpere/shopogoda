@@ -420,7 +420,7 @@ When creating a PR, provide:
 - **GitHub Issues**: Bug reports and feature requests
 - **GitHub Discussions**: Questions and ideas
 - **Pull Requests**: Code contributions
-- **Email**: valentyn.solomko@gmail.com (maintainer)
+- **Issues:** <https://github.com/valpere/shopogoda/issues>
 
 ### Feature Requests
 
@@ -513,7 +513,7 @@ ShoPogoda follows [Semantic Versioning](https://semver.org/):
 - **Documentation**: Start with [README.md](README.md) and [docs/](docs/)
 - **GitHub Issues**: Search existing issues
 - **GitHub Discussions**: Ask questions
-- **Email**: valentyn.solomko@gmail.com
+- **Issues:** <https://github.com/valpere/shopogoda/issues>
 
 ---
 
