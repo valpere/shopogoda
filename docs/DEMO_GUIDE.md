@@ -636,6 +636,8 @@ UPDATE users SET role = 'admin' WHERE telegram_id = YOUR_ID;
 =======
 >>>>>>> ac669da (Add points to sites (#93)):docs/DEMO_SETUP.md
 
+---
+
 ## License
 
 MIT License - see [LICENSE](../LICENSE) for details.
