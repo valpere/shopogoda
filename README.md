@@ -269,6 +269,7 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 - **[Demo Guide](docs/DEMO_GUIDE.md)** - Get started in 5 minutes with demo mode
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Admin Setup Guide](docs/ADMIN_SETUP.md)** - Grant admin access to bot owners
 
 ### Developer Documentation
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project

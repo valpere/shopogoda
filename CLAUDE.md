@@ -477,6 +477,10 @@ All configuration via environment variables. See `.env.example` for full referen
 - `/stats` - System statistics
 - `/broadcast` - Message all users
 - `/users` - User management
+- `/promote <user_id> [role]` - Promote user to Moderator or Admin (Admin only)
+- `/demote <user_id>` - Demote user to lower role (Admin only)
+
+**Note:** By default, all users start with the "User" role. The bot owner must manually grant themselves admin access via database. See [Admin Setup Guide](docs/ADMIN_SETUP.md) for detailed instructions.
 
 ## Development Patterns
 

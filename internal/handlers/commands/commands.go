@@ -664,6 +664,8 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleExportCallback(bot, ctx, subAction, parts[2:])
 	case "back":
 		return h.handleBackCallback(bot, ctx, subAction, parts[2:])
+	case "role":
+		return h.handleRoleCallback(bot, ctx, subAction, parts[2:])
 	}
 
 	return nil

@@ -155,6 +155,8 @@ func (b *Bot) setupHandlers() error {
 	b.dispatcher.AddHandler(handlers.NewCommand("stats", cmdHandler.AdminStats))
 	b.dispatcher.AddHandler(handlers.NewCommand("broadcast", cmdHandler.AdminBroadcast))
 	b.dispatcher.AddHandler(handlers.NewCommand("users", cmdHandler.AdminListUsers))
+	b.dispatcher.AddHandler(handlers.NewCommand("promote", cmdHandler.Promote))
+	b.dispatcher.AddHandler(handlers.NewCommand("demote", cmdHandler.Demote))
 	b.dispatcher.AddHandler(handlers.NewCommand("demoreset", cmdHandler.DemoReset))
 	b.dispatcher.AddHandler(handlers.NewCommand("democlear", cmdHandler.DemoClear))
 
