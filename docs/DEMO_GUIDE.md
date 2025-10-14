@@ -630,8 +630,11 @@ UPDATE users SET role = 'admin' WHERE telegram_id = YOUR_ID;
 
 - **Issues**: [GitHub Issues](https://github.com/valpere/shopogoda/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/valpere/shopogoda/discussions)
+<<<<<<< HEAD:docs/DEMO_GUIDE.md
 
 ---
+=======
+>>>>>>> ac669da (Add points to sites (#93)):docs/DEMO_SETUP.md
 
 ## License
 
