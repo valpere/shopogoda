@@ -58,7 +58,7 @@ make dev
 make run
 ```
 
-**📖 For detailed demo setup instructions:** [DEMO_SETUP.md](docs/DEMO_SETUP.md)
+**📖 For detailed demo setup instructions:** [DEMO_GUIDE.md](docs/DEMO_GUIDE.md)
 
 ### Configuration
 
@@ -253,11 +253,13 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 ## 📚 Documentation
 
 ### User Guides
-- **[Demo Setup Guide](docs/DEMO_SETUP.md)** - Get started in 5 minutes
+- **[Demo Guide](docs/DEMO_GUIDE.md)** - Get started in 5 minutes with demo mode
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 
 ### Developer Documentation
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Architecture](docs/ARCHITECTURE.md)** - System architecture and design
 - **[API Reference](docs/API_REFERENCE.md)** - Complete service layer API documentation
 - **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (33.7% coverage, 40.5% for testable packages)
 - **[Database Migration Guide](docs/DATABASE_MIGRATION_GUIDE.md)** - When to run SQL patches and migrations
