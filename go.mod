@@ -12,7 +12,7 @@ require (
 	github.com/hbollon/go-edlib v1.7.0
 	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.19.1
-	github.com/prometheus/client_model v0.5.0
+	github.com/prometheus/client_model v0.6.2
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/viper v1.21.0
