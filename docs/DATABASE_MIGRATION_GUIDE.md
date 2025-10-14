@@ -491,6 +491,7 @@ pg_dump "connection_string" > backup.sql
 **Why**: Team awareness and audit trail
 
 **Process**:
+
 - Add comment to commit: "Applied enable_rls.sql on 2025-10-12"
 - Update internal docs with patch dates
 - Record in project changelog
