@@ -27,6 +27,7 @@ make init
 ```
 
 This command:
+
 - Creates `.env` from `.env.example`
 - Starts PostgreSQL, Redis, Prometheus, Grafana containers
 - Applies database migrations
@@ -53,7 +54,8 @@ make run
 ```
 
 Expected output:
-```
+
+```plaintext
 ✓ Database connected
 ✓ Redis connected
 ✓ Bot initialized
@@ -64,7 +66,7 @@ Expected output:
 
 Open Telegram and find your bot, then try:
 
-```
+```plaintext
 /start          - Welcome message and setup
 /weather        - Get current weather
 /forecast       - 5-day weather forecast
@@ -78,19 +80,22 @@ Open Telegram and find your bot, then try:
 ### Basic Weather Queries
 
 1. **Set Your Location**:
-   ```
+
+   ```plaintext
    /setlocation
    → Select "📍 Share Location" or enter "Kyiv"
    ```
 
 2. **Get Current Weather**:
-   ```
+
+   ```plaintext
    /weather
    → See temperature, humidity, wind, conditions
    ```
 
 3. **View Forecast**:
-   ```
+
+   ```plaintext
    /forecast
    → 5-day weather prediction
    ```
@@ -98,33 +103,38 @@ Open Telegram and find your bot, then try:
 ### Advanced Features
 
 4. **Air Quality Monitoring**:
-   ```
+
+   ```plaintext
    /air
    → AQI index and pollutant levels
    ```
 
 5. **Custom Alerts**:
-   ```
+
+   ```plaintext
    /addalert
    → Set temperature threshold alerts
    → Example: Alert when temp > 30°C
    ```
 
 6. **Scheduled Notifications**:
-   ```
+
+   ```plaintext
    /subscribe
    → Daily weather at 8:00 AM
    → Weekly forecast on Sunday
    ```
 
 7. **Multi-Language Support**:
-   ```
+
+   ```plaintext
    /settings → 🌐 Language
    → Choose: English, Ukrainian, German, French, Spanish
    ```
 
 8. **Data Export**:
-   ```
+
+   ```plaintext
    /settings → 📊 Data Export
    → Export your weather data, alerts, subscriptions
    → Formats: JSON, CSV, TXT
@@ -144,7 +154,7 @@ Access the monitoring dashboards:
 
 ## Architecture Overview
 
-```
+```plaintext
 ┌─────────────┐
 │   Telegram  │
 │     Bot     │
@@ -208,7 +218,7 @@ make clean            # Remove build artifacts
 
 ### Project Structure
 
-```
+```plaintext
 shopogoda/
 ├── cmd/bot/              # Application entry point
 ├── internal/             # Private application code
@@ -250,12 +260,14 @@ See [CONFIGURATION.md](CONFIGURATION.md) for complete reference.
 ### Bot doesn't respond
 
 **Check bot is running:**
+
 ```bash
 curl http://localhost:8080/health
 # Should return: {"status":"healthy"}
 ```
 
 **Check logs:**
+
 ```bash
 # In terminal where bot is running, look for errors
 # Common issues:
@@ -267,6 +279,7 @@ curl http://localhost:8080/health
 ### Database connection failed
 
 **Ensure containers are running:**
+
 ```bash
 docker ps
 # Should show: postgres, redis, prometheus, grafana
@@ -276,6 +289,7 @@ make docker-up
 ```
 
 **Check database credentials in `.env`:**
+
 ```bash
 DB_HOST=localhost
 DB_PORT=5432
@@ -287,18 +301,21 @@ DB_NAME=shopogoda
 ### Weather API errors
 
 **Verify OpenWeatherMap API key:**
+
 ```bash
 # Test API key manually:
 curl "https://api.openweathermap.org/data/2.5/weather?q=London&appid=YOUR_API_KEY"
 ```
 
 **Check rate limits:**
+
 - Free tier: 60 calls/minute, 1,000,000 calls/month
 - Upgrade if needed at openweathermap.org
 
 ### Redis connection issues
 
 **Check Redis container:**
+
 ```bash
 docker ps | grep redis
 docker logs shopogoda-redis
@@ -311,17 +328,20 @@ docker exec -it shopogoda-redis redis-cli ping
 ## Next Steps
 
 ### For Users
+
 - Explore all bot commands: `/help`
 - Set up custom alerts: `/addalert`
 - Configure notifications: `/subscribe`
 - Export your data: `/settings` → Data Export
 
 ### For Developers
+
 - Read [DEPLOYMENT.md](DEPLOYMENT.md) for production deployment
 - Check [CODE_QUALITY.md](CODE_QUALITY.md) for contribution guidelines
 - Review [ROADMAP.md](ROADMAP.md) for upcoming features
 
 ### For Enterprise
+
 - Set up Slack integration (add `SLACK_WEBHOOK_URL` to `.env`)
 - Configure role-based access control
 - Deploy to cloud (see [DEPLOYMENT.md](DEPLOYMENT.md))
@@ -331,7 +351,6 @@ docker exec -it shopogoda-redis redis-cli ping
 
 - **Issues**: [GitHub Issues](https://github.com/valpere/shopogoda/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/valpere/shopogoda/discussions)
-- **Enterprise Support**: valentyn.solomko@gmail.com
 
 ## License
 

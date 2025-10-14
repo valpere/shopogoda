@@ -8,7 +8,7 @@
 
 **Completion**: ~80%
 **Released**: January 10, 2025
-**Production URL**: https://shopogoda-svc-production.up.railway.app
+**Production URL**: <https://shopogoda-svc-production.up.railway.app>
 
 ### ✅ Completed Features
 
@@ -274,6 +274,7 @@
 ### Versioning Policy
 
 Following [Semantic Versioning 2.0.0](https://semver.org/):
+
 - **MAJOR**: Breaking changes, major features
 - **MINOR**: New features, backwards-compatible
 - **PATCH**: Bug fixes, security patches
@@ -349,8 +350,8 @@ We welcome contributions! Here's how you can help:
 
 ## Contact & Support
 
-- **Project Lead**: Valentyn Solomko (valentyn.solomko@gmail.com)
 - **GitHub**: [github.com/valpere/shopogoda](https://github.com/valpere/shopogoda)
+- **Issues**: <https://github.com/valpere/shopogoda/issues>
 - **LinkedIn**: [valentynsolomko](https://linkedin.com/in/valentynsolomko)
 
 ---

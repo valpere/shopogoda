@@ -2,6 +2,14 @@
 
 A production-ready Telegram bot for weather monitoring, environmental alerts, and enterprise integrations. Currently deployed on Railway with Supabase PostgreSQL and Upstash Redis.
 
+## Live Demo
+
+- **🇺🇦 Ukrainian (uk)**: [Жива демонстрація](https://t.me/shopogoda_bot)
+- **🇺🇸 English (en)**: [Live demonstration]: [More information](https://t.me/shopogoda_bot)
+- **🇩🇪 German (de)**: [Live-Demonstration](https://t.me/shopogoda_bot)
+- **🇫🇷 French (fr)**: [Démonstration en direct](https://t.me/shopogoda_bot)
+- **🇪🇸 Spanish (es)**: [Demostración en vivo](https://t.me/shopogoda_bot)
+
 ## 🌟 Features
 
 ### Core Weather Services
@@ -276,7 +284,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 For enterprise support and custom development:
-- Email: valentyn.solomko@gmail.com
 - LinkedIn: [valentynsolomko](https://linkedin.com/in/valentynsolomko)
 - GitHub: [valpere](https://github.com/valpere)
 

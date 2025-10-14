@@ -27,7 +27,7 @@ make run
 
 You'll see in the logs:
 
-```
+```json
 {"level":"info","message":"Demo mode enabled - seeding demo data"}
 {"level":"info","message":"Demo user created","user_id":999999999}
 {"level":"info","message":"Demo weather data created","count":24}
@@ -106,7 +106,7 @@ You'll see in the logs:
 
 You can query the demo data using standard bot commands:
 
-```
+```plaintext
 /weather        → Current weather for Kyiv
 /forecast       → 5-day forecast
 /air            → Air quality information
@@ -119,7 +119,7 @@ You can query the demo data using standard bot commands:
 
 Test the export functionality:
 
-```
+```plaintext
 /settings → 📊 Data Export → All Data → JSON
 ```
 
@@ -131,13 +131,14 @@ Demo mode includes admin commands for managing demonstration data:
 
 ### Reset Demo Data
 
-```
+```plaintext
 /demoreset
 ```
 
 **Admin only** - Clears existing demo data and re-seeds with fresh data.
 
 Use this when:
+
 - Demo data becomes outdated
 - Testing data migrations
 - Preparing for presentations
@@ -145,13 +146,14 @@ Use this when:
 
 ### Clear Demo Data
 
-```
+```plaintext
 /democlear
 ```
 
 **Admin only** - Removes all demo data from the database.
 
 Use this when:
+
 - Disabling demo mode
 - Cleaning up test environment
 - Preparing for production deployment
@@ -167,6 +169,7 @@ DEMO_MODE=true make dev
 ```
 
 Benefits:
+
 - Immediate data availability
 - Consistent test scenarios
 - No manual data entry
@@ -279,11 +282,13 @@ if services.Demo.IsDemoUser(userID) {
 ### Development
 
 ✅ **DO**:
+
 - Use demo mode for consistent test data
 - Reset demo data before presentations
 - Document any custom demo scenarios
 
 ❌ **DON'T**:
+
 - Enable demo mode in production
 - Modify demo user ID (999999999)
 - Rely on demo data for real user testing
@@ -312,6 +317,7 @@ DEMO_MODE=true go test ./...
 ### Demo data not appearing
 
 **Check configuration:**
+
 ```bash
 # Verify DEMO_MODE is set
 grep DEMO_MODE .env
@@ -321,7 +327,8 @@ grep DEMO_MODE .env
 ```
 
 **Reset demo data manually:**
-```
+
+```plaintext
 /demoreset  # As admin user
 ```
 
@@ -348,7 +355,7 @@ UPDATE users SET role = 'admin' WHERE telegram_id = YOUR_ID;
 
 ## Demo Data Lifecycle
 
-```
+```plaintext
 Bot Start (DEMO_MODE=true)
     ↓
 Check if demo user exists
@@ -374,5 +381,4 @@ Demo ready ✅
 
 For demo mode issues or questions:
 
-- **GitHub Issues**: https://github.com/valpere/shopogoda/issues
-- **Email**: valentyn.solomko@gmail.com
+- **GitHub Issues**: <https://github.com/valpere/shopogoda/issues>
