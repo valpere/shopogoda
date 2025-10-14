@@ -1,7 +1,7 @@
 # ShoPogoda API Reference
 
 **Version:** 0.1.2-dev
-**Last Updated:** 2025-01-11
+**Last Updated:** 2025-10-11
 
 This document provides comprehensive API documentation for ShoPogoda's service layer. The service layer is the core business logic of the application, providing a clean interface between handlers and data persistence.
 
@@ -1846,6 +1846,6 @@ For questions or issues with the API:
 
 ---
 
-**Last Updated:** 2025-01-11
+**Last Updated:** 2025-10-11
 **API Version:** 0.1.2-dev
 **Go Version:** 1.23+

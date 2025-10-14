@@ -451,7 +451,7 @@ pg_dump "connection_string" > backup.sql
 **Why**: Team awareness and audit trail
 
 **Process**:
-- Add comment to commit: "Applied enable_rls.sql on 2025-01-12"
+- Add comment to commit: "Applied enable_rls.sql on 2025-10-12"
 - Update internal docs with patch dates
 - Record in project changelog
 
@@ -486,6 +486,6 @@ For database migration issues:
 
 ---
 
-**Last Updated**: 2025-01-12
+**Last Updated**: 2025-10-12
 **Version**: ShoPogoda v1.0.2+
 **Maintained by**: [@valpere](https://github.com/valpere)

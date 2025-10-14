@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.1] - 2025-01-10
+## [0.1.1] - 2025-10-10
 
 ### Fixed
 - **Location Dialog Consistency**: Standardized location setup UI across all commands
@@ -168,7 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0-demo] - 2025-01-02
+## [0.1.0-demo] - 2025-10-02
 
 ### Major Features
 
@@ -473,12 +473,12 @@ See our [contribution guidelines](CONTRIBUTING.md) for details on:
 
 | Version | Release Date | Status | Highlights |
 |---------|--------------|--------|------------|
-| 0.1.0-demo | 2025-01-02 | 🚧 In Progress | Initial demo release |
+| 0.1.0-demo | 2025-10-02 | 🚧 In Progress | Initial demo release |
 | 0.2.0 | Q2 2025 | 📋 Planned | Production beta |
 | 1.0.0 | Q3 2025 | 📋 Planned | Stable release |
 | 2.0.0 | Q4 2025 | 💭 Concept | AI & Automation |
 
 ---
 
-**Last Updated**: 2025-01-02
+**Last Updated**: 2025-10-02
 **Maintained by**: [@valpere](https://github.com/valpere)

@@ -701,5 +701,5 @@ gcloud billing budgets create \
 
 ---
 
-**Last Updated**: 2025-01-03
+**Last Updated**: 2025-10-03
 **Maintained by**: [@valpere](https://github.com/valpere)

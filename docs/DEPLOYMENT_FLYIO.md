@@ -531,7 +531,7 @@ curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
 curl https://shopogoda-bot.fly.dev/health
 
 # Expected response:
-# {"status":"healthy","timestamp":"2025-01-03T..."}
+# {"status":"healthy","timestamp":"2025-10-03T..."}
 
 # Test bot on Telegram
 # 1. Open Telegram
@@ -1187,5 +1187,5 @@ redis-cli -u $REDIS_URL --rdb redis.rdb
 
 ---
 
-**Last Updated**: 2025-01-03
+**Last Updated**: 2025-10-03
 **Maintained by**: [@valpere](https://github.com/valpere)
