@@ -577,7 +577,7 @@ railway up  # Will prompt for GitHub repo selection
 
 ## Deployment Variant 2: Railway + Supabase + Upstash
 
-**Total Cost: $0/month** | **Setup Time: 20 minutes** | **Status: ✅ Tested & Working (2025-01-08)**
+**Total Cost: $0/month** | **Setup Time: 20 minutes** | **Status: ✅ Tested & Working (2025-10-08)**
 
 This variant uses Railway for bot hosting with free external database services to eliminate all costs.
 
@@ -1204,7 +1204,7 @@ railway logs --service shopogoda
 curl https://your-app.up.railway.app/health
 
 # Expected response:
-# {"status":"healthy","timestamp":"2025-01-03T..."}
+# {"status":"healthy","timestamp":"2025-10-03T..."}
 ```
 
 ## Deployment Workflows
@@ -1566,7 +1566,7 @@ psql $NEW_DATABASE_URL < shopogoda_backup.sql
 
 ---
 
-**Last Updated**: 2025-01-07
+**Last Updated**: 2025-10-07
 **Railway Version**: v2 (2025 pricing model)
 **Maintained by**: [@valpere](https://github.com/valpere)
 **ShoPogoda Version**: Compatible with v1.0+

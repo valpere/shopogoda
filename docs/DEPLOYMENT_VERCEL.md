@@ -593,7 +593,7 @@ curl https://shopogoda-xyz123.vercel.app/health
 # Expected response:
 # {
 #   "status": "ok",
-#   "timestamp": "2025-01-04T12:34:56Z",
+#   "timestamp": "2025-10-04T12:34:56Z",
 #   "version": "1.0.0"
 # }
 ```
@@ -635,9 +635,9 @@ I'm your personal weather assistant...
 **Example logs**:
 
 ```
-2025-01-04T12:34:56.000Z INFO Bot initialized successfully
-2025-01-04T12:35:12.000Z INFO Processing update from user 123456
-2025-01-04T12:35:13.000Z INFO Weather command executed successfully
+2025-10-04T12:34:56.000Z INFO Bot initialized successfully
+2025-10-04T12:35:12.000Z INFO Processing update from user 123456
+2025-10-04T12:35:13.000Z INFO Weather command executed successfully
 ```
 
 ---
