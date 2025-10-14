@@ -311,24 +311,28 @@ sudo systemctl start shopogoda
 ## Security Best Practices
 
 ### 1. **Sensitive Data Management**
+
 - Never store tokens/passwords in configuration files
 - Use environment variables for all sensitive values
 - Consider using secret management systems (HashiCorp Vault, AWS Secrets Manager)
 - Regularly rotate API keys and tokens
 
 ### 2. **Network Security**
+
 - Use webhook mode for production deployments
 - Enable SSL/TLS for database connections (`ssl_mode: require`)
 - Use strong, unique passwords for all services
 - Restrict network access with firewalls
 
 ### 3. **Configuration Security**
+
 - Set proper file permissions on config files (`chmod 600`)
 - Use `.gitignore` to prevent committing sensitive files
 - Validate configuration on startup
 - Monitor configuration changes
 
 ### 4. **Production Checklist**
+
 - [ ] `BOT_DEBUG=false`
 - [ ] `LOG_LEVEL=info`
 - [ ] `DB_SSL_MODE=require`
@@ -342,6 +346,7 @@ sudo systemctl start shopogoda
 ### Configuration Loading Issues
 
 **Problem:** "Config file not found"
+
 ```bash
 # Check file locations
 ls -la ./shopogoda.yaml
@@ -351,6 +356,7 @@ ls -la /etc/shopogoda.yaml
 ```
 
 **Problem:** "Environment variables not working"
+
 ```bash
 # Verify environment variables are set
 env | grep -E "(TELEGRAM|DB_|REDIS_|WEATHER_)"
@@ -363,12 +369,14 @@ export telegram_bot_token=your_token  # Wrong
 ### Database Connection Issues
 
 **Problem:** "Connection refused"
+
 - Check if PostgreSQL is running: `systemctl status postgresql`
 - Verify connection settings: host, port, credentials
 - Check network connectivity: `telnet localhost 5432`
 - Review PostgreSQL logs for authentication errors
 
 **Problem:** "SSL connection required"
+
 ```yaml
 database:
   ssl_mode: require  # For production
@@ -378,6 +386,7 @@ database:
 ### API Key Issues
 
 **Problem:** "Invalid API key"
+
 - Verify key is correct and active
 - Check API key permissions and quotas
 - Test with curl: `curl "https://api.openweathermap.org/data/2.5/weather?q=London&appid=YOUR_KEY"`
@@ -393,6 +402,7 @@ export LOG_LEVEL=debug
 ```
 
 Check the logs for configuration loading messages:
+
 ```bash
 # Look for config loading messages
 grep -i "config" logs/shopogoda.log
@@ -404,6 +414,7 @@ grep -i "env" logs/shopogoda.log
 ## Support
 
 For additional help:
+
 - Check the [main README](../README.md) for general setup instructions
 - Review [deployment documentation](../docs/DEPLOYMENT.md)
 - Open an issue on GitHub for bugs or feature requests

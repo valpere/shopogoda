@@ -6,7 +6,7 @@ This document describes the release process for ShoPogoda.
 
 ShoPogoda follows [Semantic Versioning 2.0.0](https://semver.org/):
 
-```
+```plaintext
 MAJOR.MINOR.PATCH[-PRERELEASE]
 ```
 
@@ -28,30 +28,35 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 ## Release Types
 
 ### Development Releases (`-dev`, `-alpha`)
+
 - **Purpose**: Internal testing, experimental features
 - **Frequency**: As needed
 - **Support**: None
 - **Deployment**: Local/dev environments only
 
 ### Demo Releases (`-demo`)
+
 - **Purpose**: Public demos, portfolio showcases
 - **Frequency**: Major milestones
 - **Support**: Limited (best effort)
 - **Deployment**: Demo environments, documentation
 
 ### Beta Releases (`-beta.X`)
+
 - **Purpose**: Feature testing, community feedback
 - **Frequency**: Before minor releases
 - **Support**: Bug fixes only
 - **Deployment**: Staging environments
 
 ### Release Candidates (`-rc.X`)
+
 - **Purpose**: Final testing before stable release
 - **Frequency**: Before major/minor releases
 - **Support**: Bug fixes and security patches
 - **Deployment**: Staging and pre-production
 
 ### Stable Releases (no suffix)
+
 - **Purpose**: Production deployments
 - **Frequency**: Every 2-3 months (minor), 6-9 months (major)
 - **Support**: Full support (features + bug fixes)
@@ -62,12 +67,14 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 ### Prerequisites
 
 1. **Clean working directory**
+
    ```bash
    git status
    # Ensure no uncommitted changes
    ```
 
 2. **All tests passing**
+
    ```bash
    make test
    make lint
@@ -79,6 +86,7 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
    - Any new features documented
 
 4. **Code coverage meets requirements**
+
    ```bash
    make test-coverage
    # Check coverage.html
@@ -93,6 +101,7 @@ Use the release creation script:
 ```
 
 This script will:
+
 1. Validate version format
 2. Check git is clean
 3. Update CHANGELOG.md
@@ -105,23 +114,27 @@ This script will:
 If you prefer manual control:
 
 1. **Update CHANGELOG.md**
+
    ```bash
    # Move [Unreleased] section content to new version section
    # Add new empty [Unreleased] section
    ```
 
 2. **Commit changelog**
+
    ```bash
    git add CHANGELOG.md
    git commit -m "docs: Update CHANGELOG for v0.1.0-demo"
    ```
 
 3. **Create tag**
+
    ```bash
    git tag -a v0.1.0-demo -m "Release v0.1.0-demo"
    ```
 
 4. **Push tag**
+
    ```bash
    git push origin v0.1.0-demo
    git push origin main  # Don't forget the changelog commit
@@ -241,28 +254,33 @@ docker compose ps
 For critical bugs in production:
 
 1. **Create hotfix branch from production tag**
+
    ```bash
    git checkout -b hotfix/v1.0.1 v1.0.0
    ```
 
 2. **Fix the bug**
+
    ```bash
    # Make minimal changes to fix critical issue
    git commit -m "fix: Critical bug description"
    ```
 
 3. **Test thoroughly**
+
    ```bash
    make test
    make test-integration
    ```
 
 4. **Create hotfix release**
+
    ```bash
    ./scripts/create-release.sh v1.0.1
    ```
 
 5. **Merge back to main**
+
    ```bash
    git checkout main
    git merge hotfix/v1.0.1
@@ -318,6 +336,7 @@ docker run --rm ghcr.io/valpere/shopogoda:latest /app/shopogoda --version
 ### Example
 
 If current version is v2.1.0:
+
 - **v2.x.x**: Full support
 - **v1.x.x**: Security patches only (until v2.0.0 + 12 months)
 - **v0.x.x**: End of life
@@ -327,12 +346,14 @@ If current version is v2.1.0:
 ### Release workflow failed
 
 **Check GitHub Actions logs:**
+
 ```bash
 gh run list --workflow=release.yml --limit 5
 gh run view <run-id> --log-failed
 ```
 
 **Common issues:**
+
 - Test failures → Fix tests before releasing
 - Docker build failures → Check Dockerfile syntax
 - Permission errors → Verify GITHUB_TOKEN has correct scopes
@@ -340,6 +361,7 @@ gh run view <run-id> --log-failed
 ### Tag already exists
 
 **If you need to recreate a tag:**
+
 ```bash
 # Delete local tag
 git tag -d v0.1.0-demo
@@ -355,6 +377,7 @@ git push origin v0.1.0-demo
 ### Rollback needed immediately
 
 **Emergency rollback:**
+
 ```bash
 # Production
 ./scripts/rollback.sh v1.0.0 production
@@ -398,8 +421,8 @@ A release is considered successful if:
 ## Contact
 
 For release management questions:
-- **Project Lead**: Valentyn Solomko (valentyn.solomko@gmail.com)
-- **GitHub Issues**: https://github.com/valpere/shopogoda/issues
+
+- **GitHub Issues**: <https://github.com/valpere/shopogoda/issues>
 
 ---
 

@@ -322,7 +322,7 @@
    "version_docs" : "📖 Документація: [docs/](https://github.com/valpere/shopogoda/tree/main/docs)",
    "version_github" : "🌐 GitHub: [valpere/shopogoda](https://github.com/valpere/shopogoda)",
    "version_go" : "⚙️ Версія Go: %s",
-   "version_support" : "💬 Підтримка: valentyn.solomko@gmail.com",
+   "version_support" : "💬 Підтримка: https://github.com/valpere/shopogoda/issues",
    "version_title" : "🤖 *ShoPogoda - Бот Погоди*",
    "version_version" : "📦 Версія: %s",
    "weather_air_quality" : "Якість Повітря",

@@ -1123,6 +1123,7 @@ psql $DATABASE_URL < /tmp/backup.sql
 | **Best For** | 24/7 bots, global edge | Low traffic, webhook bots | Hobby projects | Enterprise, high traffic |
 
 **Recommendation**:
+
 - **Fly.io**: Best for **24/7 bots** with consistent traffic and no cold starts
 - **Vercel**: Best for **low-traffic bots** (< 1000 users) with occasional usage
 - **Railway**: Best for **quick prototypes** and hobby projects

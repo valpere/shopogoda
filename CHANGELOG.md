@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - **Admin & Statistics Enhancement**: Real metrics collection and activity tracking
   - **Real Metrics Integration**: Replaced placeholder values with actual Prometheus metrics
     - Cache hit rate: Real-time extraction from Prometheus gauges with label matching
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Test Coverage**: 11 new tests for metric extraction (GetCacheHitRate, GetAverageResponseTime)
 
 ### In Progress
+
 - Test coverage improvements (27.4% → 29.9%, target: 30%)
 - Video walkthrough
 
@@ -43,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2025-10-10
 
 ### Fixed
+
 - **Location Dialog Consistency**: Standardized location setup UI across all commands
   - `/setlocation` command: Replaced single "Share Location" button with 3-button dialog
   - `CurrentWeather` command: Applied same 3-button dialog when location needed
@@ -61,12 +64,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Proper dependency handling with `always()` condition
 
 ### Changed
+
 - Version updated from 0.1.0-dev to 0.1.1
 - Improved consistency across all location-related user interactions
 
 ---
 
 ### Added
+
 - **Bot Mocking Infrastructure**: Reusable test infrastructure for Telegram bot handler testing
   - MockBot: Minimal gotgbot.Bot instances with configurable test data
   - MockContext: Flexible ext.Context creation with MockContextOptions builder pattern
@@ -155,6 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Overall coverage: 28.6% → 29.4% (+0.8%)
 
 ### Fixed
+
 - **Demo Service ClearDemoData Bug**: Fixed SQL error when deleting demo user
   - Root cause: User table uses `id` as primary key, related tables use `user_id` foreign key
   - Separated deletion logic: related tables use `WHERE user_id = ?`, User table uses `WHERE id = ?`
@@ -173,6 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Major Features
 
 #### Core Weather Services
+
 - Real-time weather data via OpenWeatherMap API
 - 5-day weather forecasts with 3-hour intervals
 - Air quality monitoring (AQI and pollutant tracking)
@@ -180,6 +187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timezone-aware weather displays
 
 #### Enterprise Features
+
 - **Custom Alert System**: User-defined thresholds for temperature, humidity, AQI
   - Severity calculation (Low, Medium, High, Critical)
   - Alert cooldown periods to prevent spam
@@ -192,12 +200,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Monitoring Stack**: Prometheus metrics, Grafana dashboards, Jaeger tracing
 
 #### Multi-Language Support
+
 - Complete localization in 5 languages: English (en), Ukrainian (uk), German (de), French (fr), Spanish (es)
 - Dynamic language switching via `/settings`
 - Persistent language preferences per user
 - Automatic fallback to English for missing translations
 
 #### Data Management
+
 - **Data Export System**: Export user data in multiple formats
   - Weather data (last 30 days)
   - Alert history (last 90 days)
@@ -214,6 +224,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Timezone Independence**: Location and timezone managed separately
 
 #### Infrastructure
+
 - PostgreSQL database with GORM ORM
 - Redis caching with TTL (10-min weather, 1-hour forecasts, 24-hour geocoding)
 - Docker containerization for all services
@@ -224,6 +235,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bot Commands
 
 #### User Commands
+
 - `/start` - Welcome message and bot introduction
 - `/help` - Display all available commands
 - `/weather [location]` - Get current weather
@@ -235,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/settings` - User preferences (language, timezone, data export, notifications)
 
 #### Admin Commands
+
 - `/stats` - System statistics and metrics
 - `/broadcast` - Send message to all users
 - `/users` - User management
@@ -244,6 +257,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Improvements
 
 #### Testing
+
 - Unit tests for core services (version, demo, commands, services)
 - Integration tests with testcontainers
 - Test coverage: 27.4%
@@ -251,12 +265,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive demo service tests with edge case validation
 
 #### Code Quality
+
 - golangci-lint integration
 - gofmt code formatting
 - Pre-commit hooks for code validation
 - Comprehensive error handling
 
 #### CI/CD Pipeline
+
 - Automated testing on pull requests
 - Docker image building and pushing
 - Code coverage reporting (Codecov)
@@ -266,6 +282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 
 #### Core Dependencies
+
 - Go 1.24.6
 - gotgbot/v2 v2.0.0-rc.25 (Telegram Bot API)
 - gorm.io/gorm v1.25.6 (ORM)
@@ -275,14 +292,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - rs/zerolog v1.31.0 (Structured logging)
 
 #### Monitoring
+
 - prometheus/client_golang v1.23.2
 - uber/jaeger-client-go v2.30.0
 
 #### Testing
+
 - testcontainers-go v0.39.0
 - stretchr/testify v1.9.0
 
 #### GitHub Actions
+
 - actions/checkout v4
 - actions/setup-go v5
 - docker/build-push-action v6
@@ -297,18 +317,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **After**: Location embedded in `User` model, single location per user
 
 **Benefits**:
+
 - 40% fewer database tables
 - Eliminated complex join queries
 - Clearer user experience (single `/setlocation` command)
 - Better performance
 
 #### Timezone Independence
+
 - Location and timezone completely decoupled
 - Setting location doesn't reset timezone
 - All timestamps stored in UTC
 - On-demand conversion via service layer
 
 #### Notification System
+
 - Comprehensive notification UI in bot settings
 - Multiple notification types with granular control
 - Timezone-aware scheduling
@@ -317,11 +340,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Issues
 
 #### Test Failures (Deferred to v0.2.0)
+
 - GORM v1.31.0 upgrade blocked due to breaking SQL query changes
 - golangci-lint v8 upgrade requires code adjustments
 - gotgbot v2.0.0-rc.33 has breaking changes
 
 #### Limitations
+
 - Free-tier OpenWeatherMap limits (60 calls/min)
 - Single location per user (by design)
 - No historical weather data
@@ -333,6 +358,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned Features
 
 #### Testing & Quality
+
 - Increase test coverage to 60%+
 - E2E test suite with real Telegram API
 - Performance benchmarks
@@ -340,6 +366,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security audit
 
 #### Advanced Weather Features
+
 - Historical weather data (past 7 days)
 - Weather comparisons (current vs. historical)
 - Severe weather warnings
@@ -347,6 +374,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Weather radar and satellite imagery
 
 #### User Experience
+
 - Interactive weather maps
 - Customizable notification templates
 - Weather widgets for group chats
@@ -354,6 +382,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Voice message weather reports
 
 #### Enterprise Enhancements
+
 - Multi-user organization support
 - Team dashboards
 - Admin analytics dashboard
@@ -361,6 +390,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SLA-based rate limiting
 
 #### Infrastructure
+
 - Horizontal scaling support
 - PostgreSQL replication
 - Redis Cluster
@@ -368,6 +398,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Blue-green deployments
 
 #### Dependency Upgrades
+
 - Upgrade GORM to v1.31.0 (with test fixes)
 - Upgrade golangci-lint to v8 (with code quality improvements)
 - Upgrade gotgbot to stable v2.0.0
@@ -379,18 +410,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned Features
 
 #### Premium Features
+
 - Subscription tiers (Free, Pro, Enterprise)
 - Payment integration
 - Extended forecasts (15 days)
 - Unlimited custom alerts
 
 #### Advanced Alerts
+
 - AI-powered alert recommendations
 - Complex conditions (AND/OR logic)
 - Alert templates library
 - Geofencing-based alerts
 
 #### Integration Ecosystem
+
 - Zapier integration
 - IFTTT support
 - Discord integration
@@ -398,6 +432,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REST API for third-party apps
 
 #### Mobile & Web
+
 - Progressive Web App (PWA)
 - Mobile-optimized dashboard
 - QR code onboarding
@@ -409,17 +444,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned Features
 
 #### AI-Powered Features
+
 - Natural language queries ("Will I need an umbrella?")
 - Smart alert suggestions
 - Weather-based activity recommendations
 - Conversational bot mode
 
 #### Automation
+
 - Auto-tuning alerts
 - Smart notification scheduling
 - Predictive infrastructure scaling
 
 #### Developer Experience
+
 - Plugin system for extensions
 - Developer API with SDKs
 - GraphQL API
@@ -434,24 +472,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Planned improvements for systematic release process:
 
 #### Version Control
+
 - Semantic versioning enforcement
 - Automated version bumping
 - Git tag automation
 - Version constants in code
 
 #### Changelog Automation
+
 - Conventional commits enforcement
 - Auto-generated changelogs from commits
 - Release notes generation
 - Breaking change detection
 
 #### Release Workflow
+
 - Automated GitHub releases
 - Docker image tagging (version-based)
 - Multi-environment deployments
 - Rollback procedures
 
 #### Quality Gates
+
 - Minimum test coverage requirements
 - Linting pass required
 - Security scan pass required
@@ -462,6 +504,7 @@ Planned improvements for systematic release process:
 ## Contributing
 
 See our [contribution guidelines](CONTRIBUTING.md) for details on:
+
 - Code style and standards
 - Pull request process
 - Testing requirements

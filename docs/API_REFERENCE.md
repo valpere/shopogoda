@@ -56,7 +56,7 @@ type Services struct {
 
 ### Dependency Chain
 
-```
+```plaintext
 Database (PostgreSQL) → GORM
 Cache (Redis) → go-redis
 Config → Viper
@@ -100,6 +100,7 @@ defer svcs.Stop()
 ```
 
 **Function Signature:**
+
 ```go
 func New(
     db *gorm.DB,
@@ -138,13 +139,16 @@ func (s *UserService) RegisterUser(ctx context.Context, tgUser *gotgbot.User) er
 ```
 
 **Parameters:**
+
 - `ctx` - Context for cancellation and tracing
 - `tgUser` - Telegram user object from gotgbot
 
 **Returns:**
+
 - `error` - Error if registration fails
 
 **Example:**
+
 ```go
 user := &gotgbot.User{
     Id:           123456789,
@@ -168,10 +172,12 @@ func (s *UserService) GetUser(ctx context.Context, userID int64) (*models.User, 
 ```
 
 **Parameters:**
+
 - `ctx` - Context for cancellation and tracing
 - `userID` - Telegram user ID
 
 **Returns:**
+
 - `*models.User` - User object
 - `error` - Error if user not found or retrieval fails
 
@@ -179,6 +185,7 @@ func (s *UserService) GetUser(ctx context.Context, userID int64) (*models.User, 
 **Cache TTL:** 1 hour
 
 **Example:**
+
 ```go
 user, err := services.User.GetUser(ctx, 123456789)
 if err != nil {
@@ -204,14 +211,17 @@ func (s *UserService) UpdateUserSettings(
 ```
 
 **Parameters:**
+
 - `ctx` - Context for cancellation and tracing
 - `userID` - Telegram user ID
 - `settings` - Map of field names to values
 
 **Returns:**
+
 - `error` - Error if update fails
 
 **Example:**
+
 ```go
 settings := map[string]interface{}{
     "units":          "metric",
@@ -246,6 +256,7 @@ func (s *UserService) SetUserLocation(
 ```
 
 **Parameters:**
+
 - `locationName` - Full location name
 - `country` - Country code (ISO 3166-1 alpha-2)
 - `city` - City name
@@ -253,6 +264,7 @@ func (s *UserService) SetUserLocation(
 - `lon` - Longitude (-180 to 180)
 
 **Example:**
+
 ```go
 err := services.User.SetUserLocation(
     ctx,
@@ -285,6 +297,7 @@ func (s *UserService) GetUserLocation(
 ```
 
 **Returns:**
+
 - `string` - Location name
 - `float64` - Latitude
 - `float64` - Longitude
@@ -315,6 +328,7 @@ func (s *UserService) ConvertToUserTime(
 ```
 
 **Example:**
+
 ```go
 utcTime := time.Now().UTC()
 localTime := services.User.ConvertToUserTime(ctx, userID, utcTime)
@@ -344,6 +358,7 @@ func (s *UserService) GetSystemStats(ctx context.Context) (*SystemStats, error)
 ```
 
 **Returns:**
+
 ```go
 type SystemStats struct {
     TotalUsers            int64
@@ -359,6 +374,7 @@ type SystemStats struct {
 ```
 
 **Example:**
+
 ```go
 stats, err := services.User.GetSystemStats(ctx)
 if err != nil {
@@ -380,6 +396,7 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
 ```
 
 **Returns:**
+
 ```go
 type UserStatistics struct {
     TotalUsers    int64
@@ -468,6 +485,7 @@ func (s *WeatherService) GetCompleteWeatherData(
 ```
 
 **Returns:**
+
 ```go
 type WeatherData struct {
     Temperature    float64
@@ -504,6 +522,7 @@ type WeatherData struct {
 **Cache:** 10 minutes for weather, 30 minutes for air quality
 
 **Example:**
+
 ```go
 weather, err := services.Weather.GetCompleteWeatherData(ctx, 40.7128, -74.0060)
 if err != nil {
@@ -543,11 +562,13 @@ func (s *WeatherService) GetForecast(
 ```
 
 **Parameters:**
+
 - `days` - Number of days (1-5)
 
 **Cache:** 1 hour
 
 **Example:**
+
 ```go
 forecast, err := services.Weather.GetForecast(ctx, 40.7128, -74.0060, 5)
 if err != nil {
@@ -591,6 +612,7 @@ func (s *WeatherService) GeocodeLocation(
 ```
 
 **Returns:**
+
 ```go
 type Location struct {
     Name    string
@@ -605,6 +627,7 @@ type Location struct {
 **Fallback:** Nominatim API if OpenWeatherMap fails
 
 **Example:**
+
 ```go
 location, err := services.Weather.GeocodeLocation(ctx, "New York, USA")
 if err != nil {
@@ -628,6 +651,7 @@ func (s *WeatherService) GetLocationName(
 ```
 
 **Example:**
+
 ```go
 name, err := services.Weather.GetLocationName(ctx, 40.7128, -74.0060)
 // Returns: "New York, New York, United States"
@@ -674,12 +698,14 @@ func (s *AlertService) CreateAlert(
 ```
 
 **Alert Types:**
+
 - `AlertTypeTemperature` - Temperature threshold
 - `AlertTypeHumidity` - Humidity threshold
 - `AlertTypeWindSpeed` - Wind speed threshold
 - `AlertTypeAQI` - Air quality index threshold
 
 **Condition Structure:**
+
 ```go
 type AlertCondition struct {
     Operator string  // ">", "<", ">=", "<=", "=="
@@ -688,6 +714,7 @@ type AlertCondition struct {
 ```
 
 **Example:**
+
 ```go
 // Alert when temperature drops below 0°C
 condition := AlertCondition{
@@ -734,6 +761,7 @@ func (s *AlertService) CheckAlerts(
 **Returns:** List of triggered alerts
 
 **Example:**
+
 ```go
 weatherData := &models.WeatherData{
     UserID:      userID,
@@ -770,6 +798,7 @@ func (s *AlertService) UpdateAlert(
 ```
 
 **Updatable Fields:**
+
 - `condition_operator`
 - `condition_value`
 - `is_active`
@@ -828,17 +857,20 @@ func (s *SubscriptionService) CreateSubscription(
 ```
 
 **Subscription Types:**
+
 - `SubscriptionTypeDaily` - Daily weather updates
 - `SubscriptionTypeWeekly` - Weekly summaries
 - `SubscriptionTypeAlerts` - Alert notifications
 - `SubscriptionTypeExtremeWeather` - Extreme weather warnings
 
 **Frequencies:**
+
 - `FrequencyDaily` - Every day
 - `FrequencyWeekly` - Once per week
 - `FrequencyMonthly` - Once per month
 
 **Example:**
+
 ```go
 // Daily weather update at 8:00 AM user's local time
 subscription, err := services.Subscription.CreateSubscription(
@@ -875,6 +907,7 @@ func (s *SubscriptionService) UpdateSubscription(
 ```
 
 **Updatable Fields:**
+
 - `time_of_day`
 - `frequency`
 - `is_active`
@@ -925,6 +958,7 @@ func (s *SubscriptionService) ShouldSendNotification(
 ```
 
 **Considers:**
+
 - Current time vs. subscription time (in user's timezone)
 - Frequency (daily/weekly/monthly)
 - Last sent timestamp
@@ -975,6 +1009,7 @@ func (s *NotificationService) SendTelegramAlert(
 ```
 
 **Format:**
+
 ```
 ⚠️ Weather Alert
 
@@ -1038,11 +1073,13 @@ func (s *NotificationService) SendSlackWeatherUpdate(
 ### Error Handling
 
 **Dual-Platform Tolerance:**
+
 - Success if either platform succeeds
 - Error only if both platforms fail
 - Individual platform errors logged as warnings
 
 **Example:**
+
 ```go
 // Telegram succeeds, Slack fails → Overall success (warning logged)
 // Telegram fails, Slack succeeds → Overall success (warning logged)
@@ -1079,6 +1116,7 @@ func (s *SchedulerService) Start(ctx context.Context)
 ```
 
 **Jobs:**
+
 1. **Alert Processing** - Every 10 minutes
    - Fetches active users with alerts
    - Gets current weather data
@@ -1092,6 +1130,7 @@ func (s *SchedulerService) Start(ctx context.Context)
    - Sends daily/weekly updates
 
 **Example:**
+
 ```go
 ctx := context.Background()
 services.StartScheduler(ctx)
@@ -1108,6 +1147,7 @@ func (s *SchedulerService) Stop()
 ```
 
 **Usage:**
+
 ```go
 defer services.Stop()
 ```
@@ -1166,11 +1206,13 @@ func (s *ExportService) ExportUserData(
 ```
 
 **Parameters:**
+
 - `exportType` - Type of data to export
 - `format` - Output format (json, csv, txt)
 - `userLang` - Language for human-readable formats
 
 **Returns:**
+
 - `*bytes.Buffer` - Export data buffer
 - `string` - Suggested filename
 - `error` - Error if export fails
@@ -1178,6 +1220,7 @@ func (s *ExportService) ExportUserData(
 **Filename Format:** `shopogoda_{type}_{username}_{date}.{ext}`
 
 **Example:**
+
 ```go
 buffer, filename, err := services.Export.ExportUserData(
     ctx,
@@ -1228,6 +1271,7 @@ func (s *LocalizationService) LoadTranslations(localesFS fs.FS) error
 ```
 
 **Usage:**
+
 ```go
 //go:embed internal/locales/*.json
 var localesFS embed.FS
@@ -1253,6 +1297,7 @@ func (s *LocalizationService) T(
 ```
 
 **Example:**
+
 ```go
 // Simple translation
 greeting := services.Localization.T(ctx, "en", "welcome_message")
@@ -1284,6 +1329,7 @@ func (s *LocalizationService) GetSupportedLanguages() SupportedLanguages
 ```
 
 **Returns:**
+
 ```go
 type SupportedLanguages map[string]SupportedLanguage
 
@@ -1313,6 +1359,7 @@ func (s *LocalizationService) DetectLanguageFromName(name string) string
 ```
 
 **Example:**
+
 ```go
 code := services.Localization.DetectLanguageFromName("English")  // "en"
 code := services.Localization.DetectLanguageFromName("Українська")  // "uk"
@@ -1355,6 +1402,7 @@ func (s *DemoService) SeedDemoData(ctx context.Context) error
 ```
 
 **Creates:**
+
 - Demo user (ID: 999999999)
 - Sample weather data
 - Sample alerts
@@ -1389,6 +1437,7 @@ func (s *DemoService) IsDemoUser(userID int64) bool
 **Demo User ID:** 999999999
 
 **Example:**
+
 ```go
 if services.Demo.IsDemoUser(userID) {
     // Handle demo user (e.g., read-only mode, limited features)
@@ -1429,6 +1478,7 @@ if errors.As(err, &validationErr) {
 ### Database Errors
 
 Common GORM errors:
+
 - `gorm.ErrRecordNotFound` - Entity not found
 - `gorm.ErrInvalidData` - Data validation failed
 - `gorm.ErrDuplicatedKey` - Unique constraint violation
@@ -1436,6 +1486,7 @@ Common GORM errors:
 ### Redis Errors
 
 Common Redis errors:
+
 - `redis.Nil` - Key not found (cache miss)
 - Connection errors - Graceful degradation (continue without cache)
 
@@ -1475,10 +1526,12 @@ return err
 ### Cache Invalidation
 
 **Automatic:**
+
 - TTL expiration
 - User data invalidated on updates
 
 **Manual:**
+
 - `redis.Del(ctx, key)` for immediate invalidation
 
 ### Cache Miss Handling
@@ -1513,6 +1566,7 @@ func (s *Service) Method(ctx context.Context, arg1, arg2 Type) error
 ```
 
 **Benefits:**
+
 - Request cancellation
 - Timeout propagation
 - Tracing correlation IDs
@@ -1697,18 +1751,21 @@ func TestIntegration(t *testing.T) {
 #### Location Model Change (v0.1.0 → v0.1.1)
 
 **Before:**
+
 ```go
 // Multiple locations per user with separate Location entity
 location, err := services.Location.GetDefaultLocation(ctx, userID)
 ```
 
 **After:**
+
 ```go
 // Single embedded location per user
 name, lat, lon, err := services.User.GetUserLocation(ctx, userID)
 ```
 
 **Migration Steps:**
+
 1. Run database migration to embed location fields in User table
 2. Update code to use `UserService` methods instead of `LocationService`
 3. Remove `LocationService` references
@@ -1716,6 +1773,7 @@ name, lat, lon, err := services.User.GetUserLocation(ctx, userID)
 #### Timezone Independence (v0.1.1)
 
 **Important Changes:**
+
 - `SetUserLocation()` no longer resets timezone to UTC
 - `GetUserTimezone()` returns user's timezone regardless of location status
 - Location and timezone are completely independent settings
@@ -1842,7 +1900,6 @@ For questions or issues with the API:
 
 - **Documentation:** [docs/](.)
 - **Issues:** [GitHub Issues](https://github.com/valpere/shopogoda/issues)
-- **Email:** valentyn.solomko@gmail.com
 
 ---
 

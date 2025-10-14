@@ -75,11 +75,11 @@ Choose the platform that best fits your needs:
 
 This comparison covers free tier limits, pricing, resources, and use cases for each platform in 2025.[^1][^2][^3][^4][^5]
 
-[^1]: https://www.withorb.com/blog/replit-pricing
-[^2]: https://vercel.com/docs/ai-gateway/pricing
-[^3]: https://www.withorb.com/blog/flyio-pricing
-[^4]: https://infosecwriteups.com/railway-the-easiest-way-to-deploy-full-stack-apps-i-tried-it-27e2a23dee2f
-[^5]: https://replit.com/pricing
+[^1]: <https://www.withorb.com/blog/replit-pricing>
+[^2]: <https://vercel.com/docs/ai-gateway/pricing>
+[^3]: <https://www.withorb.com/blog/flyio-pricing>
+[^4]: <https://infosecwriteups.com/railway-the-easiest-way-to-deploy-full-stack-apps-i-tried-it-27e2a23dee2f>
+[^5]: <https://replit.com/pricing>
 
 
 ## General Deployment Information
@@ -148,14 +148,14 @@ cd shopogoda
 
 ### 2. Configure Environment
 
-#### For Staging:
+#### For Staging
 
 ```bash
 cp .env.staging.example .env.staging
 vim .env.staging  # Edit with your values
 ```
 
-#### For Production:
+#### For Production
 
 ```bash
 cp .env.production.example .env.production
@@ -259,26 +259,31 @@ The automated deployment script performs these steps:
 ### Service-Specific Health Checks
 
 **Bot Application:**
+
 ```bash
 curl http://localhost:8080/health
 ```
 
 **PostgreSQL:**
+
 ```bash
 docker exec shopogoda-db-prod pg_isready -U shopogoda
 ```
 
 **Redis:**
+
 ```bash
 docker exec shopogoda-redis-prod redis-cli ping
 ```
 
 **Prometheus:**
+
 ```bash
 curl http://localhost:9090/-/healthy
 ```
 
 **Grafana:**
+
 ```bash
 curl http://localhost:3000/api/health
 ```
@@ -287,24 +292,27 @@ curl http://localhost:3000/api/health
 
 After deployment, access:
 
-- **Bot Health**: http://localhost:8080/health
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (admin / see GRAFANA_ADMIN_PASSWORD)
-- **Jaeger**: http://localhost:16686
+- **Bot Health**: <http://localhost:8080/health>
+- **Prometheus**: <http://localhost:9090>
+- **Grafana**: <http://localhost:3000> (admin / see GRAFANA_ADMIN_PASSWORD)
+- **Jaeger**: <http://localhost:16686>
 
 ### Service Logs
 
 **View all logs:**
+
 ```bash
 docker-compose -f docker/docker-compose.prod.yml logs -f
 ```
 
 **View specific service:**
+
 ```bash
 docker-compose -f docker/docker-compose.prod.yml logs -f bot
 ```
 
 **Last 100 lines:**
+
 ```bash
 docker-compose -f docker/docker-compose.prod.yml logs --tail=100 bot
 ```
@@ -318,6 +326,7 @@ docker-compose -f docker/docker-compose.prod.yml logs --tail=100 bot
 ```
 
 The script will:
+
 1. List available backups
 2. Allow selection (or use latest)
 3. Confirm rollback operation
@@ -342,7 +351,7 @@ docker-compose -f docker/docker-compose.prod.yml up -d
 
 Backups are stored in `backups/` directory:
 
-```
+```plaintext
 backups/
 ├── 20250101_120000/
 │   ├── containers.txt
@@ -353,11 +362,13 @@ backups/
 ```
 
 **List backups:**
+
 ```bash
 ls -la backups/
 ```
 
 **Manual backup cleanup:**
+
 ```bash
 find backups/ -type d -mtime +30 -exec rm -rf {} \;  # Remove backups older than 30 days
 ```
@@ -371,6 +382,7 @@ find backups/ -type d -mtime +30 -exec rm -rf {} \;  # Remove backups older than
 **Symptoms**: Container immediately exits or restarts continuously
 
 **Solutions**:
+
 ```bash
 # Check container logs
 docker logs shopogoda-bot-prod
@@ -387,6 +399,7 @@ docker exec shopogoda-bot-prod env
 **Symptoms**: Bot logs show "connection refused" or "authentication failed"
 
 **Solutions**:
+
 ```bash
 # Check database is running
 docker ps | grep postgres
@@ -403,6 +416,7 @@ docker exec shopogoda-bot-prod env | grep DB_
 **Symptoms**: Deployment fails during health check phase
 
 **Solutions**:
+
 ```bash
 # Check service health status
 docker inspect shopogoda-bot-prod | grep -A 10 Health
@@ -419,6 +433,7 @@ docker logs --tail=50 shopogoda-bot-prod
 **Symptoms**: "port is already allocated" error
 
 **Solutions**:
+
 ```bash
 # Find process using the port
 sudo lsof -i :8080
@@ -431,6 +446,7 @@ sudo lsof -i :8080
 **Symptoms**: "no space left on device" error
 
 **Solutions**:
+
 ```bash
 # Check disk usage
 df -h
@@ -453,6 +469,7 @@ LOG_LEVEL=debug
 ```
 
 Then restart services:
+
 ```bash
 docker-compose -f docker/docker-compose.prod.yml restart bot
 ```
@@ -526,16 +543,19 @@ deploy:
 ### Regular Tasks
 
 **Daily:**
+
 - Monitor Grafana dashboards
 - Check health endpoints
 - Review error logs
 
 **Weekly:**
+
 - Review backup integrity
 - Check disk space usage
 - Update dependencies (via Dependabot PRs)
 
 **Monthly:**
+
 - Rotate credentials
 - Review and clean old backups
 - Performance analysis
@@ -543,11 +563,13 @@ deploy:
 ### Updates
 
 **Minor Updates:**
+
 ```bash
 ./scripts/deploy/deploy.sh production v1.2.4
 ```
 
 **Major Updates:**
+
 1. Deploy to staging first
 2. Run full test suite
 3. Verify all functionality
@@ -561,7 +583,7 @@ For deployment issues:
 1. Check this documentation
 2. Review logs: `docker-compose logs`
 3. Run health check: `./scripts/deploy/health-check.sh`
-4. Open issue: https://github.com/valpere/shopogoda/issues
+4. Open issue: <https://github.com/valpere/shopogoda/issues>
 
 ## Additional Resources
 

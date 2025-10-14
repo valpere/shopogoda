@@ -30,6 +30,7 @@ This guide provides step-by-step instructions for deploying the ShoPogoda Telegr
 | **Log Retention** | 1 hour | 3 days |
 
 **Overage Costs**:
+
 - Bandwidth: $20 per 100 GB
 - Compute: $20 per 100 GB-Hours
 
@@ -42,15 +43,15 @@ This guide provides step-by-step instructions for deploying the ShoPogoda Telegr
 ### Required Accounts
 
 1. **Vercel Account** (free forever)
-   - Sign up at: https://vercel.com/signup
+   - Sign up at: <https://vercel.com/signup>
    - GitHub OAuth recommended for easy deployment
 
 2. **Supabase Account** (PostgreSQL - free forever)
-   - Sign up at: https://supabase.com
+   - Sign up at: <https://supabase.com>
    - Free tier: 500MB database, 50K MAU, unlimited API requests
 
 3. **Upstash Account** (Redis - free forever)
-   - Sign up at: https://upstash.com
+   - Sign up at: <https://upstash.com>
    - Free tier: 10,000 commands/day, 256MB storage
 
 4. **Telegram Bot Token**
@@ -58,13 +59,14 @@ This guide provides step-by-step instructions for deploying the ShoPogoda Telegr
    - Save your token (format: `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`)
 
 5. **OpenWeatherMap API Key**
-   - Sign up at: https://openweathermap.org
+   - Sign up at: <https://openweathermap.org>
    - Free tier: 60 calls/minute, 1M calls/month
 
 ### Required Tools
 
 - **Git** installed locally
 - **Vercel CLI** (optional, for local development):
+
   ```bash
   npm install -g vercel
   ```
@@ -75,7 +77,7 @@ This guide provides step-by-step instructions for deploying the ShoPogoda Telegr
 
 ### 1.1 Create Supabase Project
 
-1. Go to https://supabase.com/dashboard
+1. Go to <https://supabase.com/dashboard>
 2. Click **"New project"**
 3. Configure project:
    - **Name**: `shopogoda-db`
@@ -101,11 +103,13 @@ Password: [your password]
 ```
 
 4. Construct connection string:
+
 ```bash
 postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:6543/postgres
 ```
 
 **Why Connection Pooler?**
+
 - Serverless functions create many short-lived connections
 - Connection pooler (port 6543) handles this efficiently
 - Direct connections (port 5432) will cause "too many connections" errors
@@ -114,6 +118,7 @@ postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:6543/postgres
 
 1. Go to **SQL Editor**
 2. Enable required extensions:
+
 ```sql
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -130,7 +135,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 ### 2.1 Create Redis Database
 
-1. Go to https://console.upstash.com/redis
+1. Go to <https://console.upstash.com/redis>
 2. Click **"Create database"**
 3. Configure database:
    - **Name**: `shopogoda-redis`
@@ -155,6 +160,7 @@ REDIS_URL=rediss://default:[PASSWORD]@us1-adapted-bat-12345.upstash.io:6379
 ```
 
 **Why REST API?**
+
 - Serverless-friendly (connection pooling not needed)
 - Lower latency for short-lived functions
 - Better for Vercel's execution model
@@ -460,7 +466,7 @@ git push origin main
 
 ### 4.1 Deploy from GitHub (Recommended)
 
-1. Go to https://vercel.com/new
+1. Go to <https://vercel.com/new>
 2. Click **"Import Git Repository"**
 3. Select your `shopogoda` repository
 4. Configure project:
@@ -502,12 +508,15 @@ git push origin main
 ### 4.3 Get Deployment URL
 
 After deployment completes:
+
 1. Vercel provides a URL: `https://shopogoda-xyz123.vercel.app`
 2. Copy this URL
 3. Update `WEBHOOK_URL` environment variable with this URL + `/webhook`:
+
    ```
    https://shopogoda-xyz123.vercel.app/webhook
    ```
+
 4. Redeploy again
 
 ### 4.4 Alternative: Deploy with Vercel CLI
@@ -600,6 +609,7 @@ curl https://shopogoda-xyz123.vercel.app/health
 3. Send `/start`
 
 **Expected response**:
+
 ```
 🌤 Welcome to ShoPogoda!
 
@@ -623,6 +633,7 @@ I'm your personal weather assistant...
 5. View real-time logs
 
 **Example logs**:
+
 ```
 2025-10-04T12:34:56.000Z INFO Bot initialized successfully
 2025-10-04T12:35:12.000Z INFO Processing update from user 123456
@@ -666,6 +677,7 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
 ### 7.1 View Logs
 
 **Real-time logs**:
+
 1. Vercel dashboard → **Deployments** → [your deployment]
 2. Click **"View Function Logs"**
 3. Filter by function: `/api/webhook`
@@ -690,6 +702,7 @@ logger := logtail.New(os.Getenv("LOGTAIL_TOKEN"))
    - **Build Minutes**: Should stay under 6,000/month
 
 **Typical weather bot usage** (500 active users):
+
 - Bandwidth: ~5-10 GB/month
 - Function Invocations: ~20-30 GB-Hours/month
 - Well within free tier! ✅
@@ -701,6 +714,7 @@ logger := logtail.New(os.Getenv("LOGTAIL_TOKEN"))
 1. Use **Edge Middleware** for faster responses:
 
 Create `middleware.ts`:
+
 ```typescript
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -743,6 +757,7 @@ export function middleware(request: NextRequest) {
    - **API requests**: Unlimited on free tier
 
 **Optimize database**:
+
 ```sql
 -- Check table sizes
 SELECT
@@ -768,6 +783,7 @@ CREATE INDEX IF NOT EXISTS idx_alerts_user_triggered ON environmental_alerts(use
    - **Latency**: Should be <50ms
 
 **Optimize Redis usage**:
+
 - Use appropriate TTLs (10 min for weather, 1 hour for forecasts)
 - Avoid storing large objects (>1MB)
 - Use compression for large values
@@ -781,6 +797,7 @@ CREATE INDEX IF NOT EXISTS idx_alerts_user_triggered ON environmental_alerts(use
 **Cause**: Using direct PostgreSQL connection (port 5432) instead of connection pooler.
 
 **Fix**:
+
 1. Use port **6543** (connection pooler), not 5432
 2. Update `DB_PORT` environment variable
 3. Redeploy
@@ -788,16 +805,19 @@ CREATE INDEX IF NOT EXISTS idx_alerts_user_triggered ON environmental_alerts(use
 ### Issue: Webhook Not Receiving Updates
 
 **Check webhook status**:
+
 ```bash
 curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 ```
 
 **Common causes**:
+
 1. **Wrong URL**: Ensure `WEBHOOK_URL` matches your Vercel deployment
 2. **SSL certificate**: Vercel provides auto-SSL, should work by default
 3. **Firewall**: Telegram servers must be able to reach your Vercel function
 
 **Fix**:
+
 ```bash
 # Delete old webhook
 curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook"
@@ -813,6 +833,7 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
 **Cause**: Long-running operations exceed Vercel's 10-second serverless function limit (Hobby plan).
 
 **Fix**:
+
 1. **Optimize database queries**: Add indexes, use connection pooling
 2. **Cache aggressively**: Use Redis for weather data (10 min TTL)
 3. **Upgrade to Pro**: 60-second timeout ($20/month)
@@ -825,6 +846,7 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
 **Expected behavior**: Vercel serverless functions "sleep" when idle and "wake up" on request.
 
 **Mitigation**:
+
 1. **Accept it**: Most users won't notice 2-5s delay occasionally
 2. **Keep warm**: Use cron job to ping every 5 minutes (costs extra bandwidth)
 3. **Edge functions**: Migrate to Vercel Edge Functions (faster cold starts)
@@ -832,11 +854,13 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
 ### Issue: Environment Variables Not Loading
 
 **Check**:
+
 1. Vercel dashboard → **Settings** → **Environment Variables**
 2. Ensure variables are set for **Production** environment
 3. After changes, **redeploy** (changes don't apply to existing deployments)
 
 **Verify**:
+
 ```go
 // Add debug logging in api/webhook.go
 log.Info().Str("webhook_url", os.Getenv("WEBHOOK_URL")).Msg("Environment check")
@@ -849,6 +873,7 @@ log.Info().Str("webhook_url", os.Getenv("WEBHOOK_URL")).Msg("Environment check")
 **Cause**: Migrations not running on first deployment.
 
 **Fix**:
+
 1. Connect to Supabase via SQL Editor
 2. Manually run migrations from `internal/models/migrate.go`
 3. Or use migration script:
@@ -866,11 +891,13 @@ go run cmd/migrate/main.go
 ### Stay Within Free Tier
 
 **Monitor usage weekly**:
+
 1. Vercel dashboard → **Usage**
 2. Check bandwidth and function invocations
 3. Set up alerts when approaching limits
 
 **Typical costs** (500 active users):
+
 - **Bandwidth**: 5-10 GB/month (10% of free tier)
 - **Function Invocations**: 20-30 GB-Hours/month (30% of free tier)
 - **Supabase**: 50 MB database (10% of free tier)
@@ -893,11 +920,13 @@ go run cmd/migrate/main.go
 ### Database Cost Optimization
 
 **Supabase free tier (500 MB)**:
+
 - Delete old weather data (>30 days): ~10 MB/month saved
 - Compress large JSON fields: ~20% size reduction
 - Use JSONB instead of TEXT for metadata: ~30% size reduction
 
 **Example cleanup script**:
+
 ```sql
 -- Delete weather data older than 30 days
 DELETE FROM weather_data WHERE created_at < NOW() - INTERVAL '30 days';
@@ -910,6 +939,7 @@ VACUUM FULL;
 ```
 
 **Schedule cleanup** (run weekly via cron):
+
 ```bash
 # Add to vercel.json
 {
@@ -938,6 +968,7 @@ VACUUM FULL;
 | **Best For** | Low traffic, webhook bots | 24/7 bots, global edge | Hobby projects | Enterprise, high traffic |
 
 **Recommendation**:
+
 - **Vercel**: Best for **low-traffic bots** (< 1000 users) with occasional usage
 - **Fly.io**: Best for **24/7 bots** with consistent traffic and no cold starts
 - **Railway**: Best for **quick prototypes** and hobby projects
@@ -950,22 +981,26 @@ VACUUM FULL;
 ### 1. Enable Monitoring
 
 **Vercel Analytics** (free):
+
 1. Dashboard → **Analytics**
 2. View real-time traffic, function performance
 
 **Uptime Monitoring** (external, free):
-- Use UptimeRobot: https://uptimerobot.com
+
+- Use UptimeRobot: <https://uptimerobot.com>
 - Monitor `/health` endpoint every 5 minutes
 - Get alerts on downtime
 
 ### 2. Set Up Alerts
 
 **Vercel Integrations**:
+
 1. Dashboard → **Integrations**
 2. Add **Slack** or **Discord** for deployment notifications
 3. Get alerts on build failures, deployment errors
 
 **Supabase Alerts**:
+
 1. Dashboard → **Project Settings** → **Alerts**
 2. Enable alerts for:
    - Database size approaching limit
@@ -974,10 +1009,12 @@ VACUUM FULL;
 ### 3. Backup Strategy
 
 **Database backups** (Supabase automatic):
+
 - Supabase provides automatic daily backups (7-day retention on free tier)
 - Manual backups: Dashboard → **Database** → **Backups** → **Create Backup**
 
 **Export data** (optional):
+
 ```bash
 # Backup via pg_dump
 pg_dump "postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:6543/postgres" > backup.sql
@@ -989,11 +1026,13 @@ psql "postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:6543/postgres" < bac
 ### 4. CI/CD Pipeline
 
 Vercel provides automatic CI/CD:
+
 1. Push to `main` → Auto-deploy to production
 2. Push to feature branch → Auto-deploy to preview URL
 3. Pull request → Auto-deploy to unique preview URL
 
 **Add tests before deploy** (optional):
+
 ```json
 // vercel.json
 {
@@ -1005,6 +1044,7 @@ Vercel provides automatic CI/CD:
 ### 5. Performance Testing
 
 **Load test your bot**:
+
 ```bash
 # Send 100 concurrent requests
 for i in {1..100}; do
@@ -1016,6 +1056,7 @@ wait
 ```
 
 **Expected results**:
+
 - Response time: < 1 second (after cold start)
 - Success rate: > 99%
 - No errors in logs
@@ -1034,12 +1075,14 @@ wait
 ### 2. Database Security
 
 **Supabase**:
+
 - ✅ Use **connection pooler** (port 6543) for serverless
 - ✅ Enable **SSL mode** (`require` or `verify-full`)
 - ✅ Use **Row Level Security (RLS)** for sensitive tables
 - ✅ Restrict **IP allowlist** (optional, not needed for most cases)
 
 **Example RLS policy**:
+
 ```sql
 -- Only allow users to see their own data
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -1052,6 +1095,7 @@ CREATE POLICY users_policy ON users
 ### 3. Redis Security
 
 **Upstash**:
+
 - ✅ Use **TLS** (enabled by default)
 - ✅ Use **strong password** (auto-generated by Upstash)
 - ✅ Restrict **access via REST API token** (recommended)
@@ -1064,6 +1108,7 @@ CREATE POLICY users_policy ON users
 - ✅ **Use HTTPS** for webhook (required by Telegram)
 
 **Example webhook verification**:
+
 ```go
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Verify Telegram secret token
@@ -1091,21 +1136,24 @@ You now have a **completely free** ShoPogoda deployment on Vercel with:
 - ✅ **Total Cost**: **$0/month** forever (within free tier limits)
 
 **Perfect for**:
+
 - Personal weather bots
 - Educational projects
 - Low-traffic production bots (< 1000 users)
 - Rapid prototyping and testing
 
 **Next steps**:
+
 1. Monitor usage weekly (stay within free tier)
 2. Set up uptime monitoring (UptimeRobot)
 3. Configure custom domain (optional)
 4. Add more features and commands!
 
 For questions or issues, check:
-- **Vercel Docs**: https://vercel.com/docs
-- **Supabase Docs**: https://supabase.com/docs
-- **Upstash Docs**: https://docs.upstash.com
-- **ShoPogoda Issues**: https://github.com/valpere/shopogoda/issues
+
+- **Vercel Docs**: <https://vercel.com/docs>
+- **Supabase Docs**: <https://supabase.com/docs>
+- **Upstash Docs**: <https://docs.upstash.com>
+- **ShoPogoda Issues**: <https://github.com/valpere/shopogoda/issues>
 
 Happy deploying! 🚀

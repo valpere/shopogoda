@@ -18,28 +18,28 @@ Complete guide for deploying ShoPogoda to Google Cloud Platform using free tier 
 
 ### Recommended Architecture (Free Tier Optimized)
 
-```
+```plaintext
 ┌─────────────────────────────────────────────────────────────┐
-│                     GCP Deployment                           │
+│                     GCP Deployment                          │
 ├─────────────────────────────────────────────────────────────┤
-│  Cloud Run (Bot Application)                                 │
+│  Cloud Run (Bot Application)                                │
 │  ├── Serverless, scales to zero                             │
 │  ├── HTTPS endpoint for Telegram webhook                    │
 │  ├── Health checks at /health                               │
 │  └── Auto-scaling based on requests                         │
 ├─────────────────────────────────────────────────────────────┤
-│  Cloud SQL for PostgreSQL                                    │
+│  Cloud SQL for PostgreSQL                                   │
 │  ├── Managed PostgreSQL 15                                  │
 │  ├── Automatic backups                                      │
 │  ├── Private IP or Cloud SQL Proxy                          │
-│  └── db-f1-micro instance (within free trial)              │
+│  └── db-f1-micro instance (within free trial)               │
 ├─────────────────────────────────────────────────────────────┤
-│  Redis Options                                               │
-│  ├── Option 1: Memorystore Redis (paid, $25/month)         │
-│  ├── Option 2: Upstash Redis (free tier, recommended)      │
-│  └── Option 3: Redis on Compute Engine (free e2-micro)     │
+│  Redis Options                                              │
+│  ├── Option 1: Memorystore Redis (paid, $25/month)          │
+│  ├── Option 2: Upstash Redis (free tier, recommended)       │
+│  └── Option 3: Redis on Compute Engine (free e2-micro)      │
 ├─────────────────────────────────────────────────────────────┤
-│  Supporting Services                                         │
+│  Supporting Services                                        │
 │  ├── Artifact Registry (container images)                   │
 │  ├── Cloud Build (CI/CD)                                    │
 │  ├── Secret Manager (API keys)                              │
@@ -50,6 +50,7 @@ Complete guide for deploying ShoPogoda to Google Cloud Platform using free tier 
 ### Free Tier Optimization
 
 **Services Used:**
+
 - ✅ **Cloud Run**: Free tier (2M requests/month)
 - ✅ **Cloud SQL**: Free trial credit ($300 for 90 days)
 - ✅ **Artifact Registry**: Free (0.5 GB)
@@ -59,6 +60,7 @@ Complete guide for deploying ShoPogoda to Google Cloud Platform using free tier 
 ## Cost Estimation
 
 ### Month 1-3 (Free Trial with $300 credit)
+
 - Cloud Run: $0 (within free tier)
 - Cloud SQL (db-f1-micro): ~$15/month (paid from free credits)
 - Artifact Registry: $0 (within free tier)
@@ -66,12 +68,14 @@ Complete guide for deploying ShoPogoda to Google Cloud Platform using free tier 
 - **Total: $0** (using free credits)
 
 ### After Free Trial (Month 4+)
+
 - Cloud Run: $0-2/month (likely $0 with webhook mode)
 - Cloud SQL (db-f1-micro): $15/month
 - Redis (Upstash free): $0
 - **Total: ~$15/month**
 
 ### Cost Optimization Options:
+
 1. **Use SQLite instead of Cloud SQL**: $0/month (store in Cloud Storage)
 2. **Use Firestore for user data**: $0/month (within free tier)
 3. **Self-hosted Redis on e2-micro**: $0/month (within always-free tier)
@@ -94,6 +98,7 @@ Complete guide for deploying ShoPogoda to Google Cloud Platform using free tier 
 ### 2. Install Google Cloud CLI
 
 **Linux:**
+
 ```bash
 # Download and install
 curl https://sdk.cloud.google.com | bash
@@ -106,6 +111,7 @@ gcloud init
 ```
 
 **macOS:**
+
 ```bash
 # Install via Homebrew
 brew install google-cloud-sdk
@@ -115,6 +121,7 @@ gcloud init
 ```
 
 **Authentication:**
+
 ```bash
 # Login to GCP
 gcloud auth login
@@ -135,6 +142,7 @@ gcloud services enable \
 ### 3. Get API Keys
 
 **Telegram Bot Token:**
+
 ```bash
 # Message @BotFather on Telegram:
 /newbot
@@ -142,6 +150,7 @@ gcloud services enable \
 ```
 
 **OpenWeatherMap API Key:**
+
 ```bash
 # Sign up at https://openweathermap.org/api
 # Free tier: 60 calls/minute, 1M calls/month
@@ -162,6 +171,7 @@ cd shopogoda
 ```
 
 The script will:
+
 1. Create Cloud SQL PostgreSQL instance
 2. Set up Artifact Registry
 3. Build and push Docker image
@@ -170,6 +180,7 @@ The script will:
 6. Display bot URL
 
 **Note:** You'll be prompted for:
+
 - GCP Project ID
 - Telegram Bot Token
 - OpenWeatherMap API Key
@@ -218,12 +229,14 @@ echo "Connection Name: $DB_CONNECTION_NAME"
 ### Step 2: Set Up Redis (Upstash Free Tier)
 
 **Why Upstash:**
+
 - Free tier: 10,000 commands/day
 - Global low-latency
 - Serverless (pay only for usage)
 - Perfect for Cloud Run
 
 **Setup:**
+
 ```bash
 # 1. Sign up at https://upstash.com (free, no credit card)
 # 2. Create database:
@@ -363,6 +376,7 @@ curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo"
 ### Environment Variables
 
 **Required:**
+
 ```bash
 TELEGRAM_BOT_TOKEN     # From Secret Manager
 OPENWEATHER_API_KEY    # From Secret Manager
@@ -377,6 +391,7 @@ REDIS_PASSWORD         # From Secret Manager (if using Upstash)
 ```
 
 **Optional:**
+
 ```bash
 BOT_WEBHOOK_URL        # ${SERVICE_URL}/webhook
 LOG_LEVEL              # info
@@ -526,11 +541,13 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 ### Monitoring Dashboard
 
 **Cloud Console:**
+
 1. Go to Cloud Run → shopogoda-bot
 2. View tabs: Metrics, Logs, Revisions
 3. Monitor: Request count, latency, error rate, CPU/Memory usage
 
 **Set Up Alerts:**
+
 ```bash
 # Create alert for error rate
 gcloud alpha monitoring policies create \
@@ -627,6 +644,7 @@ gcloud run services logs tail shopogoda-bot --region=$REGION
 ### Performance Optimization
 
 **Reduce cold starts:**
+
 ```bash
 # Set minimum instances (costs more but faster)
 gcloud run services update shopogoda-bot \
@@ -635,6 +653,7 @@ gcloud run services update shopogoda-bot \
 ```
 
 **Increase resources:**
+
 ```bash
 # For high-traffic bots
 gcloud run services update shopogoda-bot \
@@ -661,11 +680,13 @@ gcloud run services update shopogoda-bot \
 ### 2. Alternative: Serverless Architecture (Lower Cost)
 
 **Use Firestore instead of Cloud SQL:**
+
 - Free tier: 1 GB storage, 50K reads, 20K writes/day
 - No database instance costs
 - Requires code changes to use NoSQL
 
 **Use Cloud Storage for SQLite:**
+
 - Free tier: 5 GB storage
 - Mount SQLite file from Cloud Storage
 - No database costs at all
