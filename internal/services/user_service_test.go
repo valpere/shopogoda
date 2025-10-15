@@ -1013,3 +1013,293 @@ func TestUserService_IncrementWeatherRequestCounter(t *testing.T) {
 	// Note: Expire error test case is skipped due to limitations in redismock library
 	// The Expire().SetErr() doesn't properly propagate errors in the mock
 }
+func TestUserService_ChangeUserRole(t *testing.T) {
+	t.Run("successful role change", func(t *testing.T) {
+		mockDB := helpers.NewMockDB(t)
+		defer mockDB.Close()
+		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
+		logger := zerolog.Nop()
+		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+		adminID := int64(100)
+		targetUserID := int64(200)
+
+		// Mock admin user retrieval
+		adminRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		adminRows.AddRow(
+			adminID, "admin", "Admin", "User", "en",
+			true, models.RoleAdmin, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(adminID, 1).
+			WillReturnRows(adminRows)
+
+		// Mock target user retrieval
+		targetRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		targetRows.AddRow(
+			targetUserID, "target", "Target", "User", "en",
+			true, models.RoleUser, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(targetUserID, 1).
+			WillReturnRows(targetRows)
+
+		// Expect cache invalidation
+		mockRedis.Mock.ExpectDel("user:200").SetVal(1)
+
+		// Mock role update
+		mockDB.Mock.ExpectBegin()
+		mockDB.Mock.ExpectExec(`UPDATE "users" SET "role"=\$1,"updated_at"=\$2 WHERE id = \$3`).
+			WithArgs(models.RoleModerator, helpers.AnyTime{}, targetUserID).
+			WillReturnResult(helpers.NewResult(1, 1))
+		mockDB.Mock.ExpectCommit()
+
+		err := service.ChangeUserRole(context.Background(), adminID, targetUserID, models.RoleModerator)
+
+		assert.NoError(t, err)
+		mockDB.ExpectationsWereMet(t)
+		mockRedis.ExpectationsWereMet(t)
+	})
+
+	t.Run("non-admin cannot change role", func(t *testing.T) {
+		mockDB := helpers.NewMockDB(t)
+		defer mockDB.Close()
+		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
+		logger := zerolog.Nop()
+		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+		nonAdminID := int64(100)
+		targetUserID := int64(200)
+
+		// Mock non-admin user retrieval
+		userRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		userRows.AddRow(
+			nonAdminID, "user", "Regular", "User", "en",
+			true, models.RoleUser, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(nonAdminID, 1).
+			WillReturnRows(userRows)
+
+		err := service.ChangeUserRole(context.Background(), nonAdminID, targetUserID, models.RoleModerator)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "insufficient permissions")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("cannot change own role", func(t *testing.T) {
+		mockDB := helpers.NewMockDB(t)
+		defer mockDB.Close()
+		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
+		logger := zerolog.Nop()
+		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+		adminID := int64(100)
+
+		// Mock admin user retrieval
+		adminRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		adminRows.AddRow(
+			adminID, "admin", "Admin", "User", "en",
+			true, models.RoleAdmin, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(adminID, 1).
+			WillReturnRows(adminRows)
+
+		err := service.ChangeUserRole(context.Background(), adminID, adminID, models.RoleUser)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot change your own role")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("invalid role value", func(t *testing.T) {
+		mockDB := helpers.NewMockDB(t)
+		defer mockDB.Close()
+		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
+		logger := zerolog.Nop()
+		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+		adminID := int64(100)
+		targetUserID := int64(200)
+
+		// Mock admin user retrieval
+		adminRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		adminRows.AddRow(
+			adminID, "admin", "Admin", "User", "en",
+			true, models.RoleAdmin, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(adminID, 1).
+			WillReturnRows(adminRows)
+
+		err := service.ChangeUserRole(context.Background(), adminID, targetUserID, models.UserRole(99))
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid role value")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("cannot demote last admin", func(t *testing.T) {
+		mockDB := helpers.NewMockDB(t)
+		defer mockDB.Close()
+		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
+		logger := zerolog.Nop()
+		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+		adminID := int64(100)
+		targetAdminID := int64(200)
+
+		// Mock admin user retrieval
+		adminRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		adminRows.AddRow(
+			adminID, "admin1", "Admin", "One", "en",
+			true, models.RoleAdmin, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(adminID, 1).
+			WillReturnRows(adminRows)
+
+		// Mock target admin retrieval
+		targetRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		targetRows.AddRow(
+			targetAdminID, "admin2", "Admin", "Two", "en",
+			true, models.RoleAdmin, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(targetAdminID, 1).
+			WillReturnRows(targetRows)
+
+		// Mock admin count query - only 1 admin
+		mockDB.Mock.ExpectQuery(`SELECT count\(\*\) FROM "users" WHERE role = \$1`).
+			WithArgs(models.RoleAdmin).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+		err := service.ChangeUserRole(context.Background(), adminID, targetAdminID, models.RoleModerator)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot demote the last admin")
+		mockDB.ExpectationsWereMet(t)
+	})
+
+	t.Run("target user not found", func(t *testing.T) {
+		mockDB := helpers.NewMockDB(t)
+		defer mockDB.Close()
+		mockRedis := helpers.NewMockRedis()
+		metricsCollector := metrics.New()
+		startTime := time.Now()
+		logger := zerolog.Nop()
+		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+		adminID := int64(100)
+		targetUserID := int64(999)
+
+		// Mock admin user retrieval
+		adminRows := mockDB.Mock.NewRows([]string{
+			"id", "username", "first_name", "last_name", "language",
+			"is_active", "role", "created_at", "updated_at",
+		})
+		adminRows.AddRow(
+			adminID, "admin", "Admin", "User", "en",
+			true, models.RoleAdmin, time.Now(), time.Now(),
+		)
+
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(adminID, 1).
+			WillReturnRows(adminRows)
+
+		// Mock target user not found
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+			WithArgs(targetUserID, 1).
+			WillReturnError(errors.New("record not found"))
+
+		err := service.ChangeUserRole(context.Background(), adminID, targetUserID, models.RoleModerator)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get target user")
+		mockDB.ExpectationsWereMet(t)
+	})
+}
+
+func TestUserService_GetRoleName(t *testing.T) {
+	mockDB := helpers.NewMockDB(t)
+	defer mockDB.Close()
+	mockRedis := helpers.NewMockRedis()
+	metricsCollector := metrics.New()
+	startTime := time.Now()
+	logger := zerolog.Nop()
+	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+	tests := []struct {
+		name     string
+		role     models.UserRole
+		expected string
+	}{
+		{
+			name:     "User role",
+			role:     models.RoleUser,
+			expected: "User",
+		},
+		{
+			name:     "Moderator role",
+			role:     models.RoleModerator,
+			expected: "Moderator",
+		},
+		{
+			name:     "Admin role",
+			role:     models.RoleAdmin,
+			expected: "Admin",
+		},
+		{
+			name:     "Unknown role",
+			role:     models.UserRole(99),
+			expected: "Unknown",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := service.GetRoleName(tt.role)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

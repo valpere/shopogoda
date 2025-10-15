@@ -371,6 +371,84 @@ func (s *UserService) UpdateUserLanguage(ctx context.Context, userID int64, lang
 	})
 }
 
+// ChangeUserRole changes a user's role with validation and audit logging
+// Returns error if validation fails or role change is not permitted
+func (s *UserService) ChangeUserRole(ctx context.Context, adminID, targetUserID int64, newRole models.UserRole) error {
+	// Validate that the admin user exists and has admin permissions
+	adminUser, err := s.GetUser(ctx, adminID)
+	if err != nil {
+		return fmt.Errorf("failed to get admin user: %w", err)
+	}
+	if adminUser.Role != models.RoleAdmin {
+		return fmt.Errorf("insufficient permissions: only admins can change roles")
+	}
+
+	// Prevent self-role changes
+	if adminID == targetUserID {
+		return fmt.Errorf("cannot change your own role")
+	}
+
+	// Validate new role value
+	if newRole < models.RoleUser || newRole > models.RoleAdmin {
+		return fmt.Errorf("invalid role value: %d", newRole)
+	}
+
+	// Get target user and their current role
+	targetUser, err := s.GetUser(ctx, targetUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get target user: %w", err)
+	}
+
+	// Prevent demoting the last admin
+	if targetUser.Role == models.RoleAdmin && newRole != models.RoleAdmin {
+		var adminCount int64
+		if err := s.db.WithContext(ctx).Model(&models.User{}).Where("role = ?", models.RoleAdmin).Count(&adminCount).Error; err != nil {
+			return fmt.Errorf("failed to count admins: %w", err)
+		}
+		if adminCount <= 1 {
+			return fmt.Errorf("cannot demote the last admin")
+		}
+	}
+
+	// Invalidate cache BEFORE update
+	cacheKey := fmt.Sprintf("user:%d", targetUserID)
+	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
+		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before role change")
+	}
+
+	// Update the role in database
+	err = s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", targetUserID).Update("role", newRole).Error
+	if err != nil {
+		return fmt.Errorf("failed to update role: %w", err)
+	}
+
+	// Audit log
+	s.logger.Info().
+		Int64("admin_id", adminID).
+		Str("admin_username", adminUser.Username).
+		Int64("target_user_id", targetUserID).
+		Str("target_username", targetUser.Username).
+		Int("old_role", int(targetUser.Role)).
+		Int("new_role", int(newRole)).
+		Msg("User role changed")
+
+	return nil
+}
+
+// GetRoleName returns the human-readable name for a role
+func (s *UserService) GetRoleName(role models.UserRole) string {
+	switch role {
+	case models.RoleUser:
+		return "User"
+	case models.RoleModerator:
+		return "Moderator"
+	case models.RoleAdmin:
+		return "Admin"
+	default:
+		return "Unknown"
+	}
+}
+
 // IncrementMessageCounter increments the 24-hour message counter in Redis
 func (s *UserService) IncrementMessageCounter(ctx context.Context) error {
 	key := "stats:messages_24h"

@@ -664,6 +664,8 @@ func (h *CommandHandler) HandleCallback(bot *gotgbot.Bot, ctx *ext.Context) erro
 		return h.handleExportCallback(bot, ctx, subAction, parts[2:])
 	case "back":
 		return h.handleBackCallback(bot, ctx, subAction, parts[2:])
+	case "role":
+		return h.handleRoleCallback(bot, ctx, subAction, parts[2:])
 	}
 
 	return nil
@@ -2390,28 +2392,26 @@ func (h *CommandHandler) listUserSubscriptions(bot *gotgbot.Bot, ctx *ext.Contex
 
 // Additional admin handlers
 func (h *CommandHandler) showRecentUsers(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	stats, err := h.services.User.GetUserStatistics(context.Background())
 	if err != nil {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get user statistics. Please try again.", nil)
 		return sendErr
 	}
 
-	text := fmt.Sprintf(`👥 *Recent User Activity*
+	title := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_title")
+	newUsers := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_new_users", stats.NewUsers24h)
+	totalActive := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_total_active", stats.ActiveUsers)
+	totalUsers := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_total_users", stats.TotalUsers)
+	locations := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_locations", stats.LocationsSaved)
+	alerts := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_alerts", stats.ActiveAlerts)
+	messages := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_messages", stats.Messages24h)
+	weatherReq := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_weather_requests", stats.WeatherRequests24h)
 
-📈 New Users (24h): %d
-👤 Total Active Users: %d
-📊 Total Users: %d
-📍 Locations Saved: %d
-⚠️ Active Alerts: %d
-💬 Messages (24h): %d
-🌤️ Weather Requests (24h): %d`,
-		stats.NewUsers24h,
-		stats.ActiveUsers,
-		stats.TotalUsers,
-		stats.LocationsSaved,
-		stats.ActiveAlerts,
-		stats.Messages24h,
-		stats.WeatherRequests24h)
+	text := fmt.Sprintf("%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
+		title, newUsers, totalActive, totalUsers, locations, alerts, messages, weatherReq)
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
@@ -2420,67 +2420,75 @@ func (h *CommandHandler) showRecentUsers(bot *gotgbot.Bot, ctx *ext.Context) err
 }
 
 func (h *CommandHandler) showUserRoles(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	stats, err := h.services.User.GetUserStatistics(context.Background())
 	if err != nil {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get user statistics. Please try again.", nil)
 		return sendErr
 	}
 
-	text := fmt.Sprintf(`👥 *User Roles Overview*
+	title := h.services.Localization.T(context.Background(), userLang, "admin_roles_overview_title")
+	admins := h.services.Localization.T(context.Background(), userLang, "admin_roles_overview_admins", stats.AdminCount)
+	moderators := h.services.Localization.T(context.Background(), userLang, "admin_roles_overview_moderators", stats.ModeratorCount)
+	users := h.services.Localization.T(context.Background(), userLang, "admin_roles_overview_users", stats.TotalUsers-stats.AdminCount-stats.ModeratorCount)
+	total := h.services.Localization.T(context.Background(), userLang, "admin_roles_overview_total", stats.TotalUsers)
 
-🔧 Administrators: %d
-⚙️ Moderators: %d
-👤 Regular Users: %d
-📊 Total Users: %d`,
-		stats.AdminCount,
-		stats.ModeratorCount,
-		stats.TotalUsers-stats.AdminCount-stats.ModeratorCount,
-		stats.TotalUsers)
+	text := fmt.Sprintf("%s\n\n%s\n%s\n%s\n%s", title, admins, moderators, users, total)
+
+	// Add interactive buttons for Promote/Demote
+	promoteBtn := h.services.Localization.T(context.Background(), userLang, "admin_roles_promote_btn")
+	demoteBtn := h.services.Localization.T(context.Background(), userLang, "admin_roles_demote_btn")
+
+	keyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{
+				{Text: promoteBtn, CallbackData: "admin_role_promote"},
+				{Text: demoteBtn, CallbackData: "admin_role_demote"},
+			},
+		},
+	}
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
-		ParseMode: "Markdown",
+		ParseMode:   "Markdown",
+		ReplyMarkup: keyboard,
 	})
 	return err
 }
 
 func (h *CommandHandler) showDetailedStats(bot *gotgbot.Bot, ctx *ext.Context) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
 	systemStats, err := h.services.User.GetSystemStats(context.Background())
 	if err != nil {
 		_, sendErr := bot.SendMessage(ctx.EffectiveChat.Id, "❌ Failed to get system statistics. Please try again.", nil)
 		return sendErr
 	}
 
-	text := fmt.Sprintf(`📊 *Detailed System Statistics*
+	title := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_title")
+	usersSection := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_users_section")
+	usersTotal := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_users_total", systemStats.TotalUsers)
+	usersActive := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_users_active", systemStats.ActiveUsers)
+	usersNew := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_users_new", systemStats.NewUsers24h)
+	locationsSection := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_locations_section")
+	locationsCount := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_locations_count", systemStats.UsersWithLocation)
+	subsSection := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_subscriptions_section")
+	subsActive := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_subscriptions_active", systemStats.ActiveSubscriptions)
+	alertsConfigured := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_alerts_configured", systemStats.AlertsConfigured)
+	perfSection := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_performance_section")
+	messagesSent := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_messages_sent", systemStats.MessagesSent24h)
+	weatherReqs := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_weather_requests", systemStats.WeatherRequests24h)
+	cacheHitRate := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_cache_hit_rate", systemStats.CacheHitRate)
+	avgRespTime := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_avg_response_time", systemStats.AvgResponseTime)
+	uptime := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_uptime", systemStats.Uptime)
 
-*👥 Users:*
-• Total: %d
-• Active: %d
-• New (24h): %d
-
-*📍 Locations:*
-• Users with Location: %d
-
-*🔔 Subscriptions & Alerts:*
-• Active Subscriptions: %d
-• Configured Alerts: %d
-
-*📈 Performance:*
-• Messages Sent (24h): %d
-• Weather Requests (24h): %d
-• Cache Hit Rate: %.1f%%
-• Avg Response Time: %dms
-• Uptime: %.1f%%`,
-		systemStats.TotalUsers,
-		systemStats.ActiveUsers,
-		systemStats.NewUsers24h,
-		systemStats.UsersWithLocation,
-		systemStats.ActiveSubscriptions,
-		systemStats.AlertsConfigured,
-		systemStats.MessagesSent24h,
-		systemStats.WeatherRequests24h,
-		systemStats.CacheHitRate,
-		systemStats.AvgResponseTime,
-		systemStats.Uptime)
+	text := fmt.Sprintf("%s\n\n%s\n%s\n%s\n%s\n\n%s\n%s\n\n%s\n%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s",
+		title, usersSection, usersTotal, usersActive, usersNew,
+		locationsSection, locationsCount,
+		subsSection, subsActive, alertsConfigured,
+		perfSection, messagesSent, weatherReqs, cacheHitRate, avgRespTime, uptime)
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
 		ParseMode: "Markdown",
