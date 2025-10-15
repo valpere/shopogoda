@@ -27,7 +27,8 @@ func NewMockDB(t *testing.T) *MockDB {
 	require.NoError(t, err)
 
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn: db,
+		Conn:                 db,
+		PreferSimpleProtocol: true, // Disable prepared statement cache for mocking
 	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 		NowFunc: func() time.Time {

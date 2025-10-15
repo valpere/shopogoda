@@ -1,29 +1,57 @@
 package helpers
 
 import (
+	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 )
 
+// MockBotClient is a mock BotClient for testing bot operations
+type MockBotClient struct{}
+
+func (m *MockBotClient) RequestWithContext(ctx context.Context, token string, method string, params map[string]string, data map[string]gotgbot.NamedReader, opts *gotgbot.RequestOpts) (json.RawMessage, error) {
+	// Return a mock successful response for all requests
+	mockResponse := `{"message_id":1,"date":1234567890,"chat":{"id":12345,"type":"private"},"text":"test"}`
+	return json.RawMessage(mockResponse), nil
+}
+
+func (m *MockBotClient) TimeoutContext(opts *gotgbot.RequestOpts) (context.Context, context.CancelFunc) {
+	return context.WithCancel(context.Background())
+}
+
+func (m *MockBotClient) GetAPIURL(opts *gotgbot.RequestOpts) string {
+	return "https://api.telegram.org"
+}
+
+func (m *MockBotClient) FileURL(token string, tgFilePath string, opts *gotgbot.RequestOpts) string {
+	return "https://api.telegram.org/file/bot" + token + "/" + tgFilePath
+}
+
 // MockBot creates a minimal gotgbot.Bot instance for testing
 type MockBot struct {
 	Bot *gotgbot.Bot
 }
 
-// NewMockBot creates a new mock bot instance
+// NewMockBot creates a new mock bot instance with a mock BotClient
 func NewMockBot() *MockBot {
-	return &MockBot{
-		Bot: &gotgbot.Bot{
-			User: gotgbot.User{
-				Id:        12345,
-				IsBot:     true,
-				FirstName: "TestBot",
-				Username:  "test_bot",
-			},
-			Token: "test_token",
+	bot := &gotgbot.Bot{
+		User: gotgbot.User{
+			Id:        12345,
+			IsBot:     true,
+			FirstName: "TestBot",
+			Username:  "test_bot",
 		},
+		Token: "test_token",
+	}
+
+	// Set the mock BotClient
+	bot.BotClient = &MockBotClient{}
+
+	return &MockBot{
+		Bot: bot,
 	}
 }
 
