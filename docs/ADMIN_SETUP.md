@@ -69,7 +69,7 @@ Query the `users` table to see all registered users and their IDs.
 
    Expected output:
    ```
-        id     | username | first_name | last_name | role |     created_at
+       id     | username | first_name | last_name | role |     created_at
    -----------+----------+------------+-----------+------+---------------------
     123456789 | johndoe  | John       | Doe       |    3 | 2025-01-14 10:30:00
    ```

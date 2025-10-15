@@ -75,11 +75,13 @@ Thumbs.db
 config.yaml
 config.yml
 
-*.diff
-
 locales/all.ods
 locales/bak/
 
 # Replit
 .replit_history
 
+*.diff
+*.tmp
+*.bak
+*.backup
