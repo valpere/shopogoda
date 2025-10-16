@@ -266,7 +266,7 @@ func TestIntegration_UserServiceUpdateUserSettings(t *testing.T) {
 
 		// Update settings
 		settings := map[string]interface{}{
-			"language": "uk",
+			"language": "uk-UA",
 			"timezone": "Europe/Kyiv",
 			"units":    "metric",
 		}
@@ -278,7 +278,7 @@ func TestIntegration_UserServiceUpdateUserSettings(t *testing.T) {
 		var updated models.User
 		err = suite.db.Where("id = ?", userID).First(&updated).Error
 		require.NoError(t, err)
-		assert.Equal(t, "uk", updated.Language)
+		assert.Equal(t, "uk-UA", updated.Language)
 		assert.Equal(t, "Europe/Kyiv", updated.Timezone)
 		assert.Equal(t, "metric", updated.Units)
 	})
@@ -516,11 +516,11 @@ func TestIntegration_UserServiceCacheInvalidation(t *testing.T) {
 		// Get user to populate cache
 		retrieved, err := suite.userService.GetUser(ctx, userID)
 		require.NoError(t, err)
-		assert.Equal(t, "en", retrieved.Language)
+		assert.Equal(t, "en-US", retrieved.Language)
 
 		// Update settings
 		settings := map[string]interface{}{
-			"language": "uk",
+			"language": "uk-UA",
 		}
 		err = suite.userService.UpdateUserSettings(ctx, userID, settings)
 		require.NoError(t, err)
@@ -533,7 +533,7 @@ func TestIntegration_UserServiceCacheInvalidation(t *testing.T) {
 			var cachedUser models.User
 			err = json.Unmarshal([]byte(cached), &cachedUser)
 			require.NoError(t, err)
-			assert.Equal(t, "uk", cachedUser.Language)
+			assert.Equal(t, "uk-UA", cachedUser.Language)
 		}
 	})
 }

@@ -42,7 +42,7 @@ func TestFormatWeatherMessage(t *testing.T) {
 				Pressure:    1013,
 				WindSpeed:   5.5,
 			},
-			language: "en",
+			language: "en-US",
 		},
 		{
 			name: "Weather with high values",
@@ -58,7 +58,7 @@ func TestFormatWeatherMessage(t *testing.T) {
 				Pressure:    1020,
 				WindSpeed:   25.5,
 			},
-			language: "en",
+			language: "en-US",
 		},
 		{
 			name: "Weather with low values",
@@ -74,7 +74,7 @@ func TestFormatWeatherMessage(t *testing.T) {
 				Pressure:    995,
 				WindSpeed:   15.0,
 			},
-			language: "en",
+			language: "en-US",
 		},
 	}
 
@@ -136,7 +136,7 @@ func TestFormatForecastMessage(t *testing.T) {
 					},
 				},
 			},
-			language: "en",
+			language: "en-US",
 		},
 	}
 
@@ -178,7 +178,7 @@ func TestFormatAirQualityMessage(t *testing.T) {
 				PM25: 8.0,
 				PM10: 12.0,
 			},
-			language: "en",
+			language: "en-US",
 		},
 		{
 			name: "Hazardous air quality",
@@ -190,7 +190,7 @@ func TestFormatAirQualityMessage(t *testing.T) {
 				PM25: 250.0,
 				PM10: 300.0,
 			},
-			language: "en",
+			language: "en-US",
 		},
 	}
 

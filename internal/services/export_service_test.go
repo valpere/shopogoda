@@ -199,7 +199,7 @@ func TestExportService_ExportToJSON(t *testing.T) {
 	}
 
 	t.Run("export to JSON successfully", func(t *testing.T) {
-		buffer, filename, err := service.exportToJSON(exportData, "en")
+		buffer, filename, err := service.exportToJSON(exportData, "en-US")
 
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -244,7 +244,7 @@ func TestExportService_ExportToCSV(t *testing.T) {
 	}
 
 	t.Run("export to CSV successfully", func(t *testing.T) {
-		buffer, filename, err := service.exportToCSV(exportData, "en")
+		buffer, filename, err := service.exportToCSV(exportData, "en-US")
 
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -276,7 +276,7 @@ func TestExportService_ExportToCSV(t *testing.T) {
 			Type:          ExportTypeSubscriptions,
 		}
 
-		buffer, filename, err := service.exportToCSV(exportDataWithSubs, "en")
+		buffer, filename, err := service.exportToCSV(exportDataWithSubs, "en-US")
 
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -318,7 +318,7 @@ func TestExportService_ExportToCSV(t *testing.T) {
 			Type:            ExportTypeAlerts,
 		}
 
-		buffer, filename, err := service.exportToCSV(exportDataWithAlerts, "en")
+		buffer, filename, err := service.exportToCSV(exportDataWithAlerts, "en-US")
 
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -378,7 +378,7 @@ func TestExportService_ExportToTXT(t *testing.T) {
 	}
 
 	t.Run("export to TXT successfully", func(t *testing.T) {
-		buffer, filename, err := service.exportToTXT(exportData, "en")
+		buffer, filename, err := service.exportToTXT(exportData, "en-US")
 
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -413,7 +413,7 @@ func TestExportService_ExportToTXT(t *testing.T) {
 			Type:         ExportTypeAlerts,
 		}
 
-		buffer, filename, err := service.exportToTXT(exportDataWithAlerts, "en")
+		buffer, filename, err := service.exportToTXT(exportDataWithAlerts, "en-US")
 
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -447,7 +447,7 @@ func TestExportService_ExportToTXT(t *testing.T) {
 			Type:            ExportTypeAlerts,
 		}
 
-		buffer, filename, err := service.exportToTXT(exportDataWithTriggered, "en")
+		buffer, filename, err := service.exportToTXT(exportDataWithTriggered, "en-US")
 
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -493,7 +493,7 @@ func TestExportService_ExportUserData(t *testing.T) {
 			userID,
 			ExportTypeWeatherData,
 			ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 
 		require.NoError(t, err)
@@ -515,7 +515,7 @@ func TestExportService_ExportUserData(t *testing.T) {
 			userID,
 			ExportType("invalid"),
 			ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 
 		assert.Error(t, err)
@@ -545,7 +545,7 @@ func TestExportService_ExportUserData(t *testing.T) {
 			userID,
 			ExportTypeWeatherData,
 			ExportFormat("invalid"),
-			"en",
+			"en-US",
 		)
 
 		assert.Error(t, err)
@@ -578,7 +578,7 @@ func TestExportService_ExportUserData(t *testing.T) {
 			userID,
 			ExportTypeAlerts,
 			ExportFormatCSV,
-			"en",
+			"en-US",
 		)
 
 		require.NoError(t, err)
@@ -605,7 +605,7 @@ func TestExportService_ExportUserData(t *testing.T) {
 			userID,
 			ExportTypeSubscriptions,
 			ExportFormatTXT,
-			"en",
+			"en-US",
 		)
 
 		require.NoError(t, err)
@@ -647,7 +647,7 @@ func TestExportService_ExportUserData(t *testing.T) {
 			userID,
 			ExportTypeAll,
 			ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 
 		require.NoError(t, err)
@@ -665,7 +665,7 @@ func TestExportService_ExportUserData(t *testing.T) {
 			userID,
 			ExportTypeWeatherData,
 			ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 
 		assert.Error(t, err)

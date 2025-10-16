@@ -1032,7 +1032,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1046,7 +1046,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetUserID, "target", "Target", "User", "en",
+			targetUserID, "target", "Target", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 
@@ -1089,7 +1089,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		userRows.AddRow(
-			nonAdminID, "user", "Regular", "User", "en",
+			nonAdminID, "user", "Regular", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 
@@ -1121,7 +1121,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1154,7 +1154,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1187,7 +1187,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin1", "Admin", "One", "en",
+			adminID, "admin1", "Admin", "One", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1201,7 +1201,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetAdminID, "admin2", "Admin", "Two", "en",
+			targetAdminID, "admin2", "Admin", "Two", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1239,7 +1239,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 

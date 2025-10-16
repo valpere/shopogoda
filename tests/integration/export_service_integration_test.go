@@ -155,7 +155,7 @@ func TestIntegration_ExportServiceExportWeatherDataJSON(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeWeatherData,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -201,7 +201,7 @@ func TestIntegration_ExportServiceExportSubscriptionsCSV(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeSubscriptions,
 			services.ExportFormatCSV,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -255,7 +255,7 @@ func TestIntegration_ExportServiceExportAlertsTXT(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeAlerts,
 			services.ExportFormatTXT,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -321,7 +321,7 @@ func TestIntegration_ExportServiceExportAllData(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeAll,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -354,7 +354,7 @@ func TestIntegration_ExportServiceEmptyData(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeWeatherData,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -382,7 +382,7 @@ func TestIntegration_ExportServiceNonExistentUser(t *testing.T) {
 			99999999,
 			services.ExportTypeWeatherData,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		assert.Error(t, err)
 		assert.Nil(t, buffer)
@@ -452,7 +452,7 @@ func TestIntegration_ExportServiceDateFiltering(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeWeatherData,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 
@@ -471,7 +471,7 @@ func TestIntegration_ExportServiceDateFiltering(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeAlerts,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 
@@ -507,7 +507,7 @@ func TestIntegration_ExportServiceAllFormats(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeWeatherData,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -525,7 +525,7 @@ func TestIntegration_ExportServiceAllFormats(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeWeatherData,
 			services.ExportFormatCSV,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -544,7 +544,7 @@ func TestIntegration_ExportServiceAllFormats(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeWeatherData,
 			services.ExportFormatTXT,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 		assert.NotNil(t, buffer)
@@ -570,7 +570,7 @@ func TestIntegration_ExportServiceFilenameFormat(t *testing.T) {
 			suite.testUserID,
 			services.ExportTypeWeatherData,
 			services.ExportFormatJSON,
-			"en",
+			"en-US",
 		)
 		require.NoError(t, err)
 
