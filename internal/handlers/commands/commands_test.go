@@ -414,3 +414,366 @@ func TestParseLocationFromArgs(t *testing.T) {
 		})
 	}
 }
+
+func TestGetThresholdOptions(t *testing.T) {
+	handler := &CommandHandler{}
+
+	tests := []struct {
+		name         string
+		alertType    models.AlertType
+		currentValue float64
+		validate     func(*testing.T, []float64)
+	}{
+		{
+			name:         "Temperature alert - returns fixed range -20 to 40",
+			alertType:    models.AlertTemperature,
+			currentValue: 25.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// Should generate values from -20 to 40 in 5° steps around current
+				assert.Contains(t, options, 25.0) // current value
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, -20.0)
+					assert.LessOrEqual(t, opt, 40.0)
+				}
+			},
+		},
+		{
+			name:         "Humidity alert - returns fixed range 20 to 90",
+			alertType:    models.AlertHumidity,
+			currentValue: 60.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 60.0) // current value
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 20.0)
+					assert.LessOrEqual(t, opt, 90.0)
+				}
+			},
+		},
+		{
+			name:         "Pressure alert - returns fixed range 960 to 1040",
+			alertType:    models.AlertPressure,
+			currentValue: 1013.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 1013.0) // current value
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 960.0)
+					assert.LessOrEqual(t, opt, 1040.0)
+				}
+			},
+		},
+		{
+			name:         "Wind Speed alert - returns fixed range 5 to 50",
+			alertType:    models.AlertWindSpeed,
+			currentValue: 25.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 25.0) // current value
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 5.0)
+					assert.LessOrEqual(t, opt, 50.0)
+				}
+			},
+		},
+		{
+			name:         "UV Index alert - returns fixed range 1 to 11",
+			alertType:    models.AlertUVIndex,
+			currentValue: 6.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 6.0) // current value
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 1.0)
+					assert.LessOrEqual(t, opt, 11.0)
+				}
+			},
+		},
+		{
+			name:         "Air Quality alert - returns fixed range 50 to 300",
+			alertType:    models.AlertAirQuality,
+			currentValue: 150.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 150.0) // current value
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 50.0)
+					assert.LessOrEqual(t, opt, 300.0)
+				}
+			},
+		},
+		{
+			name:         "Default alert type - uses defaultMinFactor (0.8) and defaultMaxFactor (1.2)",
+			alertType:    models.AlertType(999), // Unknown type
+			currentValue: 100.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// Should generate ±20% range: 80-120
+				assert.Contains(t, options, 100.0) // current value
+				for _, opt := range options {
+					// min = 100 * 0.8 = 80, max = 100 * 1.2 = 120
+					assert.GreaterOrEqual(t, opt, 80.0)
+					assert.LessOrEqual(t, opt, 120.0)
+				}
+			},
+		},
+		{
+			name:         "Rain alert type",
+			alertType:    models.AlertRain,
+			currentValue: 50.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// Uses default case: ±20%
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 40.0)  // 50 * 0.8
+					assert.LessOrEqual(t, opt, 60.0)     // 50 * 1.2
+				}
+			},
+		},
+		{
+			name:         "Snow alert type",
+			alertType:    models.AlertSnow,
+			currentValue: 30.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// Uses default case: ±20%
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 24.0)  // 30 * 0.8
+					assert.LessOrEqual(t, opt, 36.0)     // 30 * 1.2
+				}
+			},
+		},
+		{
+			name:         "Storm alert type",
+			alertType:    models.AlertStorm,
+			currentValue: 75.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// Uses default case: ±20%
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 60.0)  // 75 * 0.8
+					assert.LessOrEqual(t, opt, 90.0)     // 75 * 1.2
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := handler.getThresholdOptions(tt.alertType, tt.currentValue)
+			tt.validate(t, options)
+		})
+	}
+}
+
+func TestGenerateRangeOptions(t *testing.T) {
+	handler := &CommandHandler{}
+
+	tests := []struct {
+		name     string
+		min      float64
+		max      float64
+		step     float64
+		current  float64
+		validate func(*testing.T, []float64)
+	}{
+		{
+			name:    "Basic range centered on current - uses thresholdOptionsRange (3)",
+			min:     0.0,
+			max:     100.0,
+			step:    10.0,
+			current: 50.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// Should have thresholdOptionsRange (3) values below, current, and 3 above
+				assert.Contains(t, options, 50.0) // current
+				assert.Contains(t, options, 40.0) // -1 step
+				assert.Contains(t, options, 30.0) // -2 steps
+				assert.Contains(t, options, 20.0) // -3 steps
+				assert.Contains(t, options, 60.0) // +1 step
+				assert.Contains(t, options, 70.0) // +2 steps
+				assert.Contains(t, options, 80.0) // +3 steps
+				assert.Equal(t, 7, len(options))  // 3 below + current + 3 above
+			},
+		},
+		{
+			name:    "Range near minimum boundary",
+			min:     10.0,
+			max:     100.0,
+			step:    5.0,
+			current: 15.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 15.0) // current
+				// Should include 10.0 (min) but not go below
+				assert.Contains(t, options, 10.0)
+				// All values should be within bounds
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 10.0)
+					assert.LessOrEqual(t, opt, 100.0)
+				}
+			},
+		},
+		{
+			name:    "Range near maximum boundary",
+			min:     0.0,
+			max:     100.0,
+			step:    10.0,
+			current: 95.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// With current=95, step=10, we'd want: 65, 75, 85, 95, 105, 115, 125
+				// But only 65-100 are valid (within min-max bounds)
+				// This gives us only 4 values (65, 75, 85, 95), which is < minThresholdOptions (5)
+				// So fallback triggers: generates from min in steps until maxThresholdOptions
+				assert.GreaterOrEqual(t, len(options), minThresholdOptions)
+				assert.LessOrEqual(t, len(options), maxThresholdOptions)
+				// All values should be within bounds
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 0.0)
+					assert.LessOrEqual(t, opt, 100.0)
+				}
+			},
+		},
+		{
+			name:    "Small range triggers fallback - uses minThresholdOptions (5) and maxThresholdOptions (7)",
+			min:     10.0,
+			max:     20.0,
+			step:    10.0,
+			current: 15.0,
+			validate: func(t *testing.T, options []float64) {
+				// With step=10, only 10, 20 would be in range around 15
+				// Should fallback to generating minThresholdOptions (5) from min
+				assert.NotEmpty(t, options)
+				assert.GreaterOrEqual(t, len(options), 2)
+				assert.LessOrEqual(t, len(options), maxThresholdOptions)
+				// Should include both bounds
+				assert.Contains(t, options, 10.0)
+				assert.Contains(t, options, 20.0)
+			},
+		},
+		{
+			name:    "Very small range with 1.0 step",
+			min:     1.0,
+			max:     5.0,
+			step:    1.0,
+			current: 3.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				// With step=1, should have 1,2,3,4,5 (5 values)
+				assert.GreaterOrEqual(t, len(options), minThresholdOptions)
+				assert.Contains(t, options, 3.0)
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 1.0)
+					assert.LessOrEqual(t, opt, 5.0)
+				}
+			},
+		},
+		{
+			name:    "Large step size",
+			min:     0.0,
+			max:     200.0,
+			step:    50.0,
+			current: 100.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 100.0) // current
+				// With step=50: 0, 50, 100, 150, 200 possible
+				// Around 100: 50(-1), 100(0), 150(+1) at minimum
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 0.0)
+					assert.LessOrEqual(t, opt, 200.0)
+				}
+			},
+		},
+		{
+			name:    "Fractional steps",
+			min:     0.0,
+			max:     10.0,
+			step:    0.5,
+			current: 5.0,
+			validate: func(t *testing.T, options []float64) {
+				assert.NotEmpty(t, options)
+				assert.Contains(t, options, 5.0) // current
+				// Should have 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5
+				assert.GreaterOrEqual(t, len(options), 5)
+				for _, opt := range options {
+					assert.GreaterOrEqual(t, opt, 0.0)
+					assert.LessOrEqual(t, opt, 10.0)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := handler.generateRangeOptions(tt.min, tt.max, tt.step, tt.current)
+			tt.validate(t, options)
+		})
+	}
+}
+
+func TestGetOperatorSymbol(t *testing.T) {
+	handler := &CommandHandler{}
+
+	tests := []struct {
+		name     string
+		operator string
+		expected string
+	}{
+		{"Greater than", "gt", ">"},
+		{"Greater than or equal", "gte", "≥"},
+		{"Less than", "lt", "<"},
+		{"Less than or equal", "lte", "≤"},
+		{"Equal", "eq", "="},
+		{"Unknown operator returns as-is", "unknown", "unknown"},
+		{"Empty string returns as-is", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getOperatorSymbol(tt.operator)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetAlertTypeTextLocalized(t *testing.T) {
+	logger := helpers.NewSilentTestLogger()
+	locService := services.NewLocalizationService(logger)
+	svc := &services.Services{
+		Localization: locService,
+	}
+
+	handler := &CommandHandler{
+		services: svc,
+		logger:   logger,
+	}
+
+	tests := []struct {
+		name      string
+		alertType models.AlertType
+		language  string
+		expected  string
+	}{
+		{"Temperature in English", models.AlertTemperature, "en-US", "alert_type_temperature"},
+		{"Temperature in Ukrainian", models.AlertTemperature, "uk-UA", "alert_type_temperature"},
+		{"Humidity in English", models.AlertHumidity, "en-US", "alert_type_humidity"},
+		{"Pressure in German", models.AlertPressure, "de-DE", "alert_type_pressure"},
+		{"Wind Speed in French", models.AlertWindSpeed, "fr-FR", "alert_type_wind_speed"},
+		{"UV Index in Spanish", models.AlertUVIndex, "es-ES", "alert_type_uv_index"},
+		{"Air Quality in English", models.AlertAirQuality, "en-US", "alert_type_air_quality"},
+		{"Rain in English", models.AlertRain, "en-US", "alert_type_rain"},
+		{"Snow in English", models.AlertSnow, "en-US", "alert_type_snow"},
+		{"Storm in English", models.AlertStorm, "en-US", "alert_type_storm"},
+		{"Unknown type in English", models.AlertType(999), "en-US", "alert_type_unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.getAlertTypeTextLocalized(tt.alertType, tt.language)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
