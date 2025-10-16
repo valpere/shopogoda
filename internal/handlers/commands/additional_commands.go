@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/valpere/shopogoda/internal"
 	"github.com/valpere/shopogoda/internal/models"
+	"github.com/valpere/shopogoda/internal/services"
 	"github.com/valpere/shopogoda/internal/version"
 )
 
@@ -130,47 +132,76 @@ func (h *CommandHandler) ListSubscriptions(bot *gotgbot.Bot, ctx *ext.Context) e
 // ListAlerts command handler
 func (h *CommandHandler) ListAlerts(bot *gotgbot.Bot, ctx *ext.Context) error {
 	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
 
 	alerts, err := h.services.Alert.GetUserAlerts(context.Background(), userID)
 	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user alerts")
 		return err
 	}
 
 	if len(alerts) == 0 {
+		noAlertsText := h.services.Localization.T(context.Background(), userLang, "alerts_none")
+		createBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_create_btn")
+
 		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-			"📋 You have no active alerts.\n\nUse /addalert to create weather alerts!",
+			noAlertsText,
 			&gotgbot.SendMessageOpts{
+				ParseMode: "Markdown",
 				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
 					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
-						{{Text: "⚠️ Create Alert", CallbackData: "alert_create_temperature"}},
+						{{Text: createBtnText, CallbackData: "alert_create_temperature"}},
 					},
 				},
 			})
 		return err
 	}
 
-	text := "📋 *Your Active Alerts:*\n\n"
+	// Get user info for location
+	user, err := h.services.User.GetUser(context.Background(), userID)
+	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user")
+		return err
+	}
+
+	titleText := h.services.Localization.T(context.Background(), userLang, "alerts_list_title")
+	text := fmt.Sprintf("*%s*\n\n", titleText)
 	var keyboard [][]gotgbot.InlineKeyboardButton
 
 	for i, alert := range alerts {
 		alertTypeText := h.getAlertTypeText(alert.AlertType)
 
-		text += fmt.Sprintf("%d. **%s Alert**\n", i+1, alertTypeText)
-		text += fmt.Sprintf("   📍 Location: %s\n", alert.User.LocationName)
-		text += fmt.Sprintf("   ⚡ Condition: %s %.1f\n", alert.Condition, alert.Threshold)
-		text += fmt.Sprintf("   🔔 Status: %s\n", h.getAlertStatusText(alert.IsActive))
-		text += "\n"
+		// Parse condition JSON to get operator
+		var condition services.AlertCondition
+		if err := json.Unmarshal([]byte(alert.Condition), &condition); err == nil {
+			operatorSymbol := h.getOperatorSymbol(condition.Operator)
+
+			text += fmt.Sprintf("%d. *%s Alert*\n", i+1, alertTypeText)
+			if user.LocationName != "" {
+				text += fmt.Sprintf("   📍 %s\n", user.LocationName)
+			}
+			text += fmt.Sprintf("   ⚡ Trigger: %s %.1f\n", operatorSymbol, alert.Threshold)
+			statusText := h.services.Localization.T(context.Background(), userLang, "alerts_status_active")
+			if !alert.IsActive {
+				statusText = h.services.Localization.T(context.Background(), userLang, "alerts_status_inactive")
+			}
+			text += fmt.Sprintf("   🔔 %s\n\n", statusText)
+		}
+
+		editBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_edit_btn")
+		removeBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_remove_btn")
 
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-			{Text: fmt.Sprintf("⚙️ Edit %s", alertTypeText),
-				CallbackData: fmt.Sprintf("alert_edit_%s", alert.ID)},
-			{Text: "🗑️ Remove",
-				CallbackData: fmt.Sprintf("alert_remove_%s", alert.ID)},
+			{Text: fmt.Sprintf("%s %s", editBtnText, alertTypeText),
+				CallbackData: fmt.Sprintf("alerts_edit_%s", alert.ID)},
+			{Text: removeBtnText,
+				CallbackData: fmt.Sprintf("alerts_remove_%s", alert.ID)},
 		})
 	}
 
+	addNewBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_add_new_btn")
 	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
-		{Text: "➕ Add New Alert", CallbackData: "alert_create_temperature"},
+		{Text: addNewBtnText, CallbackData: "alert_create_temperature"},
 	})
 
 	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{

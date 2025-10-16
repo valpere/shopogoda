@@ -874,7 +874,7 @@ func (s *WeatherService) GetLocalizedLocationName(
 
 ## AlertService
 
-Manages custom weather alerts and threshold monitoring.
+Manages custom weather alerts and threshold monitoring with comprehensive UI for editing and management.
 
 ### Constructor
 
@@ -899,33 +899,46 @@ func (s *AlertService) CreateAlert(
 
 **Alert Types:**
 
-- `AlertTypeTemperature` - Temperature threshold
-- `AlertTypeHumidity` - Humidity threshold
-- `AlertTypeWindSpeed` - Wind speed threshold
-- `AlertTypeAQI` - Air quality index threshold
+- `AlertTemperature` - Temperature threshold alerts
+- `AlertHumidity` - Humidity percentage alerts
+- `AlertPressure` - Atmospheric pressure alerts
+- `AlertWindSpeed` - Wind speed alerts
+- `AlertUVIndex` - UV index alerts
+- `AlertAirQuality` - Air quality index (AQI) alerts
+- `AlertRain` - Rainfall alerts
+- `AlertSnow` - Snowfall alerts
+- `AlertStorm` - Storm warnings
 
 **Condition Structure:**
 
 ```go
 type AlertCondition struct {
-    Operator string  // ">", "<", ">=", "<=", "=="
+    Operator string  // "gt", "lt", "eq", "gte", "lte"
     Value    float64
 }
 ```
+
+**Operator Codes:**
+
+- `"gt"` - Greater than (>)
+- `"gte"` - Greater than or equal (≥)
+- `"lt"` - Less than (<)
+- `"lte"` - Less than or equal (≤)
+- `"eq"` - Equal to (=)
 
 **Example:**
 
 ```go
 // Alert when temperature drops below 0°C
 condition := AlertCondition{
-    Operator: "<",
+    Operator: "lt",
     Value:    0.0,
 }
 
 alert, err := services.Alert.CreateAlert(
     ctx,
     userID,
-    models.AlertTypeTemperature,
+    models.AlertTemperature,
     condition,
 )
 if err != nil {
@@ -944,6 +957,29 @@ func (s *AlertService) GetUserAlerts(
     ctx context.Context,
     userID int64,
 ) ([]models.AlertConfig, error)
+```
+
+**Returns:** Array of AlertConfig with parsed conditions
+
+**Example:**
+
+```go
+alerts, err := services.Alert.GetUserAlerts(ctx, userID)
+if err != nil {
+    return fmt.Errorf("failed to get alerts: %w", err)
+}
+
+for _, alert := range alerts {
+    var condition services.AlertCondition
+    json.Unmarshal([]byte(alert.Condition), &condition)
+
+    fmt.Printf("Alert: %s %s %.1f (Active: %v)\n",
+        alert.AlertType,
+        condition.Operator,
+        alert.Threshold,
+        alert.IsActive,
+    )
+}
 ```
 
 #### CheckAlerts
@@ -999,10 +1035,40 @@ func (s *AlertService) UpdateAlert(
 
 **Updatable Fields:**
 
-- `condition_operator`
-- `condition_value`
-- `is_active`
-- `cooldown_minutes`
+- `threshold` - Alert threshold value
+- `condition` - Complete condition JSON string
+- `is_active` - Enable/disable alert
+- `cooldown_minutes` - Time between repeated alerts
+
+**Example:**
+
+```go
+// Update threshold
+updates := map[string]interface{}{
+    "threshold": 10.0,
+}
+
+err := services.Alert.UpdateAlert(ctx, userID, alertID, updates)
+
+// Update operator
+var condition services.AlertCondition
+json.Unmarshal([]byte(alert.Condition), &condition)
+condition.Operator = "gte"
+conditionJSON, _ := json.Marshal(condition)
+
+updates := map[string]interface{}{
+    "condition": string(conditionJSON),
+}
+
+err := services.Alert.UpdateAlert(ctx, userID, alertID, updates)
+
+// Toggle active state
+updates := map[string]interface{}{
+    "is_active": false,
+}
+
+err := services.Alert.UpdateAlert(ctx, userID, alertID, updates)
+```
 
 #### DeleteAlert
 
@@ -1016,6 +1082,8 @@ func (s *AlertService) DeleteAlert(
 ) error
 ```
 
+**Note:** This performs a soft delete by setting `is_active = false`. The alert configuration is preserved in the database for audit purposes.
+
 #### GetAlert
 
 Retrieves a specific alert by ID.
@@ -1026,6 +1094,211 @@ func (s *AlertService) GetAlert(
     userID int64,
     alertID uuid.UUID,
 ) (*models.AlertConfig, error)
+```
+
+**Returns:** AlertConfig with full details including condition JSON
+
+### Alert Handlers (Bot Commands)
+
+#### /alerts Command
+
+Lists all user alerts with edit/remove buttons.
+
+**Features:**
+
+- Displays alert type, location, trigger condition, and status
+- Localized UI based on user language
+- Interactive buttons for editing and removing alerts
+- Shows operator symbols (>, <, ≥, ≤, =) instead of codes
+- Button to add new alerts
+
+**Handler:** `ListAlerts(bot *gotgbot.Bot, ctx *ext.Context)`
+
+#### /removealert Command
+
+Removes an alert by ID via command.
+
+**Usage:** `/removealert <alert_id>`
+
+**Handler:** `RemoveAlert(bot *gotgbot.Bot, ctx *ext.Context)`
+
+### Interactive Alert Editing
+
+The bot provides a comprehensive callback-based UI for alert management:
+
+#### Edit Alert (alerts_edit_{alertID})
+
+Opens interactive editor showing:
+
+- Current alert settings (type, threshold, operator)
+- Smart threshold options based on alert type:
+  - **Temperature**: -20°C to 40°C in 5° increments
+  - **Humidity**: 20% to 90% in 10% increments
+  - **Pressure**: 960 to 1040 hPa in 10 hPa increments
+  - **Wind Speed**: 5 to 50 km/h in 5 km/h increments
+  - **UV Index**: 1 to 11
+  - **Air Quality**: 50 to 300 AQI in 50-unit increments
+- Options to change operator, toggle active state, or go back
+
+**Handler:** `editAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string)`
+
+#### Update Threshold (alerts_update_{alertID}_{threshold})
+
+Updates the alert threshold value.
+
+**Handler:** `updateAlertThreshold(bot *gotgbot.Bot, ctx *ext.Context, alertID string, thresholdStr string)`
+
+#### Change Operator (alerts_operator_{alertID})
+
+Shows operator selection menu with descriptions:
+
+- `>` (Greater than)
+- `≥` (Greater than or equal)
+- `<` (Less than)
+- `≤` (Less than or equal)
+- `=` (Equal to)
+
+**Handler:** `showOperatorOptions(bot *gotgbot.Bot, ctx *ext.Context, alertID string)`
+
+#### Set Operator (alerts_setoperator_{alertID}_{operator})
+
+Applies the selected operator to the alert.
+
+**Handler:** `updateAlertOperator(bot *gotgbot.Bot, ctx *ext.Context, alertID string, operator string)`
+
+#### Toggle Alert (alerts_toggle_{alertID})
+
+Toggles alert between active and inactive states.
+
+**Handler:** `toggleAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string)`
+
+#### Remove Alert (alerts_remove_{alertID})
+
+Removes alert with confirmation message and navigation options.
+
+**Handler:** `removeAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string)`
+
+#### List Alerts (alerts_list)
+
+Shows all user alerts (callback version).
+
+**Handler:** `listUserAlerts(bot *gotgbot.Bot, ctx *ext.Context)`
+
+### Helper Functions
+
+#### getOperatorSymbol
+
+Converts operator codes to user-friendly symbols.
+
+```go
+func (h *CommandHandler) getOperatorSymbol(operator string) string
+```
+
+**Mapping:**
+
+- `"gt"` → `">"`
+- `"gte"` → `"≥"`
+- `"lt"` → `"<"`
+- `"lte"` → `"≤"`
+- `"eq"` → `"="`
+
+#### getAlertTypeTextLocalized
+
+Returns localized alert type names.
+
+```go
+func (h *CommandHandler) getAlertTypeTextLocalized(
+    alertType models.AlertType,
+    language string,
+) string
+```
+
+**Localization Keys:**
+
+- `alert_type_temperature`
+- `alert_type_humidity`
+- `alert_type_pressure`
+- `alert_type_wind_speed`
+- `alert_type_uv_index`
+- `alert_type_air_quality`
+- `alert_type_rain`
+- `alert_type_snow`
+- `alert_type_storm`
+- `alert_type_unknown`
+
+### Callback Routing
+
+All alert callbacks are routed through `handleAlertsCallback`:
+
+```go
+func (h *CommandHandler) handleAlertsCallback(
+    bot *gotgbot.Bot,
+    ctx *ext.Context,
+    action string,
+    params []string,
+) error
+```
+
+**Supported Actions:**
+
+- `list` - List all alerts
+- `edit` - Edit alert settings
+- `remove` - Delete alert
+- `update` - Update threshold
+- `operator` - Show operator options
+- `setoperator` - Apply operator
+- `toggle` - Toggle active state
+
+**Callback Data Format:** `alerts_{action}_{param1}_{param2}`
+
+**Examples:**
+
+- `alerts_list`
+- `alerts_edit_a1b2c3d4-e5f6-7890-abcd-ef1234567890`
+- `alerts_remove_a1b2c3d4-e5f6-7890-abcd-ef1234567890`
+- `alerts_update_a1b2c3d4-e5f6-7890-abcd-ef1234567890_25.5`
+- `alerts_setoperator_a1b2c3d4-e5f6-7890-abcd-ef1234567890_gte`
+- `alerts_toggle_a1b2c3d4-e5f6-7890-abcd-ef1234567890`
+
+### Localization Keys
+
+Required translation keys for alert handlers:
+
+```yaml
+# Alert list
+alerts_none: "You have no alerts configured."
+alerts_create_btn: "➕ Create Alert"
+alerts_list_title: "Your Active Alerts"
+alerts_status_active: "Active"
+alerts_status_inactive: "Inactive"
+alerts_edit_btn: "✏️ Edit"
+alerts_remove_btn: "🗑️ Remove"
+alerts_add_new_btn: "➕ Add New Alert"
+alerts_back_to_list: "🔙 Back to Alerts"
+
+# Alert editing
+alerts_edit_title: "Edit Alert"
+alerts_edit_current: "Current Setting: %s %s %.1f"
+alerts_edit_instruction: "Select a new threshold value:"
+alerts_change_operator: "🔄 Change Operator"
+alerts_toggle: "🔘 Toggle Active/Inactive"
+alerts_back: "🔙 Back"
+
+# Alert operators
+alerts_operator_title: "Select Comparison Operator"
+
+# Messages
+alerts_invalid_id: "❌ Invalid alert ID"
+alerts_delete_failed: "❌ Failed to delete alert"
+alerts_delete_success: "✅ Alert removed successfully"
+alerts_fetch_failed: "❌ Failed to fetch alerts"
+alerts_parse_error: "❌ Failed to parse alert condition"
+alerts_update_failed: "❌ Failed to update alert"
+alerts_update_success: "✅ Alert updated: threshold set to %.1f"
+alerts_operator_update_success: "✅ Operator changed to %s"
+alerts_toggle_failed: "❌ Failed to toggle alert"
+alerts_activated: "✅ Alert activated"
+alerts_deactivated: "✅ Alert deactivated"
 ```
 
 ---

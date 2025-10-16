@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -3009,12 +3010,413 @@ func (h *CommandHandler) handleHumidityAlert(bot *gotgbot.Bot, ctx *ext.Context,
 }
 
 func (h *CommandHandler) editAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string) error {
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "⚙️ Alert editing feature coming soon!", nil)
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	// Parse the alert UUID
+	alertUUID, err := uuid.Parse(alertID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Invalid alert UUID")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_invalid_id")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Get the alert
+	alert, err := h.services.Alert.GetAlert(context.Background(), userID, alertUUID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Int64("user_id", userID).Msg("Failed to get alert")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_fetch_failed")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Parse the current condition
+	var condition services.AlertCondition
+	if err := json.Unmarshal([]byte(alert.Condition), &condition); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to parse alert condition")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_parse_error")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Get alert type text
+	alertTypeText := h.getAlertTypeTextLocalized(alert.AlertType, userLang)
+	operatorSymbol := h.getOperatorSymbol(condition.Operator)
+
+	// Build the edit message
+	titleText := h.services.Localization.T(context.Background(), userLang, "alerts_edit_title")
+	currentText := h.services.Localization.T(context.Background(), userLang, "alerts_edit_current", alertTypeText, operatorSymbol, alert.Threshold)
+	instructionText := h.services.Localization.T(context.Background(), userLang, "alerts_edit_instruction")
+
+	message := fmt.Sprintf("*%s*\n\n%s\n\n%s", titleText, currentText, instructionText)
+
+	// Create keyboard with threshold options
+	var keyboard [][]gotgbot.InlineKeyboardButton
+
+	// Generate threshold options based on alert type
+	thresholds := h.getThresholdOptions(alert.AlertType, alert.Threshold)
+
+	for _, threshold := range thresholds {
+		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+			{Text: fmt.Sprintf("%s %.1f", operatorSymbol, threshold),
+				CallbackData: fmt.Sprintf("alerts_update_%s_%.1f", alert.ID, threshold)},
+		})
+	}
+
+	// Add operator change options
+	changeOperatorText := h.services.Localization.T(context.Background(), userLang, "alerts_change_operator")
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: changeOperatorText, CallbackData: fmt.Sprintf("alerts_operator_%s", alert.ID)},
+	})
+
+	// Add toggle active/inactive button
+	toggleText := h.services.Localization.T(context.Background(), userLang, "alerts_toggle")
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: toggleText, CallbackData: fmt.Sprintf("alerts_toggle_%s", alert.ID)},
+	})
+
+	// Add back button
+	backBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_back_to_list")
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: backBtnText, CallbackData: "alerts_list"},
+	})
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	// Answer the callback query
+	if ctx.CallbackQuery != nil {
+		_, _ = ctx.CallbackQuery.Answer(bot, nil)
+	}
+
+	return err
+}
+
+// getThresholdOptions generates threshold options based on alert type and current value
+func (h *CommandHandler) getThresholdOptions(alertType models.AlertType, currentValue float64) []float64 {
+	switch alertType {
+	case models.AlertTemperature:
+		// Temperature: -20 to 40°C in 5° increments
+		return h.generateRangeOptions(-20, 40, 5, currentValue)
+	case models.AlertHumidity:
+		// Humidity: 20 to 90% in 10% increments
+		return h.generateRangeOptions(20, 90, 10, currentValue)
+	case models.AlertPressure:
+		// Pressure: 960 to 1040 hPa in 10 hPa increments
+		return h.generateRangeOptions(960, 1040, 10, currentValue)
+	case models.AlertWindSpeed:
+		// Wind: 5 to 50 km/h in 5 km/h increments
+		return h.generateRangeOptions(5, 50, 5, currentValue)
+	case models.AlertUVIndex:
+		// UV: 1 to 11 in 1 increment
+		return h.generateRangeOptions(1, 11, 1, currentValue)
+	case models.AlertAirQuality:
+		// AQI: 50 to 300 in 50 increments
+		return h.generateRangeOptions(50, 300, 50, currentValue)
+	default:
+		// Default: show ±20% around current value
+		min := currentValue * 0.8
+		max := currentValue * 1.2
+		step := (max - min) / 5
+		return h.generateRangeOptions(min, max, step, currentValue)
+	}
+}
+
+// generateRangeOptions generates a range of values around the current value
+func (h *CommandHandler) generateRangeOptions(min, max, step, current float64) []float64 {
+	var options []float64
+
+	// Add 3 values below current, current, and 3 values above current
+	for i := -3; i <= 3; i++ {
+		value := current + float64(i)*step
+		if value >= min && value <= max {
+			options = append(options, value)
+		}
+	}
+
+	// Ensure we have at least 5 options
+	if len(options) < 5 {
+		options = []float64{}
+		for v := min; v <= max && len(options) < 7; v += step {
+			options = append(options, v)
+		}
+	}
+
+	return options
+}
+
+// updateAlertThreshold updates the threshold value of an alert
+func (h *CommandHandler) updateAlertThreshold(bot *gotgbot.Bot, ctx *ext.Context, alertID string, thresholdStr string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	// Parse alert UUID
+	alertUUID, err := uuid.Parse(alertID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Invalid alert UUID")
+		return err
+	}
+
+	// Parse threshold value
+	threshold, err := strconv.ParseFloat(thresholdStr, 64)
+	if err != nil {
+		h.logger.Error().Err(err).Str("threshold", thresholdStr).Msg("Invalid threshold value")
+		return err
+	}
+
+	// Update the alert
+	updates := map[string]interface{}{
+		"threshold": threshold,
+	}
+
+	err = h.services.Alert.UpdateAlert(context.Background(), userID, alertUUID, updates)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Failed to update alert")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_update_failed")
+		_, _ = bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Send success message
+	successMsg := h.services.Localization.T(context.Background(), userLang, "alerts_update_success", threshold)
+	backBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_back_to_list")
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, successMsg, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+				{{Text: backBtnText, CallbackData: "alerts_list"}},
+			},
+		},
+	})
+
+	if ctx.CallbackQuery != nil {
+		_, _ = ctx.CallbackQuery.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
+			Text: h.services.Localization.T(context.Background(), userLang, "alerts_update_success", threshold),
+		})
+	}
+
+	return err
+}
+
+// showOperatorOptions shows operator change options for an alert
+func (h *CommandHandler) showOperatorOptions(bot *gotgbot.Bot, ctx *ext.Context, alertID string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	titleText := h.services.Localization.T(context.Background(), userLang, "alerts_operator_title")
+	message := fmt.Sprintf("*%s*\n\n", titleText)
+
+	// Create keyboard with operator options
+	keyboard := [][]gotgbot.InlineKeyboardButton{
+		{{Text: "> (Greater than)", CallbackData: fmt.Sprintf("alerts_setoperator_%s_gt", alertID)}},
+		{{Text: "≥ (Greater than or equal)", CallbackData: fmt.Sprintf("alerts_setoperator_%s_gte", alertID)}},
+		{{Text: "< (Less than)", CallbackData: fmt.Sprintf("alerts_setoperator_%s_lt", alertID)}},
+		{{Text: "≤ (Less than or equal)", CallbackData: fmt.Sprintf("alerts_setoperator_%s_lte", alertID)}},
+		{{Text: "= (Equal to)", CallbackData: fmt.Sprintf("alerts_setoperator_%s_eq", alertID)}},
+	}
+
+	backBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_back")
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: backBtnText, CallbackData: fmt.Sprintf("alerts_edit_%s", alertID)},
+	})
+
+	_, err := bot.SendMessage(ctx.EffectiveChat.Id, message, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	if ctx.CallbackQuery != nil {
+		_, _ = ctx.CallbackQuery.Answer(bot, nil)
+	}
+
+	return err
+}
+
+// updateAlertOperator updates the operator of an alert
+func (h *CommandHandler) updateAlertOperator(bot *gotgbot.Bot, ctx *ext.Context, alertID string, operator string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	// Parse alert UUID
+	alertUUID, err := uuid.Parse(alertID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Invalid alert UUID")
+		return err
+	}
+
+	// Get the current alert to update condition
+	alert, err := h.services.Alert.GetAlert(context.Background(), userID, alertUUID)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to get alert")
+		return err
+	}
+
+	// Parse current condition
+	var condition services.AlertCondition
+	if err := json.Unmarshal([]byte(alert.Condition), &condition); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to parse alert condition")
+		return err
+	}
+
+	// Update operator
+	condition.Operator = operator
+	conditionJSON, err := json.Marshal(condition)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to marshal condition")
+		return err
+	}
+
+	// Update the alert
+	updates := map[string]interface{}{
+		"condition": string(conditionJSON),
+	}
+
+	err = h.services.Alert.UpdateAlert(context.Background(), userID, alertUUID, updates)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Failed to update alert operator")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_update_failed")
+		_, _ = bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Send success message
+	operatorSymbol := h.getOperatorSymbol(operator)
+	successMsg := h.services.Localization.T(context.Background(), userLang, "alerts_operator_update_success", operatorSymbol)
+	backBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_back_to_list")
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, successMsg, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+				{{Text: backBtnText, CallbackData: "alerts_list"}},
+			},
+		},
+	})
+
+	if ctx.CallbackQuery != nil {
+		_, _ = ctx.CallbackQuery.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
+			Text: h.services.Localization.T(context.Background(), userLang, "alerts_operator_update_success", operatorSymbol),
+		})
+	}
+
+	return err
+}
+
+// toggleAlert toggles an alert active/inactive state
+func (h *CommandHandler) toggleAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string) error {
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	// Parse alert UUID
+	alertUUID, err := uuid.Parse(alertID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Invalid alert UUID")
+		return err
+	}
+
+	// Get the current alert
+	alert, err := h.services.Alert.GetAlert(context.Background(), userID, alertUUID)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to get alert")
+		return err
+	}
+
+	// Toggle the active state
+	newState := !alert.IsActive
+	updates := map[string]interface{}{
+		"is_active": newState,
+	}
+
+	err = h.services.Alert.UpdateAlert(context.Background(), userID, alertUUID, updates)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Failed to toggle alert")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_toggle_failed")
+		_, _ = bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Send success message
+	var successMsg string
+	if newState {
+		successMsg = h.services.Localization.T(context.Background(), userLang, "alerts_activated")
+	} else {
+		successMsg = h.services.Localization.T(context.Background(), userLang, "alerts_deactivated")
+	}
+
+	backBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_back_to_list")
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, successMsg, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+				{{Text: backBtnText, CallbackData: "alerts_list"}},
+			},
+		},
+	})
+
+	if ctx.CallbackQuery != nil {
+		_, _ = ctx.CallbackQuery.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
+			Text: successMsg,
+		})
+	}
+
 	return err
 }
 
 func (h *CommandHandler) removeAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID string) error {
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id, "✅ Alert removed successfully!", nil)
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	// Parse the alert UUID
+	alertUUID, err := uuid.Parse(alertID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Msg("Invalid alert UUID")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_invalid_id")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Delete the alert
+	err = h.services.Alert.DeleteAlert(context.Background(), userID, alertUUID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("alert_id", alertID).Int64("user_id", userID).Msg("Failed to delete alert")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_delete_failed")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	// Send success message
+	successMsg := h.services.Localization.T(context.Background(), userLang, "alerts_delete_success")
+
+	// Provide option to go back to alerts list
+	backBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_back_to_list")
+	addNewBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_add_new_btn")
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, successMsg, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+				{{Text: backBtnText, CallbackData: "alerts_list"}},
+				{{Text: addNewBtnText, CallbackData: "alert_create_temperature"}},
+			},
+		},
+	})
+
+	// Answer the callback query to remove the loading state
+	if ctx.CallbackQuery != nil {
+		_, _ = ctx.CallbackQuery.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
+			Text: h.services.Localization.T(context.Background(), userLang, "alerts_delete_success"),
+		})
+	}
+
 	return err
 }
 
@@ -3022,17 +3424,137 @@ func (h *CommandHandler) removeAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID
 func (h *CommandHandler) handleAlertsCallback(bot *gotgbot.Bot, ctx *ext.Context, action string, params []string) error {
 	switch action {
 	case "list":
+		// List all user alerts
 		return h.listUserAlerts(bot, ctx)
+
+	case "edit":
+		// Edit an alert by ID
+		if len(params) > 0 {
+			return h.editAlert(bot, ctx, params[0])
+		}
+
+	case "remove":
+		// Remove an alert by ID
+		if len(params) > 0 {
+			return h.removeAlert(bot, ctx, params[0])
+		}
+
+	case "update":
+		// Update alert threshold: alerts_update_{alertID}_{threshold}
+		if len(params) >= 2 {
+			return h.updateAlertThreshold(bot, ctx, params[0], params[1])
+		}
+
+	case "operator":
+		// Show operator change options: alerts_operator_{alertID}
+		if len(params) > 0 {
+			return h.showOperatorOptions(bot, ctx, params[0])
+		}
+
+	case "setoperator":
+		// Set new operator: alerts_setoperator_{alertID}_{operator}
+		if len(params) >= 2 {
+			return h.updateAlertOperator(bot, ctx, params[0], params[1])
+		}
+
+	case "toggle":
+		// Toggle alert active/inactive: alerts_toggle_{alertID}
+		if len(params) > 0 {
+			return h.toggleAlert(bot, ctx, params[0])
+		}
 	}
+
 	return nil
 }
 
 func (h *CommandHandler) listUserAlerts(bot *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := bot.SendMessage(ctx.EffectiveChat.Id,
-		"⚠️ *Your Active Alerts*\n\nNo alerts configured yet.\n\nUse /addalert to create new alerts.",
-		&gotgbot.SendMessageOpts{
-			ParseMode: "Markdown",
+	userID := ctx.EffectiveUser.Id
+	userLang := h.getUserLanguage(context.Background(), userID)
+
+	alerts, err := h.services.Alert.GetUserAlerts(context.Background(), userID)
+	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user alerts")
+		errorMsg := h.services.Localization.T(context.Background(), userLang, "alerts_fetch_failed")
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id, errorMsg, nil)
+		return err
+	}
+
+	if len(alerts) == 0 {
+		noAlertsText := h.services.Localization.T(context.Background(), userLang, "alerts_none")
+		createBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_create_btn")
+
+		_, err := bot.SendMessage(ctx.EffectiveChat.Id,
+			noAlertsText,
+			&gotgbot.SendMessageOpts{
+				ParseMode: "Markdown",
+				ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+					InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+						{{Text: createBtnText, CallbackData: "alert_create_temperature"}},
+					},
+				},
+			})
+		return err
+	}
+
+	// Get user info for location
+	user, err := h.services.User.GetUser(context.Background(), userID)
+	if err != nil {
+		h.logger.Error().Err(err).Int64("user_id", userID).Msg("Failed to get user")
+		return err
+	}
+
+	titleText := h.services.Localization.T(context.Background(), userLang, "alerts_list_title")
+	text := fmt.Sprintf("*%s*\n\n", titleText)
+	var keyboard [][]gotgbot.InlineKeyboardButton
+
+	for i, alert := range alerts {
+		alertTypeText := h.getAlertTypeTextLocalized(alert.AlertType, userLang)
+
+		// Parse condition JSON to get operator
+		var condition services.AlertCondition
+		if err := json.Unmarshal([]byte(alert.Condition), &condition); err == nil {
+			operatorSymbol := h.getOperatorSymbol(condition.Operator)
+
+			text += fmt.Sprintf("%d. *%s*\n", i+1, alertTypeText)
+			if user.LocationName != "" {
+				text += fmt.Sprintf("   📍 %s\n", user.LocationName)
+			}
+			text += fmt.Sprintf("   ⚡ %s %.1f\n", operatorSymbol, alert.Threshold)
+			statusText := h.services.Localization.T(context.Background(), userLang, "alerts_status_active")
+			if !alert.IsActive {
+				statusText = h.services.Localization.T(context.Background(), userLang, "alerts_status_inactive")
+			}
+			text += fmt.Sprintf("   🔔 %s\n\n", statusText)
+		}
+
+		editBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_edit_btn")
+		removeBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_remove_btn")
+
+		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+			{Text: fmt.Sprintf("%s %s", editBtnText, alertTypeText),
+				CallbackData: fmt.Sprintf("alerts_edit_%s", alert.ID)},
+			{Text: removeBtnText,
+				CallbackData: fmt.Sprintf("alerts_remove_%s", alert.ID)},
 		})
+	}
+
+	addNewBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_add_new_btn")
+	keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
+		{Text: addNewBtnText, CallbackData: "alert_create_temperature"},
+	})
+
+	_, err = bot.SendMessage(ctx.EffectiveChat.Id, text, &gotgbot.SendMessageOpts{
+		ParseMode: "Markdown",
+		ReplyMarkup: &gotgbot.InlineKeyboardMarkup{
+			InlineKeyboard: keyboard,
+		},
+	})
+
+	// Answer the callback query
+	if ctx.CallbackQuery != nil {
+		_, _ = ctx.CallbackQuery.Answer(bot, nil)
+	}
+
 	return err
 }
 
@@ -3675,4 +4197,48 @@ func (h *CommandHandler) UnknownCommand(bot *gotgbot.Bot, ctx *ext.Context) erro
 	})
 
 	return err
+}
+
+// getAlertTypeTextLocalized returns localized alert type text
+func (h *CommandHandler) getAlertTypeTextLocalized(alertType models.AlertType, language string) string {
+	switch alertType {
+	case models.AlertTemperature:
+		return h.services.Localization.T(context.Background(), language, "alert_type_temperature")
+	case models.AlertHumidity:
+		return h.services.Localization.T(context.Background(), language, "alert_type_humidity")
+	case models.AlertPressure:
+		return h.services.Localization.T(context.Background(), language, "alert_type_pressure")
+	case models.AlertWindSpeed:
+		return h.services.Localization.T(context.Background(), language, "alert_type_wind_speed")
+	case models.AlertUVIndex:
+		return h.services.Localization.T(context.Background(), language, "alert_type_uv_index")
+	case models.AlertAirQuality:
+		return h.services.Localization.T(context.Background(), language, "alert_type_air_quality")
+	case models.AlertRain:
+		return h.services.Localization.T(context.Background(), language, "alert_type_rain")
+	case models.AlertSnow:
+		return h.services.Localization.T(context.Background(), language, "alert_type_snow")
+	case models.AlertStorm:
+		return h.services.Localization.T(context.Background(), language, "alert_type_storm")
+	default:
+		return h.services.Localization.T(context.Background(), language, "alert_type_unknown")
+	}
+}
+
+// getOperatorSymbol converts operator codes to user-friendly symbols
+func (h *CommandHandler) getOperatorSymbol(operator string) string {
+	switch operator {
+	case "gt":
+		return ">"
+	case "gte":
+		return "≥"
+	case "lt":
+		return "<"
+	case "lte":
+		return "≤"
+	case "eq":
+		return "="
+	default:
+		return operator
+	}
 }
