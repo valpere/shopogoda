@@ -41,12 +41,12 @@ var availableCommands = []string{
 
 const (
 	// Alert threshold option generation constants
-	defaultMinFactor         = 0.8  // Factor to calculate minimum threshold (80% of current)
-	defaultMaxFactor         = 1.2  // Factor to calculate maximum threshold (120% of current)
-	defaultStepDivisor       = 5.0  // Divisor to calculate step size from range
-	thresholdOptionsRange    = 3    // Number of options to show above/below current value
-	minThresholdOptions      = 5    // Minimum number of threshold options to display
-	maxThresholdOptions      = 7    // Maximum number of threshold options to display
+	defaultMinFactor      = 0.8 // Factor to calculate minimum threshold (80% of current)
+	defaultMaxFactor      = 1.2 // Factor to calculate maximum threshold (120% of current)
+	defaultStepDivisor    = 5.0 // Divisor to calculate step size from range
+	thresholdOptionsRange = 3   // Number of options to show above/below current value
+	minThresholdOptions   = 5   // Minimum number of threshold options to display
+	maxThresholdOptions   = 7   // Maximum number of threshold options to display
 )
 
 func New(services *services.Services, logger *zerolog.Logger) *CommandHandler {

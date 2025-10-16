@@ -526,8 +526,8 @@ func TestGetThresholdOptions(t *testing.T) {
 				assert.NotEmpty(t, options)
 				// Uses default case: ±20%
 				for _, opt := range options {
-					assert.GreaterOrEqual(t, opt, 40.0)  // 50 * 0.8
-					assert.LessOrEqual(t, opt, 60.0)     // 50 * 1.2
+					assert.GreaterOrEqual(t, opt, 40.0) // 50 * 0.8
+					assert.LessOrEqual(t, opt, 60.0)    // 50 * 1.2
 				}
 			},
 		},
@@ -539,8 +539,8 @@ func TestGetThresholdOptions(t *testing.T) {
 				assert.NotEmpty(t, options)
 				// Uses default case: ±20%
 				for _, opt := range options {
-					assert.GreaterOrEqual(t, opt, 24.0)  // 30 * 0.8
-					assert.LessOrEqual(t, opt, 36.0)     // 30 * 1.2
+					assert.GreaterOrEqual(t, opt, 24.0) // 30 * 0.8
+					assert.LessOrEqual(t, opt, 36.0)    // 30 * 1.2
 				}
 			},
 		},
@@ -552,8 +552,8 @@ func TestGetThresholdOptions(t *testing.T) {
 				assert.NotEmpty(t, options)
 				// Uses default case: ±20%
 				for _, opt := range options {
-					assert.GreaterOrEqual(t, opt, 60.0)  // 75 * 0.8
-					assert.LessOrEqual(t, opt, 90.0)     // 75 * 1.2
+					assert.GreaterOrEqual(t, opt, 60.0) // 75 * 0.8
+					assert.LessOrEqual(t, opt, 90.0)    // 75 * 1.2
 				}
 			},
 		},
