@@ -3067,6 +3067,9 @@ func (h *CommandHandler) editAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID s
 	// Generate threshold options based on alert type
 	thresholds := h.getThresholdOptions(alert.AlertType, alert.Threshold)
 
+	// Note: Using %.1f format for threshold values in callback data.
+	// This limits precision to 1 decimal place, which is sufficient for weather thresholds
+	// and avoids scientific notation for very small/large numbers.
 	for _, threshold := range thresholds {
 		keyboard = append(keyboard, []gotgbot.InlineKeyboardButton{
 			{Text: fmt.Sprintf("%s %.1f", operatorSymbol, threshold),
@@ -3205,10 +3208,9 @@ func (h *CommandHandler) updateAlertThreshold(bot *gotgbot.Bot, ctx *ext.Context
 		},
 	})
 
+	// Acknowledge callback query without duplicate text (message already sent above)
 	if ctx.CallbackQuery != nil {
-		_, _ = ctx.CallbackQuery.Answer(bot, &gotgbot.AnswerCallbackQueryOpts{
-			Text: h.services.Localization.T(context.Background(), userLang, "alerts_update_success", threshold),
-		})
+		_, _ = ctx.CallbackQuery.Answer(bot, nil)
 	}
 
 	return err
@@ -3353,13 +3355,12 @@ func (h *CommandHandler) toggleAlert(bot *gotgbot.Bot, ctx *ext.Context, alertID
 		return err
 	}
 
-	// Send success message
-	var successMsg string
+	// Send success message with appropriate key based on new state
+	successKey := "alerts_deactivated"
 	if newState {
-		successMsg = h.services.Localization.T(context.Background(), userLang, "alerts_activated")
-	} else {
-		successMsg = h.services.Localization.T(context.Background(), userLang, "alerts_deactivated")
+		successKey = "alerts_activated"
 	}
+	successMsg := h.services.Localization.T(context.Background(), userLang, successKey)
 
 	backBtnText := h.services.Localization.T(context.Background(), userLang, "alerts_back_to_list")
 
