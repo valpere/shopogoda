@@ -454,6 +454,121 @@ func (s *UserService) UpdateUserLanguage(
 
 **Supported Languages:** en, uk, de, fr, es
 
+### Role Management
+
+**Important:** Role management requires Admin privileges. The system enforces role hierarchy and prevents demoting the last admin.
+
+#### ChangeUserRole
+
+Changes a user's role with admin validation and safety checks.
+
+```go
+func (s *UserService) ChangeUserRole(
+    ctx context.Context,
+    adminID int64,
+    targetUserID int64,
+    newRole models.UserRole,
+) error
+```
+
+**Parameters:**
+
+- `adminID` - ID of the admin performing the role change
+- `targetUserID` - ID of the user whose role is being changed
+- `newRole` - New role (RoleUser=1, RoleModerator=2, RoleAdmin=3)
+
+**Returns:**
+
+- `error` - Error if validation fails or operation unsuccessful
+
+**Security & Validation:**
+
+- Verifies admin has `RoleAdmin` permission
+- Prevents demoting the last admin in the system
+- Invalidates user cache immediately after change
+- Logs role changes for audit trail
+
+**Example:**
+
+```go
+// Promote user to Moderator
+err := services.User.ChangeUserRole(ctx, adminID, targetUserID, models.RoleModerator)
+if err != nil {
+    if strings.Contains(err.Error(), "insufficient permissions") {
+        return fmt.Errorf("only admins can change roles")
+    }
+    if strings.Contains(err.Error(), "cannot demote the last admin") {
+        return fmt.Errorf("system must have at least one admin")
+    }
+    return fmt.Errorf("role change failed: %w", err)
+}
+
+fmt.Printf("User promoted to Moderator\n")
+```
+
+**Error Scenarios:**
+
+- `"insufficient permissions"` - Caller is not an admin
+- `"cannot demote the last admin"` - Attempting to demote the only remaining admin
+- `"user not found"` - Target user doesn't exist
+- Database errors - Transaction failures
+
+**Cache Invalidation:**
+
+- Automatically invalidates `user:{targetUserID}` cache key
+- Ensures subsequent requests see updated role immediately
+
+#### GetRoleName
+
+Returns human-readable role name for localization.
+
+```go
+func (s *UserService) GetRoleName(role models.UserRole) string
+```
+
+**Parameters:**
+
+- `role` - User role (RoleUser, RoleModerator, RoleAdmin)
+
+**Returns:**
+
+- `string` - Role name ("User", "Moderator", "Admin")
+
+**Example:**
+
+```go
+user, err := services.User.GetUser(ctx, userID)
+if err != nil {
+    return err
+}
+
+roleName := services.User.GetRoleName(user.Role)
+fmt.Printf("User role: %s\n", roleName)  // "User role: Admin"
+```
+
+**User Roles:**
+
+| Role | Value | Description |
+|------|-------|-------------|
+| RoleUser | 1 | Default role, basic bot features |
+| RoleModerator | 2 | Enhanced permissions, user assistance |
+| RoleAdmin | 3 | Full system access, user management |
+
+**Command Permissions:**
+
+- `/promote` - Admin only
+- `/demote` - Admin only
+- `/stats` - Admin/Moderator
+- `/broadcast` - Admin only
+- `/users` - Admin/Moderator
+
+**Implementation Notes:**
+
+- Role changes are atomic (transaction-wrapped by GORM)
+- Admin count check uses database query to prevent race conditions
+- Role enum values are sequential for future role hierarchy checks
+- Default role for new users is `RoleUser`
+
 ---
 
 ## WeatherService
