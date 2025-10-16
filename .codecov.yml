@@ -1,0 +1,33 @@
+# Codecov configuration for shopogoda
+# Documentation: https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        # Overall project coverage target
+        target: 40%
+        threshold: 5%  # Allow 5% decrease
+        informational: false
+
+    patch:
+      default:
+        # Patch coverage (new code in PR)
+        target: 20%  # Match development threshold
+        threshold: 10%  # Allow some flexibility
+        informational: true  # Don't fail CI on patch coverage
+
+comment:
+  # Customize PR comments
+  layout: "reach,diff,flags,files,footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+# Ignore specific files/directories from coverage
+ignore:
+  - "cmd/**/*.go"  # Main entry points
+  - "tests/**/*"   # Test helpers
+  - "**/*_test.go" # Test files
+  - "docs/**/*"    # Documentation

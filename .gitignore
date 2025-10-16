@@ -71,9 +71,10 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-# Config files with secrets
+# Config files with secrets (but allow codecov.yml)
 config.yaml
 config.yml
+!.codecov.yml
 
 locales/all.ods
 locales/bak/
