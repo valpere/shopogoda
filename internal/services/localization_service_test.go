@@ -18,7 +18,7 @@ func TestNewLocalizationService(t *testing.T) {
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.translations)
-	assert.Equal(t, "en", service.defaultLanguage)
+	assert.Equal(t, "en-US", service.defaultLanguage)
 	assert.NotNil(t, service.logger)
 }
 
@@ -30,18 +30,18 @@ func TestLocalizationService_LoadTranslations(t *testing.T) {
 		mockFS := fstest.MapFS{
 			"languages.json": &fstest.MapFile{
 				Data: []byte(`{
-					"en": {"code": "en", "name": "English", "flag": "🇬🇧"},
-					"uk": {"code": "uk", "name": "Ukrainian", "flag": "🇺🇦"}
+					"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"},
+					"uk-UA": {"code": "uk-UA", "name": "Ukrainian", "flag": "🇺🇦"}
 				}`),
 			},
-			"en.json": &fstest.MapFile{
+			"en-US.json": &fstest.MapFile{
 				Data: []byte(`{
 					"greeting": "Hello",
 					"weather": "Weather",
 					"temperature": "Temperature: %.1f°C"
 				}`),
 			},
-			"uk.json": &fstest.MapFile{
+			"uk-UA.json": &fstest.MapFile{
 				Data: []byte(`{
 					"greeting": "Привіт",
 					"weather": "Погода",
@@ -56,12 +56,12 @@ func TestLocalizationService_LoadTranslations(t *testing.T) {
 		assert.Len(t, service.supportedLanguages, 2)
 		assert.Len(t, service.translations, 2)
 
-		enLang, exists := service.supportedLanguages["en"]
+		enLang, exists := service.supportedLanguages["en-US"]
 		assert.True(t, exists)
 		assert.Equal(t, "English", enLang.Name)
-		assert.Equal(t, "🇬🇧", enLang.Flag)
+		assert.Equal(t, "🇺🇸", enLang.Flag)
 
-		ukLang, exists := service.supportedLanguages["uk"]
+		ukLang, exists := service.supportedLanguages["uk-UA"]
 		assert.True(t, exists)
 		assert.Equal(t, "Ukrainian", ukLang.Name)
 		assert.Equal(t, "🇺🇦", ukLang.Flag)
@@ -88,10 +88,10 @@ func TestLocalizationService_LoadTranslations(t *testing.T) {
 		mockFS := fstest.MapFS{
 			"languages.json": &fstest.MapFile{
 				Data: []byte(`{
-					"en": {"code": "en", "name": "English", "flag": "🇬🇧"}
+					"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"}
 				}`),
 			},
-			// Missing en.json file
+			// Missing en-US.json file
 		}
 
 		err := service.LoadTranslations(mockFS)
@@ -107,10 +107,10 @@ func TestLocalizationService_LoadTranslations(t *testing.T) {
 		mockFS := fstest.MapFS{
 			"languages.json": &fstest.MapFile{
 				Data: []byte(`{
-					"en": {"code": "en", "name": "English", "flag": "🇬🇧"}
+					"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"}
 				}`),
 			},
-			"en.json": &fstest.MapFile{
+			"en-US.json": &fstest.MapFile{
 				Data: []byte(`invalid json`),
 			},
 		}
@@ -132,11 +132,11 @@ func TestLocalizationService_T(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"},
-				"uk": {"code": "uk", "name": "Ukrainian", "flag": "🇺🇦"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"},
+				"uk-UA": {"code": "uk-UA", "name": "Ukrainian", "flag": "🇺🇦"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{
+		"en-US.json": &fstest.MapFile{
 			Data: []byte(`{
 				"greeting": "Hello",
 				"weather": "Weather",
@@ -144,7 +144,7 @@ func TestLocalizationService_T(t *testing.T) {
 				"forecast_days": "Forecast for %d days"
 			}`),
 		},
-		"uk.json": &fstest.MapFile{
+		"uk-UA.json": &fstest.MapFile{
 			Data: []byte(`{
 				"greeting": "Привіт",
 				"weather": "Погода"
@@ -158,39 +158,39 @@ func TestLocalizationService_T(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("translate existing key", func(t *testing.T) {
-		result := service.T(ctx, "en", "greeting")
+		result := service.T(ctx, "en-US", "greeting")
 		assert.Equal(t, "Hello", result)
 	})
 
 	t.Run("translate with arguments", func(t *testing.T) {
-		result := service.T(ctx, "en", "temperature", 25.5)
+		result := service.T(ctx, "en-US", "temperature", 25.5)
 		assert.Equal(t, "Temperature: 25.5°C", result)
 	})
 
 	t.Run("translate with multiple arguments", func(t *testing.T) {
-		result := service.T(ctx, "en", "forecast_days", 5)
+		result := service.T(ctx, "en-US", "forecast_days", 5)
 		assert.Equal(t, "Forecast for 5 days", result)
 	})
 
 	t.Run("fallback to default language", func(t *testing.T) {
 		// temperature key doesn't exist in Ukrainian, should fall back to English
-		result := service.T(ctx, "uk", "temperature", 20.0)
+		result := service.T(ctx, "uk-UA", "temperature", 20.0)
 		assert.Equal(t, "Temperature: 20.0°C", result)
 	})
 
 	t.Run("return key when translation not found", func(t *testing.T) {
-		result := service.T(ctx, "en", "nonexistent_key")
+		result := service.T(ctx, "en-US", "nonexistent_key")
 		assert.Equal(t, "nonexistent_key", result)
 	})
 
 	t.Run("unsupported language falls back to default", func(t *testing.T) {
 		// French not supported, should fall back to English default
-		result := service.T(ctx, "fr", "greeting")
+		result := service.T(ctx, "fr-FR", "greeting")
 		assert.Equal(t, "Hello", result)
 	})
 
 	t.Run("existing key in requested language", func(t *testing.T) {
-		result := service.T(ctx, "uk", "greeting")
+		result := service.T(ctx, "uk-UA", "greeting")
 		assert.Equal(t, "Привіт", result)
 	})
 }
@@ -202,14 +202,14 @@ func TestLocalizationService_IsLanguageSupported(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"},
-				"uk": {"code": "uk", "name": "Ukrainian", "flag": "🇺🇦"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"},
+				"uk-UA": {"code": "uk-UA", "name": "Ukrainian", "flag": "🇺🇦"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{
+		"en-US.json": &fstest.MapFile{
 			Data: []byte(`{"greeting": "Hello"}`),
 		},
-		"uk.json": &fstest.MapFile{
+		"uk-UA.json": &fstest.MapFile{
 			Data: []byte(`{"greeting": "Привіт"}`),
 		},
 	}
@@ -218,13 +218,13 @@ func TestLocalizationService_IsLanguageSupported(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("supported language", func(t *testing.T) {
-		assert.True(t, service.IsLanguageSupported("en"))
-		assert.True(t, service.IsLanguageSupported("uk"))
+		assert.True(t, service.IsLanguageSupported("en-US"))
+		assert.True(t, service.IsLanguageSupported("uk-UA"))
 	})
 
 	t.Run("unsupported language", func(t *testing.T) {
-		assert.False(t, service.IsLanguageSupported("fr"))
-		assert.False(t, service.IsLanguageSupported("de"))
+		assert.False(t, service.IsLanguageSupported("fr-FR"))
+		assert.False(t, service.IsLanguageSupported("de-DE"))
 		assert.False(t, service.IsLanguageSupported(""))
 	})
 }
@@ -236,14 +236,14 @@ func TestLocalizationService_GetSupportedLanguages(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"},
-				"uk": {"code": "uk", "name": "Ukrainian", "flag": "🇺🇦"},
-				"de": {"code": "de", "name": "German", "flag": "🇩🇪"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"},
+				"uk-UA": {"code": "uk-UA", "name": "Ukrainian", "flag": "🇺🇦"},
+				"de-DE": {"code": "de-DE", "name": "German", "flag": "🇩🇪"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
-		"uk.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
-		"de.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
+		"en-US.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
+		"uk-UA.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
+		"de-DE.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
 	}
 
 	err := service.LoadTranslations(mockFS)
@@ -251,9 +251,9 @@ func TestLocalizationService_GetSupportedLanguages(t *testing.T) {
 
 	languages := service.GetSupportedLanguages()
 	assert.Len(t, languages, 3)
-	assert.Contains(t, languages, "en")
-	assert.Contains(t, languages, "uk")
-	assert.Contains(t, languages, "de")
+	assert.Contains(t, languages, "en-US")
+	assert.Contains(t, languages, "uk-UA")
+	assert.Contains(t, languages, "de-DE")
 }
 
 func TestLocalizationService_GetLanguageByCode(t *testing.T) {
@@ -263,36 +263,36 @@ func TestLocalizationService_GetLanguageByCode(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"},
-				"uk": {"code": "uk", "name": "Ukrainian", "flag": "🇺🇦"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"},
+				"uk-UA": {"code": "uk-UA", "name": "Ukrainian", "flag": "🇺🇦"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
-		"uk.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
+		"en-US.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
+		"uk-UA.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
 	}
 
 	err := service.LoadTranslations(mockFS)
 	require.NoError(t, err)
 
 	t.Run("existing language code", func(t *testing.T) {
-		lang, exists := service.GetLanguageByCode("en")
+		lang, exists := service.GetLanguageByCode("en-US")
 		assert.True(t, exists)
-		assert.Equal(t, "en", lang.Code)
+		assert.Equal(t, "en-US", lang.Code)
 		assert.Equal(t, "English", lang.Name)
-		assert.Equal(t, "🇬🇧", lang.Flag)
+		assert.Equal(t, "🇺🇸", lang.Flag)
 	})
 
 	t.Run("another existing language code", func(t *testing.T) {
-		lang, exists := service.GetLanguageByCode("uk")
+		lang, exists := service.GetLanguageByCode("uk-UA")
 		assert.True(t, exists)
-		assert.Equal(t, "uk", lang.Code)
+		assert.Equal(t, "uk-UA", lang.Code)
 		assert.Equal(t, "Ukrainian", lang.Name)
 	})
 
 	t.Run("nonexistent language code returns default", func(t *testing.T) {
-		lang, exists := service.GetLanguageByCode("fr")
+		lang, exists := service.GetLanguageByCode("fr-FR")
 		assert.False(t, exists)
-		assert.Equal(t, "en", lang.Code) // Should return default language
+		assert.Equal(t, "en-US", lang.Code) // Should return default language
 	})
 }
 
@@ -303,12 +303,12 @@ func TestLocalizationService_DetectLanguageFromName(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"},
-				"uk": {"code": "uk", "name": "Ukrainian", "flag": "🇺🇦"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"},
+				"uk-UA": {"code": "uk-UA", "name": "Ukrainian", "flag": "🇺🇦"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
-		"uk.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
+		"en-US.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
+		"uk-UA.json": &fstest.MapFile{Data: []byte(`{"key": "value"}`)},
 	}
 
 	err := service.LoadTranslations(mockFS)
@@ -319,21 +319,21 @@ func TestLocalizationService_DetectLanguageFromName(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"english lowercase", "english", "en"},
-		{"english capitalized", "English", "en"},
-		{"ukrainian", "ukrainian", "uk"},
-		{"ukrainian cyrillic", "українська", "uk"},
-		{"german", "german", "de"},
-		{"deutsch", "deutsch", "de"},
-		{"french", "french", "fr"},
-		{"français", "français", "fr"},
-		{"spanish", "spanish", "es"},
-		{"español", "español", "es"},
-		{"language code en", "en", "en"},
-		{"language code uk", "uk", "uk"},
-		{"unknown language", "unknown", "en"},
-		{"empty string", "", "en"},
-		{"whitespace", "  ", "en"},
+		{"english lowercase", "english", "en-US"},
+		{"english capitalized", "English", "en-US"},
+		{"ukrainian", "ukrainian", "uk-UA"},
+		{"ukrainian cyrillic", "українська", "uk-UA"},
+		{"german", "german", "de-DE"},
+		{"deutsch", "deutsch", "de-DE"},
+		{"french", "french", "fr-FR"},
+		{"français", "français", "fr-FR"},
+		{"spanish", "spanish", "es-ES"},
+		{"español", "español", "es-ES"},
+		{"full language code en-US", "en-US", "en-US"},
+		{"full language code uk-UA", "uk-UA", "uk-UA"},
+		{"unknown language", "unknown", "en-US"},
+		{"empty string", "", "en-US"},
+		{"whitespace", "  ", "en-US"},
 	}
 
 	for _, tt := range tests {
@@ -351,18 +351,18 @@ func TestLocalizationService_GetAvailableTranslationKeys(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"},
-				"uk": {"code": "uk", "name": "Ukrainian", "flag": "🇺🇦"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"},
+				"uk-UA": {"code": "uk-UA", "name": "Ukrainian", "flag": "🇺🇦"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{
+		"en-US.json": &fstest.MapFile{
 			Data: []byte(`{
 				"greeting": "Hello",
 				"weather": "Weather",
 				"temperature": "Temperature"
 			}`),
 		},
-		"uk.json": &fstest.MapFile{
+		"uk-UA.json": &fstest.MapFile{
 			Data: []byte(`{
 				"greeting": "Привіт",
 				"weather": "Погода"
@@ -374,7 +374,7 @@ func TestLocalizationService_GetAvailableTranslationKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("get keys for existing language", func(t *testing.T) {
-		keys := service.GetAvailableTranslationKeys("en")
+		keys := service.GetAvailableTranslationKeys("en-US")
 		assert.Len(t, keys, 3)
 		assert.Contains(t, keys, "greeting")
 		assert.Contains(t, keys, "weather")
@@ -382,14 +382,14 @@ func TestLocalizationService_GetAvailableTranslationKeys(t *testing.T) {
 	})
 
 	t.Run("get keys for another language", func(t *testing.T) {
-		keys := service.GetAvailableTranslationKeys("uk")
+		keys := service.GetAvailableTranslationKeys("uk-UA")
 		assert.Len(t, keys, 2)
 		assert.Contains(t, keys, "greeting")
 		assert.Contains(t, keys, "weather")
 	})
 
 	t.Run("get keys for nonexistent language", func(t *testing.T) {
-		keys := service.GetAvailableTranslationKeys("fr")
+		keys := service.GetAvailableTranslationKeys("fr-FR")
 		assert.Nil(t, keys)
 	})
 }
@@ -401,10 +401,10 @@ func TestLocalizationService_ConcurrentAccess(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{
+		"en-US.json": &fstest.MapFile{
 			Data: []byte(`{
 				"greeting": "Hello",
 				"weather": "Weather"
@@ -423,9 +423,9 @@ func TestLocalizationService_ConcurrentAccess(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_ = service.T(ctx, "en", "greeting")
-				_ = service.IsLanguageSupported("en")
-				_ = service.GetAvailableTranslationKeys("en")
+				_ = service.T(ctx, "en-US", "greeting")
+				_ = service.IsLanguageSupported("en-US")
+				_ = service.GetAvailableTranslationKeys("en-US")
 			}()
 		}
 
@@ -441,7 +441,7 @@ func TestLocalizationService_ConcurrentAccess(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_ = service.T(ctx, "en", "greeting")
+				_ = service.T(ctx, "en-US", "greeting")
 			}()
 		}
 
@@ -463,10 +463,10 @@ func TestLocalizationService_EmptyTranslations(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"languages.json": &fstest.MapFile{
 			Data: []byte(`{
-				"en": {"code": "en", "name": "English", "flag": "🇬🇧"}
+				"en-US": {"code": "en-US", "name": "English", "flag": "🇺🇸"}
 			}`),
 		},
-		"en.json": &fstest.MapFile{
+		"en-US.json": &fstest.MapFile{
 			Data: []byte(`{}`), // Empty translations
 		},
 	}
@@ -477,12 +477,12 @@ func TestLocalizationService_EmptyTranslations(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("translate with empty translations", func(t *testing.T) {
-		result := service.T(ctx, "en", "any_key")
+		result := service.T(ctx, "en-US", "any_key")
 		assert.Equal(t, "any_key", result) // Should return key
 	})
 
 	t.Run("get keys returns empty slice", func(t *testing.T) {
-		keys := service.GetAvailableTranslationKeys("en")
+		keys := service.GetAvailableTranslationKeys("en-US")
 		assert.Empty(t, keys)
 	})
 }

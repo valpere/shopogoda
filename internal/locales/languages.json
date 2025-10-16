@@ -1,26 +1,26 @@
 {
-    "en": {
-        "code": "en",
+    "en-US": {
+        "code": "en-US",
         "name": "English",
         "flag": "🇺🇸"
     },
-    "uk": {
-        "code": "uk",
+    "uk-UA": {
+        "code": "uk-UA",
         "name": "Українська",
         "flag": "🇺🇦"
     },
-    "de": {
-        "code": "de",
+    "de-DE": {
+        "code": "de-DE",
         "name": "Deutsch",
         "flag": "🇩🇪"
     },
-    "fr": {
-        "code": "fr",
+    "fr-FR": {
+        "code": "fr-FR",
         "name": "Français",
         "flag": "🇫🇷"
     },
-    "es": {
-        "code": "es",
+    "es-ES": {
+        "code": "es-ES",
         "name": "Español",
         "flag": "🇪🇸"
     }

@@ -78,7 +78,7 @@ func manualMigrate(db *gorm.DB) error {
 			username VARCHAR(255),
 			first_name VARCHAR(255),
 			last_name VARCHAR(255),
-			language VARCHAR(10) DEFAULT 'en',
+			language VARCHAR(10) DEFAULT 'en-US',
 			units VARCHAR(20) DEFAULT 'metric',
 			timezone VARCHAR(100) DEFAULT 'UTC',
 			role INTEGER DEFAULT 1,

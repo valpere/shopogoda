@@ -1958,11 +1958,11 @@ func (h *CommandHandler) handleLanguageSettings(bot *gotgbot.Bot, ctx *ext.Conte
 		code string
 		name string
 	}{
-		{"de", "🇩🇪 Deutsch"},
-		{"en", "🇺🇸 English"},
-		{"es", "🇪🇸 Español"},
-		{"fr", "🇫🇷 Français"},
-		{"uk", "🇺🇦 Українська"},
+		{"de-DE", "🇩🇪 Deutsch"},
+		{"en-US", "🇺🇸 English"},
+		{"es-ES", "🇪🇸 Español"},
+		{"fr-FR", "🇫🇷 Français"},
+		{"uk-UA", "🇺🇦 Українська"},
 	}
 
 	text := "🌐 *Choose your language:*"
@@ -2510,11 +2510,11 @@ func (h *CommandHandler) setUserLanguage(bot *gotgbot.Bot, ctx *ext.Context, lan
 	}
 
 	languageNames := map[string]string{
-		"en": "🇺🇸 English",
-		"uk": "🇺🇦 Українська",
-		"de": "🇩🇪 Deutsch",
-		"fr": "🇫🇷 Français",
-		"es": "🇪🇸 Español",
+		"en-US": "🇺🇸 English",
+		"uk-UA": "🇺🇦 Українська",
+		"de-DE": "🇩🇪 Deutsch",
+		"fr-FR": "🇫🇷 Français",
+		"es-ES": "🇪🇸 Español",
 	}
 
 	languageName := languageNames[language]

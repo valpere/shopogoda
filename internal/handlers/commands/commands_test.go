@@ -185,7 +185,7 @@ func TestGetAQIDescription(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := handler.getAQIDescription(tt.aqi, "en")
+			result := handler.getAQIDescription(tt.aqi, "en-US")
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -224,7 +224,7 @@ func TestGetHealthRecommendation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := handler.getHealthRecommendation(tt.aqi, "en")
+			result := handler.getHealthRecommendation(tt.aqi, "en-US")
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -255,7 +255,7 @@ func TestGetLocalizedUnitsText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := handler.getLocalizedUnitsText(context.Background(), "en", tt.units)
+			result := handler.getLocalizedUnitsText(context.Background(), "en-US", tt.units)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -286,7 +286,7 @@ func TestGetLocalizedRoleName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := handler.getLocalizedRoleName(context.Background(), "en", tt.role)
+			result := handler.getLocalizedRoleName(context.Background(), "en-US", tt.role)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -315,7 +315,7 @@ func TestGetLocalizedStatusText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := handler.getLocalizedStatusText(context.Background(), "en", tt.isActive)
+			result := handler.getLocalizedStatusText(context.Background(), "en-US", tt.isActive)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -347,7 +347,7 @@ func TestGetSubscriptionTypeText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := handler.getSubscriptionTypeText(tt.subType, "en")
+			result := handler.getSubscriptionTypeText(tt.subType, "en-US")
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -380,7 +380,7 @@ func TestGetFrequencyText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := handler.getFrequencyText(tt.freq, "en")
+			result := handler.getFrequencyText(tt.freq, "en-US")
 			assert.Equal(t, tt.expected, result)
 		})
 	}

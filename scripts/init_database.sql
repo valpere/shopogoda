@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     username VARCHAR(255),                     -- Telegram username
     first_name VARCHAR(255),                   -- User first name
     last_name VARCHAR(255),                    -- User last name
-    language VARCHAR(10) DEFAULT 'en',         -- Interface language (en, uk, de, fr, es)
+    language VARCHAR(10) DEFAULT 'en-US',      -- Interface language (en-US, uk-UA, de-DE, fr-FR, es-ES)
     units VARCHAR(20) DEFAULT 'metric',        -- Temperature units (metric/imperial)
     timezone VARCHAR(50) DEFAULT 'UTC',        -- User timezone (independent of location)
     role INTEGER DEFAULT 1,                    -- User role (1=User, 2=Moderator, 3=Admin)

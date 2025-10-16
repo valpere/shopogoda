@@ -60,7 +60,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				"testuser",        // username
 				"Test",            // first_name
 				"User",            // last_name
-				"en",              // language
+				"en-US",           // language (full IETF tag)
 				"metric",          // units (default)
 				"UTC",             // timezone (default)
 				models.RoleUser,   // role (default: 1)
@@ -106,7 +106,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				"existinguser",    // username
 				"Updated",         // first_name
 				"Name",            // last_name
-				"uk",              // language
+				"uk-UA",           // language (full IETF tag)
 				"metric",          // units (default)
 				"UTC",             // timezone (default)
 				models.RoleUser,   // role (default: 1)
@@ -152,7 +152,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 				"erroruser",       // username
 				"Error",           // first_name
 				"Test",            // last_name
-				"en",              // language
+				"en-US",           // language (full IETF tag)
 				"metric",          // units (default)
 				"UTC",             // timezone (default)
 				models.RoleUser,   // role (default: 1)
@@ -276,13 +276,13 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 	t.Run("successful update", func(t *testing.T) {
 		userID := int64(123)
 		settings := map[string]interface{}{
-			"language": "uk",
+			"language": "uk-UA",
 			"timezone": "Europe/Kiev",
 		}
 
 		mockDB.Mock.ExpectBegin()
 		mockDB.Mock.ExpectExec(`UPDATE "users" SET`).
-			WithArgs("uk", "Europe/Kiev", helpers.AnyTime{}, userID).
+			WithArgs("uk-UA", "Europe/Kiev", helpers.AnyTime{}, userID).
 			WillReturnResult(helpers.NewResult(1, 1))
 		mockDB.Mock.ExpectCommit()
 
@@ -298,7 +298,7 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 
 	t.Run("update error", func(t *testing.T) {
 		userID := int64(456)
-		settings := map[string]interface{}{"language": "en"}
+		settings := map[string]interface{}{"language": "en-US"}
 
 		mockDB.Mock.ExpectBegin()
 		mockDB.Mock.ExpectExec(`UPDATE "users" SET`).
@@ -801,11 +801,11 @@ func TestUserService_UpdateUserLanguage(t *testing.T) {
 
 		mockDB.Mock.ExpectBegin()
 		mockDB.Mock.ExpectExec(`UPDATE "users" SET`).
-			WithArgs("uk", helpers.AnyTime{}, userID).
+			WithArgs("uk-UA", helpers.AnyTime{}, userID).
 			WillReturnResult(helpers.NewResult(1, 1))
 		mockDB.Mock.ExpectCommit()
 
-		err := service.UpdateUserLanguage(context.Background(), userID, "uk")
+		err := service.UpdateUserLanguage(context.Background(), userID, "uk-UA")
 
 		assert.NoError(t, err)
 		mockDB.ExpectationsWereMet(t)
@@ -1032,7 +1032,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1046,7 +1046,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetUserID, "target", "Target", "User", "en",
+			targetUserID, "target", "Target", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 
@@ -1089,7 +1089,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		userRows.AddRow(
-			nonAdminID, "user", "Regular", "User", "en",
+			nonAdminID, "user", "Regular", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 
@@ -1121,7 +1121,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1154,7 +1154,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1187,7 +1187,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin1", "Admin", "One", "en",
+			adminID, "admin1", "Admin", "One", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1201,7 +1201,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetAdminID, "admin2", "Admin", "Two", "en",
+			targetAdminID, "admin2", "Admin", "Two", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1239,7 +1239,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 
@@ -1300,6 +1300,149 @@ func TestUserService_GetRoleName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := service.GetRoleName(tt.role)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestUserService_NormalizeLanguageCode(t *testing.T) {
+	mockDB := helpers.NewMockDB(t)
+	defer mockDB.Close()
+	mockRedis := helpers.NewMockRedis()
+	metricsCollector := metrics.New()
+	startTime := time.Now()
+	logger := zerolog.Nop()
+	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		// Standard IETF tags with region codes - exact match
+		{
+			name:     "English US",
+			input:    "en-US",
+			expected: "en-US",
+		},
+		{
+			name:     "English GB maps to en-US",
+			input:    "en-GB",
+			expected: "en-US",
+		},
+		{
+			name:     "Ukrainian UA",
+			input:    "uk-UA",
+			expected: "uk-UA",
+		},
+		{
+			name:     "German DE",
+			input:    "de-DE",
+			expected: "de-DE",
+		},
+		{
+			name:     "French FR",
+			input:    "fr-FR",
+			expected: "fr-FR",
+		},
+		{
+			name:     "French CA maps to fr-FR",
+			input:    "fr-CA",
+			expected: "fr-FR",
+		},
+		{
+			name:     "Spanish ES",
+			input:    "es-ES",
+			expected: "es-ES",
+		},
+		{
+			name:     "Spanish MX maps to es-ES",
+			input:    "es-MX",
+			expected: "es-ES",
+		},
+		// Simple language codes without region - map to full IETF
+		{
+			name:     "English simple maps to en-US",
+			input:    "en",
+			expected: "en-US",
+		},
+		{
+			name:     "Ukrainian simple maps to uk-UA",
+			input:    "uk",
+			expected: "uk-UA",
+		},
+		{
+			name:     "German simple maps to de-DE",
+			input:    "de",
+			expected: "de-DE",
+		},
+		{
+			name:     "French simple maps to fr-FR",
+			input:    "fr",
+			expected: "fr-FR",
+		},
+		{
+			name:     "Spanish simple maps to es-ES",
+			input:    "es",
+			expected: "es-ES",
+		},
+		// Unsupported languages default to English (en-US)
+		{
+			name:     "Italian unsupported",
+			input:    "it-IT",
+			expected: "en-US",
+		},
+		{
+			name:     "Portuguese unsupported",
+			input:    "pt-BR",
+			expected: "en-US",
+		},
+		{
+			name:     "Japanese unsupported",
+			input:    "ja",
+			expected: "en-US",
+		},
+		{
+			name:     "Chinese unsupported",
+			input:    "zh-CN",
+			expected: "en-US",
+		},
+		{
+			name:     "Russian unsupported",
+			input:    "ru",
+			expected: "en-US",
+		},
+		// Edge cases
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: "en-US",
+		},
+		{
+			name:     "Only whitespace",
+			input:    "   ",
+			expected: "en-US",
+		},
+		{
+			name:     "Mixed case exact match",
+			input:    "EN-us",
+			expected: "en-US",
+		},
+		{
+			name:     "Uppercase primary code",
+			input:    "UK",
+			expected: "uk-UA",
+		},
+		{
+			name:     "With extra whitespace",
+			input:    "  de-DE  ",
+			expected: "de-DE",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := service.NormalizeLanguageCode(tt.input)
+			assert.Equal(t, tt.expected, result, "Expected %s to be normalized to %s, got %s", tt.input, tt.expected, result)
 		})
 	}
 }

@@ -219,8 +219,8 @@ func TestSubscriptionService_GetActiveSubscriptions(t *testing.T) {
 
 		// Mock the User preload query (executed second)
 		userRows := mockDB.Mock.NewRows([]string{"id", "first_name", "language"}).
-			AddRow(int64(123), "User1", "en").
-			AddRow(int64(456), "User2", "uk")
+			AddRow(int64(123), "User1", "en-US").
+			AddRow(int64(456), "User2", "uk-UA")
 
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE`).
 			WillReturnRows(userRows)
@@ -255,7 +255,7 @@ func TestSubscriptionService_GetSubscriptionsByType(t *testing.T) {
 
 		// Mock the User preload query (executed second)
 		userRows := mockDB.Mock.NewRows([]string{"id", "first_name", "language"}).
-			AddRow(int64(123), "User1", "en")
+			AddRow(int64(123), "User1", "en-US")
 
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE`).
 			WillReturnRows(userRows)

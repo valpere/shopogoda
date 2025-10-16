@@ -96,8 +96,8 @@ unless (-d $json_dir) {
     print "Created JSON directory: $json_dir\n" if $verbose;
 }
 
-# Locale file patterns
-my @locales = qw(en de es fr uk);
+# Locale file patterns (full IETF language tags)
+my @locales = qw(en-US de-DE es-ES fr-FR uk-UA);
 
 if ($csv_to_json) {
     print "Converting CSV to JSON...\n";
