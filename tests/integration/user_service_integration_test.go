@@ -216,7 +216,7 @@ func TestIntegration_UserServiceGetUser(t *testing.T) {
 			Username:  "cachetest",
 			FirstName: "Cache",
 			LastName:  "Test",
-			Language:  "en",
+			Language:  "en-US",
 			IsActive:  true,
 		}
 		require.NoError(t, suite.db.Create(user).Error)
@@ -259,7 +259,7 @@ func TestIntegration_UserServiceUpdateUserSettings(t *testing.T) {
 			ID:        userID,
 			Username:  "settingstest",
 			FirstName: "Settings",
-			Language:  "en",
+			Language:  "en-US",
 			IsActive:  true,
 		}
 		require.NoError(t, suite.db.Create(user).Error)
@@ -508,7 +508,7 @@ func TestIntegration_UserServiceCacheInvalidation(t *testing.T) {
 			ID:        userID,
 			Username:  "cacheinvalidate",
 			FirstName: "CacheTest",
-			Language:  "en",
+			Language:  "en-US",
 			IsActive:  true,
 		}
 		require.NoError(t, suite.db.Create(user).Error)

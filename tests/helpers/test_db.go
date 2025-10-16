@@ -64,7 +64,7 @@ func MockUser(userID int64) *models.User {
 		FirstName:    "Test",
 		LastName:     "User",
 		Username:     "testuser",
-		Language:     "en",
+		Language:     "en-US",
 		LocationName: "Test City",
 		Latitude:     51.5074,
 		Longitude:    -0.1278,

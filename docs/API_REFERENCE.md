@@ -132,7 +132,7 @@ func NewUserService(
 
 #### RegisterUser
 
-Registers or updates a user from Telegram data (upsert operation).
+Registers or updates a user from Telegram data (upsert operation). **Automatically detects and normalizes the user's language** from Telegram's IETF language code.
 
 ```go
 func (s *UserService) RegisterUser(ctx context.Context, tgUser *gotgbot.User) error
@@ -147,6 +147,14 @@ func (s *UserService) RegisterUser(ctx context.Context, tgUser *gotgbot.User) er
 
 - `error` - Error if registration fails
 
+**Language Detection:**
+
+When a user first interacts with the bot, `RegisterUser` automatically:
+1. Extracts the user's `language_code` from Telegram (IETF language tag like "en-US", "uk-UA")
+2. Normalizes it to a supported full IETF language code ("en-US", "uk-UA", "de-DE", "fr-FR", "es-ES")
+3. Defaults to "en-US" (English) if the language is not supported
+4. Stores the normalized language in the user's profile
+
 **Example:**
 
 ```go
@@ -155,12 +163,89 @@ user := &gotgbot.User{
     FirstName:    "John",
     LastName:     "Doe",
     Username:     "johndoe",
-    LanguageCode: "en",
+    LanguageCode: "en-US",  // IETF tag from Telegram
 }
 
+// Language automatically normalized: "en-US" → "en"
 if err := services.User.RegisterUser(ctx, user); err != nil {
     return fmt.Errorf("failed to register user: %w", err)
 }
+```
+
+**Language Code Examples:**
+- `"en-US"` → `"en-US"` (English - exact match)
+- `"en-GB"` → `"en-US"` (English GB maps to US)
+- `"uk-UA"` → `"uk-UA"` (Ukrainian - exact match)
+- `"de-DE"` → `"de-DE"` (German - exact match)
+- `"fr-FR"` → `"fr-FR"` (French - exact match)
+- `"fr-CA"` → `"fr-FR"` (French Canada maps to France)
+- `"es-ES"` → `"es-ES"` (Spanish - exact match)
+- `"es-MX"` → `"es-ES"` (Spanish Mexico maps to Spain)
+- `"en"` → `"en-US"` (simple code maps to full tag)
+- `"uk"` → `"uk-UA"` (simple code maps to full tag)
+- `"it-IT"` → `"en-US"` (Italian not supported, defaults to English)
+
+#### NormalizeLanguageCode
+
+Normalizes a Telegram IETF language tag to a supported full IETF language code. This is called automatically by `RegisterUser` but can be used independently for language detection.
+
+```go
+func (s *UserService) NormalizeLanguageCode(telegramLangCode string) string
+```
+
+**Parameters:**
+
+- `telegramLangCode` - IETF language tag from Telegram (e.g., "en-US", "uk-UA", "en", "fr-CA")
+
+**Returns:**
+
+- `string` - Normalized full IETF language code ("en-US", "uk-UA", "de-DE", "fr-FR", "es-ES") or "en-US" if unsupported
+
+**Supported Languages:**
+- `en-US` - English (United States)
+- `uk-UA` - Ukrainian (Ukraine) - Українська
+- `de-DE` - German (Germany) - Deutsch
+- `fr-FR` - French (France) - Français
+- `es-ES` - Spanish (Spain) - Español
+
+**Normalization Rules:**
+1. Returns exact match if input is already a supported full IETF tag
+2. Extracts primary language code (before hyphen) for regional variants
+3. Maps simple codes and regional variants to canonical full IETF tags
+4. Converts to lowercase and trims whitespace
+5. Returns "en-US" as default for unsupported languages
+
+**Mapping Examples:**
+- Exact matches: `"en-US"` → `"en-US"`, `"uk-UA"` → `"uk-UA"`
+- Simple codes: `"en"` → `"en-US"`, `"uk"` → `"uk-UA"`, `"de"` → `"de-DE"`
+- Regional variants: `"en-GB"` → `"en-US"`, `"fr-CA"` → `"fr-FR"`, `"es-MX"` → `"es-ES"`
+- Unsupported: `"it-IT"` → `"en-US"`, `"pt-BR"` → `"en-US"`
+
+**Example:**
+
+```go
+// Exact matches (supported full IETF tags)
+lang := services.User.NormalizeLanguageCode("en-US")    // "en-US"
+lang := services.User.NormalizeLanguageCode("uk-UA")    // "uk-UA"
+lang := services.User.NormalizeLanguageCode("de-DE")    // "de-DE"
+
+// Regional variants map to canonical tags
+lang := services.User.NormalizeLanguageCode("en-GB")    // "en-US"
+lang := services.User.NormalizeLanguageCode("fr-CA")    // "fr-FR"
+lang := services.User.NormalizeLanguageCode("es-MX")    // "es-ES"
+
+// Simple codes map to full IETF tags
+lang := services.User.NormalizeLanguageCode("en")       // "en-US"
+lang := services.User.NormalizeLanguageCode("uk")       // "uk-UA"
+lang := services.User.NormalizeLanguageCode("de")       // "de-DE"
+
+// Unsupported languages default to English
+lang := services.User.NormalizeLanguageCode("it-IT")    // "en-US"
+lang := services.User.NormalizeLanguageCode("pt-BR")    // "en-US"
+
+// Edge cases
+lang := services.User.NormalizeLanguageCode("")         // "en-US"
+lang := services.User.NormalizeLanguageCode("EN-us")    // "en-us" (normalized to lowercase)
 ```
 
 #### GetUser
@@ -225,7 +310,7 @@ func (s *UserService) UpdateUserSettings(
 ```go
 settings := map[string]interface{}{
     "units":          "metric",
-    "language":       "en",
+    "language":       "en-US",  // Full IETF language tag
     "timezone":       "America/New_York",
     "notifications":  true,
 }
@@ -452,7 +537,7 @@ func (s *UserService) UpdateUserLanguage(
 ) error
 ```
 
-**Supported Languages:** en, uk, de, fr, es
+**Supported Languages:** en-US, uk-UA, de-DE, fr-FR, es-ES (full IETF tags)
 
 ### Role Management
 
@@ -1415,11 +1500,11 @@ func (s *LocalizationService) T(
 
 ```go
 // Simple translation
-greeting := services.Localization.T(ctx, "en", "welcome_message")
+greeting := services.Localization.T(ctx, "en-US", "welcome_message")
 // Returns: "Welcome to ShoPogoda!"
 
 // Translation with arguments
-temp := services.Localization.T(ctx, "uk", "temperature_reading", 25.5)
+temp := services.Localization.T(ctx, "uk-UA", "temperature_reading", 25.5)
 // Returns: "Температура: 25.5°C"
 ```
 
@@ -1433,7 +1518,7 @@ Checks if a language code is supported.
 func (s *LocalizationService) IsLanguageSupported(language string) bool
 ```
 
-**Supported Languages:** en, uk, de, fr, es
+**Supported Languages:** en-US, uk-UA, de-DE, fr-FR, es-ES (full IETF tags)
 
 #### GetSupportedLanguages
 
@@ -1449,7 +1534,7 @@ func (s *LocalizationService) GetSupportedLanguages() SupportedLanguages
 type SupportedLanguages map[string]SupportedLanguage
 
 type SupportedLanguage struct {
-    Code string  // "en"
+    Code string  // "en-US"
     Name string  // "English"
     Flag string  // "🇺🇸"
 }
@@ -1476,8 +1561,8 @@ func (s *LocalizationService) DetectLanguageFromName(name string) string
 **Example:**
 
 ```go
-code := services.Localization.DetectLanguageFromName("English")  // "en"
-code := services.Localization.DetectLanguageFromName("Українська")  // "uk"
+code := services.Localization.DetectLanguageFromName("English")  // "en-US"
+code := services.Localization.DetectLanguageFromName("Українська")  // "uk-UA"
 ```
 
 ### Translation Keys

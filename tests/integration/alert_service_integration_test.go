@@ -106,7 +106,7 @@ func setupAlertServiceTest(t *testing.T) *AlertServiceTestSuite {
 		Username:     "test_user",
 		FirstName:    "Test",
 		LastName:     "User",
-		Language:     "en",
+		Language:     "en-US",
 		LocationName: "Test City",
 		Latitude:     50.45,
 		Longitude:    30.52,

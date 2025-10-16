@@ -63,7 +63,7 @@ func (s *DemoService) createDemoUser(ctx context.Context) error {
 		Username:     "demo_user",
 		FirstName:    "Demo",
 		LastName:     "User",
-		Language:     "en",
+		Language:     "en-US",
 		LocationName: "Kyiv, Ukraine",
 		Latitude:     50.4501,
 		Longitude:    30.5234,

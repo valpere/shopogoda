@@ -342,7 +342,7 @@ func TestExportService_ExportToTXT(t *testing.T) {
 		Username:  "testuser",
 		FirstName: "Test",
 		LastName:  "User",
-		Language:  "en",
+		Language:  "en-US",
 		Units:     "metric",
 		Timezone:  "UTC",
 	}

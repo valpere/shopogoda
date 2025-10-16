@@ -156,17 +156,17 @@ func (ls *LocalizationService) GetLanguageByCode(code string) (SupportedLanguage
 func (ls *LocalizationService) DetectLanguageFromName(name string) string {
 	name = strings.ToLower(strings.TrimSpace(name))
 
-	// Map common language names to codes
+	// Map common language names to full IETF codes
 	nameMap := map[string]string{
-		"english":    "en",
-		"ukrainian":  "uk",
-		"українська": "uk",
-		"deutsch":    "de",
-		"german":     "de",
-		"français":   "fr",
-		"french":     "fr",
-		"español":    "es",
-		"spanish":    "es",
+		"english":    "en-US",
+		"ukrainian":  "uk-UA",
+		"українська": "uk-UA",
+		"deutsch":    "de-DE",
+		"german":     "de-DE",
+		"français":   "fr-FR",
+		"french":     "fr-FR",
+		"español":    "es-ES",
+		"spanish":    "es-ES",
 	}
 
 	if code, exists := nameMap[name]; exists {

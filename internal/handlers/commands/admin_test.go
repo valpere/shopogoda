@@ -48,7 +48,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -85,7 +85,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		userRows.AddRow(
-			userID, "user", "Regular", "User", "en",
+			userID, "user", "Regular", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -125,7 +125,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -135,7 +135,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 		// Mock Redis cache HIT for admin user (permission check reuses cached value from previous call)
 		// Note: In real execution, SetEx would cache after the first GetUser, but we skip mocking SetEx
 		// and directly mock the cache hit since we're testing command logic, not caching behavior
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en","is_active":true,"role":3}`)
+		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
 
 		// Mock Redis cache miss for target user
 		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
@@ -146,7 +146,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetUserID, "target", "Target", "User", "en",
+			targetUserID, "target", "Target", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -184,7 +184,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -224,7 +224,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -232,7 +232,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			WillReturnRows(adminRows)
 
 		// Mock Redis cache HIT for admin user (permission check reuses cached value)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en","is_active":true,"role":3}`)
+		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
 
 		// Mock Redis cache miss for target user
 		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
@@ -243,7 +243,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetUserID, "target", "Target", "User", "en",
+			targetUserID, "target", "Target", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -283,7 +283,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -320,7 +320,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		userRows.AddRow(
-			userID, "user", "Regular", "User", "en",
+			userID, "user", "Regular", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -360,7 +360,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -368,7 +368,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			WillReturnRows(adminRows)
 
 		// Mock Redis cache HIT for admin user (permission check reuses cached value)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en","is_active":true,"role":3}`)
+		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
 
 		// Mock Redis cache miss for target admin
 		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetAdminID)).RedisNil()
@@ -379,7 +379,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetAdminID, "target_admin", "Target", "Admin", "en",
+			targetAdminID, "target_admin", "Target", "Admin", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -419,7 +419,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -427,7 +427,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			WillReturnRows(adminRows)
 
 		// Mock Redis cache HIT for admin user (permission check reuses cached value)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en","is_active":true,"role":3}`)
+		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
 
 		// Mock Redis cache miss for target user
 		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
@@ -438,7 +438,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetUserID, "target", "Target", "User", "en",
+			targetUserID, "target", "Target", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -480,7 +480,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetUserID, "target", "Target", "User", "en",
+			targetUserID, "target", "Target", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -497,7 +497,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -506,7 +506,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 
 		// ChangeUserRole calls GetUser for target user again
 		// Mock Redis cache HIT for target user (already cached from first GetUser)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).SetVal(`{"id":200,"username":"target","first_name":"Target","last_name":"User","language":"en","is_active":true,"role":1}`)
+		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).SetVal(`{"id":200,"username":"target","first_name":"Target","last_name":"User","language":"en-US","is_active":true,"role":1}`)
 
 		// Note: Admin count query is NOT needed here because we're promoting User→Moderator (not demoting an admin)
 
@@ -601,7 +601,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		targetRows.AddRow(
-			targetUserID, "target", "Target", "User", "en",
+			targetUserID, "target", "Target", "User", "en-US",
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -618,7 +618,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 			"is_active", "role", "created_at", "updated_at",
 		})
 		adminRows.AddRow(
-			adminID, "admin", "Admin", "User", "en",
+			adminID, "admin", "Admin", "User", "en-US",
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
@@ -627,7 +627,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 
 		// ChangeUserRole calls GetUser for target user again
 		// Mock Redis cache HIT for target user (already cached from first GetUser)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).SetVal(`{"id":200,"username":"target","first_name":"Target","last_name":"User","language":"en","is_active":true,"role":1}`)
+		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).SetVal(`{"id":200,"username":"target","first_name":"Target","last_name":"User","language":"en-US","is_active":true,"role":1}`)
 
 		// Note: Admin count query is NOT needed here because we're promoting User→Moderator (not demoting an admin)
 

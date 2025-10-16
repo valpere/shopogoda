@@ -79,7 +79,7 @@ func setupExportServiceTest(t *testing.T) *ExportServiceTestSuite {
 		Username:     "export_test_user",
 		FirstName:    "Export",
 		LastName:     "Tester",
-		Language:     "en",
+		Language:     "en-US",
 		LocationName: "Berlin, Germany",
 		Latitude:     52.5200,
 		Longitude:    13.4050,

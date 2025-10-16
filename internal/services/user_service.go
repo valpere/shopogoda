@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
@@ -69,13 +70,69 @@ func NewUserService(db *gorm.DB, redis *redis.Client, metricsCollector *metrics.
 	}
 }
 
+// NormalizeLanguageCode normalizes a Telegram IETF language tag to our supported language codes
+// Examples: "en-US" -> "en-US", "uk-UA" -> "uk-UA", "en" -> "en-US", "fr-CA" -> "fr-FR"
+// Unsupported languages default to "en-US"
+func (s *UserService) NormalizeLanguageCode(telegramLangCode string) string {
+	// Supported languages in ShoPogoda (full IETF tags)
+	supportedLanguages := map[string]bool{
+		"en-US": true, // English (United States)
+		"uk-UA": true, // Ukrainian (Ukraine) - Українська
+		"de-DE": true, // German (Germany) - Deutsch
+		"fr-FR": true, // French (France) - Français
+		"es-ES": true, // Spanish (Spain) - Español
+	}
+
+	// Map primary language codes to full IETF tags
+	primaryToFull := map[string]string{
+		"en": "en-US",
+		"uk": "uk-UA",
+		"de": "de-DE",
+		"fr": "fr-FR",
+		"es": "es-ES",
+	}
+
+	// If empty, default to English
+	if telegramLangCode == "" {
+		return "en-US"
+	}
+
+	// Normalize input
+	telegramLangCode = strings.ToLower(strings.TrimSpace(telegramLangCode))
+
+	// Check if it's already a supported full IETF tag
+	if supportedLanguages[telegramLangCode] {
+		return telegramLangCode
+	}
+
+	// Extract primary language tag (before hyphen for IETF tags like "en-US", "fr-CA")
+	primaryLang := strings.Split(telegramLangCode, "-")[0]
+
+	// Map primary language to our supported full IETF tag
+	if fullTag, exists := primaryToFull[primaryLang]; exists {
+		return fullTag
+	}
+
+	// Default to English for unsupported languages
+	s.logger.Debug().
+		Str("telegram_lang", telegramLangCode).
+		Str("primary_lang", primaryLang).
+		Msg("Unsupported language, defaulting to English (en-US)")
+
+	return "en-US"
+}
+
 func (s *UserService) RegisterUser(ctx context.Context, tgUser *gotgbot.User) error {
+	// Normalize the Telegram language code to our supported language codes
+	// Examples: "en-US" -> "en-US", "en" -> "en-US", "fr-CA" -> "fr-FR", unsupported -> "en-US"
+	normalizedLang := s.NormalizeLanguageCode(tgUser.LanguageCode)
+
 	user := &models.User{
 		ID:        tgUser.Id,
 		Username:  tgUser.Username,
 		FirstName: tgUser.FirstName,
 		LastName:  tgUser.LastName,
-		Language:  tgUser.LanguageCode,
+		Language:  normalizedLang,
 		IsActive:  true,
 	}
 
