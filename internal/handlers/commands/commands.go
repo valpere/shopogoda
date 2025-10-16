@@ -39,6 +39,16 @@ var availableCommands = []string{
 	"stats", "broadcast", "users", "demoreset", "democlear",
 }
 
+const (
+	// Alert threshold option generation constants
+	defaultMinFactor         = 0.8  // Factor to calculate minimum threshold (80% of current)
+	defaultMaxFactor         = 1.2  // Factor to calculate maximum threshold (120% of current)
+	defaultStepDivisor       = 5.0  // Divisor to calculate step size from range
+	thresholdOptionsRange    = 3    // Number of options to show above/below current value
+	minThresholdOptions      = 5    // Minimum number of threshold options to display
+	maxThresholdOptions      = 7    // Maximum number of threshold options to display
+)
+
 func New(services *services.Services, logger *zerolog.Logger) *CommandHandler {
 	return &CommandHandler{
 		services: services,
@@ -3120,9 +3130,9 @@ func (h *CommandHandler) getThresholdOptions(alertType models.AlertType, current
 		return h.generateRangeOptions(50, 300, 50, currentValue)
 	default:
 		// Default: show ±20% around current value
-		min := currentValue * 0.8
-		max := currentValue * 1.2
-		step := (max - min) / 5
+		min := currentValue * defaultMinFactor
+		max := currentValue * defaultMaxFactor
+		step := (max - min) / defaultStepDivisor
 		return h.generateRangeOptions(min, max, step, currentValue)
 	}
 }
@@ -3131,18 +3141,18 @@ func (h *CommandHandler) getThresholdOptions(alertType models.AlertType, current
 func (h *CommandHandler) generateRangeOptions(min, max, step, current float64) []float64 {
 	var options []float64
 
-	// Add 3 values below current, current, and 3 values above current
-	for i := -3; i <= 3; i++ {
+	// Add values below current, current, and values above current
+	for i := -thresholdOptionsRange; i <= thresholdOptionsRange; i++ {
 		value := current + float64(i)*step
 		if value >= min && value <= max {
 			options = append(options, value)
 		}
 	}
 
-	// Ensure we have at least 5 options
-	if len(options) < 5 {
+	// Ensure we have at least minimum number of options
+	if len(options) < minThresholdOptions {
 		options = []float64{}
-		for v := min; v <= max && len(options) < 7; v += step {
+		for v := min; v <= max && len(options) < maxThresholdOptions; v += step {
 			options = append(options, v)
 		}
 	}
