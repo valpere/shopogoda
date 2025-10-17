@@ -198,6 +198,94 @@ To reach 40% overall coverage (currently 33.7%), would need +6.3% from handlers:
 **Completed**: 2025-10-15
 **Achievement**: Complete role management system with admin commands and safety checks
 
+---
+
+#### ~~6. Alert Handler Implementation~~ ✅ **COMPLETED** (PR #103)
+
+**Status**: ✅ Merged to main
+**Completed**: 2025-10-17
+**Achievement**: Interactive alert management with threshold editing and callback routing
+
+**Implementation** (PR #103):
+
+- ✅ Implemented interactive alert editing (`editAlert` callback handler)
+  - Smart threshold options based on alert type
+  - Real-time threshold updates with inline keyboard
+  - Operator change interface (>, <, ≥, ≤, =)
+  - Toggle alert active/inactive status
+- ✅ Implemented alert removal (`removeAlert` callback handler)
+  - Confirmation dialogs with back navigation
+  - Localized success/error messages
+- ✅ Implemented alert listing (`listUserAlerts` callback handler)
+  - Display all user alerts with current settings
+  - Show location, threshold, and status for each alert
+- ✅ Enhanced callback routing (`handleAlertsCallback`)
+  - Routes: list, edit, remove, update, operator, setoperator, toggle
+  - Full action routing with parameter parsing
+- ✅ Fixed `ListAlerts` command handler bugs
+  - Added explicit user fetch for location data
+  - Fixed JSON condition parsing
+  - Added full localization support
+  - Fixed callback data prefix consistency
+- ✅ Added comprehensive unit tests (35 new tests)
+  - TestGetThresholdOptions: 10 test cases (all alert types)
+  - TestGenerateRangeOptions: 7 test cases (boundary conditions, fallback logic)
+  - TestGetOperatorSymbol: 7 test cases (operator conversions)
+  - TestGetAlertTypeTextLocalized: 11 test cases (multi-language support)
+- ✅ Refactored magic numbers to named constants
+  - `defaultMinFactor`, `defaultMaxFactor`, `defaultStepDivisor`
+  - `thresholdOptionsRange`, `minThresholdOptions`, `maxThresholdOptions`
+- ✅ Addressed code review feedback
+  - Simplified nested conditionals
+  - Documented floating-point format choices
+  - Removed duplicate success messages
+- ✅ Added codecov configuration
+  - Patch coverage target: 20% (realistic for bot handlers)
+  - Project coverage target: 40%
+  - Configured to not block CI on patch coverage
+
+**Implementation Details**:
+
+```go
+// Core alert editing handlers
+func (h *CommandHandler) editAlert(bot, ctx, alertID) error
+func (h *CommandHandler) removeAlert(bot, ctx, alertID) error
+func (h *CommandHandler) listUserAlerts(bot, ctx) error
+func (h *CommandHandler) updateAlertThreshold(bot, ctx, alertID, threshold) error
+func (h *CommandHandler) showOperatorOptions(bot, ctx, alertID) error
+func (h *CommandHandler) updateAlertOperator(bot, ctx, alertID, operator) error
+func (h *CommandHandler) toggleAlert(bot, ctx, alertID) error
+
+// Threshold generation utilities
+func (h *CommandHandler) getThresholdOptions(alertType, currentValue) []float64
+func (h *CommandHandler) generateRangeOptions(min, max, step, current) []float64
+func (h *CommandHandler) getOperatorSymbol(operator) string
+func (h *CommandHandler) getAlertTypeTextLocalized(alertType, language) string
+```
+
+**Files Changed**:
+
+- `internal/handlers/commands/commands.go`: Interactive handlers (+500 lines)
+- `internal/handlers/commands/additional_commands.go`: Fixed ListAlerts (+30 lines)
+- `internal/handlers/commands/commands_test.go`: Comprehensive tests (+363 lines)
+- `docs/API_REFERENCE.md`: Alert handler documentation (+428 lines)
+- `.codecov.yml`: Coverage configuration (new file)
+- `.gitignore`: Allow codecov.yml (+1 line)
+
+**Test Coverage**: 35/35 new tests passing, all existing tests passing
+**Code Quality**: All linter warnings resolved, code formatted with gofmt
+
+**Benefits**:
+
+- Users can now edit alerts interactively without recreating them
+- Smart threshold suggestions based on alert type and current value
+- Full localization across 5 languages
+- Comprehensive error handling and validation
+- Clean callback-based UI navigation
+- Named constants improve code maintainability
+
+---
+
 **Implementation** (PR #100):
 
 - ✅ Added `/promote <user_id> [role]` command (Admin only)
@@ -268,7 +356,7 @@ func (h *CommandHandler) handleRoleCallback(bot, ctx) error
 
 ### Admin Functionality Enhancements
 
-#### 6. Enhanced User Management
+#### 7. Enhanced User Management
 
 **Status**: Basic listing only
 **Current**: `/users` shows statistics, no detailed user list
@@ -302,7 +390,7 @@ func (h *CommandHandler) handleRoleCallback(bot, ctx) error
 
 ### Test Coverage Improvements
 
-#### 6. Role Management Test Coverage
+#### 8. Role Management Test Coverage
 
 **Status**: PR #100 test coverage at 53.90%
 **Current**: Core business logic tested, handler coverage gaps
@@ -350,7 +438,7 @@ func (h *CommandHandler) handleRoleCallback(bot, ctx) error
 
 ### Enterprise Features
 
-#### 7. Advanced Broadcast Features
+#### 9. Advanced Broadcast Features
 
 **Status**: Basic broadcast implemented
 **Current**: `/broadcast` sends same message to all users
