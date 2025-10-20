@@ -26,7 +26,7 @@ A production-ready Telegram bot for weather monitoring, environmental alerts, an
 - **Multi-language Support**: Complete localization in Ukrainian, English, German, French, and Spanish with dynamic language switching
 
 ### Enterprise Features
-- **Advanced Alert System**: Custom thresholds and conditions
+- **Advanced Alert System**: Custom thresholds with interactive management (edit, toggle, delete)
 - **Slack/Teams Integration**: Automated notifications
 - **Role-Based Access Control**: Admin, moderator, and user roles
 - **Monitoring & Analytics**: Prometheus metrics and Grafana dashboards
@@ -34,7 +34,7 @@ A production-ready Telegram bot for weather monitoring, environmental alerts, an
 
 ### Technical Excellence
 - **Scalable Architecture**: Microservices-ready design
-- **Comprehensive Testing**: 30.5% coverage with unit, integration, and bot mock tests
+- **Comprehensive Testing**: 33.7% coverage (40.5% on testable packages) with unit, integration, and bot mock tests
 - **Production Ready**: Docker containerization and CI/CD
 - **Enterprise Security**: Rate limiting, input validation, audit logs
 
@@ -276,7 +276,7 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
 - **[Architecture](docs/ARCHITECTURE.md)** - System architecture and design
 - **[API Reference](docs/API_REFERENCE.md)** - Complete service layer API documentation
-- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (33.7% coverage, 40.5% for testable packages)
+- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (33.7% overall, 40.5% testable packages)
 - **[Database Migration Guide](docs/DATABASE_MIGRATION_GUIDE.md)** - When to run SQL patches and migrations
 - **[Database Security](docs/DATABASE_SECURITY.md)** - Row Level Security (RLS) implementation guide
 - **[Code Quality Guidelines](docs/CODE_QUALITY.md)** - Contribution standards
