@@ -114,19 +114,11 @@ air_quality_pm25,"🏭 PM2.5"
 air_quality_pollutants,*Niveles de contaminantes:*
 air_quality_title,"🌬️ *Calidad del aire - %s*"
 air_quality_updated,"📅 Actualizado"
-alert_active_alerts_none,"⚠️ *Tus Alertas Activas*
-
-No hay alertas configuradas todavía.
-
-Usa /addalert para crear nuevas alertas."
-alert_air_btn,"🌬️ Alerta de Calidad del Aire"
-alert_air_created_message,"✅ ¡Alerta de calidad del aire creada!"
 alert_air_created_moderate,"✅ Alerta de calidad del aire creada para niveles moderados (51-100) en %s."
 alert_air_created_unhealthy,"✅ Alerta de calidad del aire creada para niveles no saludables (101+) en %s."
 alert_air_custom,"📝 Personalizada (ICA > %d)"
 alert_air_custom_btn,"⚙️ Umbral Personalizado"
 alert_air_custom_created_message,"✅ ¡Alerta de calidad del aire personalizada creada! Especifica tu umbral a continuación."
-alert_air_failed_create,"❌ Error al crear la alerta de calidad del aire. Por favor, inténtalo de nuevo."
 alert_air_moderate,"🟡 Moderada (ICA 51-100)"
 alert_air_moderate_100_btn,"⚠️ ICA Moderado (>100)"
 alert_air_moderate_created_message,"✅ ¡Alerta de calidad del aire creada! Serás notificado cuando el ICA supere %.0f."
@@ -137,26 +129,18 @@ alert_air_unhealthy,"🔴 No Saludable (ICA 101+)"
 alert_air_unhealthy_150_btn,"🚨 ICA Insalubre (>150)"
 alert_air_unhealthy_created_message,"✅ ¡Alerta de calidad del aire creada! Serás notificado cuando el ICA alcance niveles insalubres (%.0f+)."
 alert_created,"✅ Alerta creada exitosamente"
-alert_humidity_btn,"💧 Alerta de Humedad"
-alert_humidity_created_message,"✅ ¡Alerta de humedad creada!"
 alert_humidity_custom_created_message,"✅ ¡Alerta de humedad personalizada creada! Especifica tu umbral a continuación."
-alert_humidity_failed_create,"❌ Error al crear la alerta de humedad. Por favor, inténtalo de nuevo."
 alert_humidity_high_created_message,"✅ ¡Alerta de humedad alta creada! Serás notificado cuando la humedad supere %.1f%%."
 alert_humidity_low_created_message,"✅ ¡Alerta de humedad baja creada! Serás notificado cuando la humedad baje de %.1f%%."
-alert_setup_for_location,"🔔 *Configurar Alerta para %s*
-
-Elige el tipo de alerta que deseas crear:"
 alert_setup_title,"🔔 *Configurar alerta para %s*
 
 Elige el tipo de alerta que quieres crear:"
-alert_temp_btn,"🌡️ Alerta de Temperatura"
 alert_temp_created_high,"✅ Alerta de temperatura alta creada para %.1f°C en %s."
 alert_temp_created_low,"✅ Alerta de temperatura baja creada para %.1f°C en %s."
 alert_temp_created_message,"✅ ¡Alerta de temperatura creada!"
 alert_temp_custom,"📝 Personalizada"
 alert_temp_custom_btn,"⚙️ Umbral Personalizado"
 alert_temp_custom_created_message,"✅ ¡Alerta de temperatura personalizada creada! Especifica tu umbral a continuación."
-alert_temp_failed_create,"❌ Error al crear la alerta de temperatura. Por favor, inténtalo de nuevo."
 alert_temp_high,"🔥 Alta Temperatura (>30°C)"
 alert_temp_high_30_btn,"🔥 Temperatura Alta (>30°C)"
 alert_temp_high_created_message,"✅ ¡Alerta de temperatura alta creada! Serás notificado cuando la temperatura supere %.1f°C."
@@ -166,21 +150,16 @@ alert_temp_low_created_message,"✅ ¡Alerta de temperatura baja creada! Serás 
 alert_temp_setup_title,"🌡️ *Configuración de Alerta de Temperatura*
 
 Elige la condición de alerta:"
-alert_wind_btn,"💨 Alerta de Velocidad del Viento"
 alert_wind_created,"✅ Alerta de viento creada para velocidades >%.1f km/h en %s."
 alert_wind_created_message,"✅ ¡Alerta de viento creada!"
 alert_wind_custom,"📝 Personalizada"
 alert_wind_custom_btn,"⚙️ Umbral Personalizado"
 alert_wind_custom_created_message,"✅ ¡Alerta de viento personalizada creada! Especifica tu umbral a continuación."
-alert_wind_failed_create,"❌ Error al crear la alerta de viento. Por favor, inténtalo de nuevo."
-alert_wind_high_created_message,"✅ ¡Alerta de viento creada! Serás notificado cuando la velocidad del viento supere %.1f km/h."
 alert_wind_setup_title,"🌬️ *Configuración de Alerta de Velocidad del Viento*
 
 Elige la condición de alerta:"
 alert_wind_strong,"💨 Viento Fuerte (>40 km/h)"
-alert_wind_strong_50_btn,"💨 Viento Fuerte (>50 km/h)"
 alert_wind_very_strong,"🌪️ Viento Muy Fuerte (>70 km/h)"
-alert_wind_very_strong_80_btn,"🌪️ Muy Fuerte (>80 km/h)"
 aqi_good,Bueno
 aqi_hazardous,Peligroso
 aqi_moderate,Moderado
@@ -230,7 +209,6 @@ export_all_btn,"📦 Todos los Datos"
 export_all_data_type,Todos los Datos
 export_aqi,ICA
 export_back_btn,"🔙 Volver a Configuración"
-export_back_to_export_btn,"🔙 Volver"
 export_complete,"✅ *Exportación completa*
 
 Tu exportación de datos ha sido enviada en el archivo de arriba."
@@ -241,33 +219,13 @@ export_condition,Condición
 export_coordinates,Coordenadas
 export_created_at,Creado en
 export_data_export_header,Exportación de Datos - ShoPogoda
-export_data_type_alerts,"⚠️ Alertas"
-export_data_type_all,"📦 Todos los Datos"
-export_data_type_default,Datos
-export_data_type_subscriptions,"📋 Suscripciones"
-export_data_type_weather,"🌤️ Datos del Tiempo"
 export_date,Fecha
 export_description,Descripción
 export_end,Fin
 export_exported_at,Exportado en
 export_failed,"❌ Error en la exportación. Por favor inténtalo de nuevo."
-export_failed_generate,"❌ *Exportación Fallida*
-
-Lo siento, hubo un error al generar tu exportación. Por favor, inténtalo de nuevo más tarde."
-export_failed_send,"❌ *Exportación Fallida*
-
-Lo siento, hubo un error al enviar tu archivo de exportación. Por favor, inténtalo de nuevo más tarde."
 export_format_csv,CSV (Hoja de cálculo)
 export_format_json,JSON (Legible por máquina)
-export_format_selection_message,"📊 *Exportar %s*
-
-Elige el formato de exportación:
-
-📄 *JSON* - Formato legible por máquina para uso técnico
-📊 *CSV* - Formato compatible con hojas de cálculo
-📝 *TXT* - Formato de texto legible por humanos
-
-El archivo exportado se te enviará a través de Telegram."
 export_format_txt,TXT (Legible por humanos)
 export_frequency,Frecuencia
 export_humidity,Humedad
@@ -381,9 +339,7 @@ help_weather,"**🌤️ Comandos meteorológicos:**"
 language_choose,"🌐 *Elegir Idioma*
 
 Selecciona tu idioma preferido:"
-language_choose_message,"🌐 *Elige tu idioma:*"
 language_current,"🌍 **Idioma actual:** %s %s"
-language_failed_update,"❌ Error al actualizar la configuración de idioma. Por favor, inténtalo de nuevo."
 language_select,"🌍 **Selecciona tu idioma**
 
 Elige tu idioma preferido para los mensajes del bot:"
@@ -395,7 +351,6 @@ language_set_success,"✅ **Idioma actualizado**
 🌍 Idioma establecido en: %s %s
 
 ¡Todos los mensajes del bot aparecerán ahora en tu idioma seleccionado!"
-language_updated_to,"✅ Idioma actualizado a %s"
 listlocations_change_location_btn,"📍 Cambiar ubicación"
 listlocations_current_weather_btn,"🌤️ Clima actual"
 listlocations_no_location,"📍 No hay ubicación establecida.
@@ -417,7 +372,6 @@ location_confirm_set,"📍 ¿Quieres establecer *%s* como tu ubicación?"
 location_confirm_yes_change,"✅ Sí, cambiar ubicación"
 location_confirm_yes_set,"✅ Sí, establecer como mi ubicación"
 location_current_location,"📍 Ubicación Actual"
-location_failed_save,"❌ Error al guardar la ubicación"
 location_input_coords_prompt,"📍 *Establecer ubicación por coordenadas*
 
 Por favor ingresa tus coordenadas GPS en el formato:
@@ -433,15 +387,11 @@ Usa /setlocation para establecer tu ubicación."
 location_not_found,"❌ **Ubicación No Encontrada**
 
 No se pudieron encontrar datos para ""%s"". Verifique la ortografía o intente una ubicación diferente."
-location_not_found_try_different,"❌ Lo siento, no pude encontrar la ubicación '%s'. Por favor, intenta con otro nombre de ciudad."
 location_one_location_message,"✅ Solo tienes una ubicación - ¡ya es tu ubicación predeterminada!"
 location_required_notifications,"📍 Por favor establece tu ubicación primero usando /setlocation antes de configurar notificaciones."
 location_required_setlocation,"❌ Por favor establece una ubicación primero usando /setlocation"
-location_save_failed_try_again,"❌ Error al guardar la ubicación. Por favor, inténtalo de nuevo."
 location_save_success_with_coords,"✅ Ubicación establecida en *%s, %s*
 📍 Coordenadas: %.4f, %.4f"
-location_saved_success,"✅ ¡Ubicación '%s' guardada exitosamente!"
-location_set_to,"✅ Ubicación establecida en *%s*"
 location_settings_btn_back,"⬅️ Volver a configuraciones"
 location_settings_btn_clear,"🗑️ Limpiar ubicación"
 location_settings_btn_set_coords,"📍 Establecer ubicación por coordenadas"
@@ -457,54 +407,20 @@ location_settings_option_name,Establecer nueva ubicación por nombre
 location_settings_options,Opciones
 location_settings_title,Configuraciones de ubicación
 location_share_prompt,"📍 Comparte tu ubicación actual usando el botón de abajo, o escribe el nombre de una ciudad:"
-location_understood_wont_set,"👍 Entendido, no estableceré eso como tu ubicación."
 notification_add_alerts_btn,"⚡ Agregar Alertas del Tiempo"
 notification_add_daily_btn,"➕ Agregar Tiempo Diario"
 notification_add_extreme_btn,"🌪️ Agregar Tiempo Extremo"
 notification_add_weekly_btn,"📅 Agregar Resumen Semanal"
 notification_back_btn,"🔙 Volver"
-notification_back_to_settings_btn,"🔙 Volver a Configuración"
-notification_choose_option,_Elige una opción a continuación:_
-notification_create_error,"❌ Error al crear la notificación. Por favor, inténtalo de nuevo."
 notification_created_message,"✅ *¡Notificación Creada!*
 
 %s %s notificaciones se enviarán a las %s todos los días.
 
 Puedes administrar todas tus notificaciones en Configuración → Notificaciones."
-notification_delete_error,"❌ Error al eliminar la notificación."
-notification_deleted_message,"✅ ¡Notificación eliminada exitosamente!"
-notification_invalid_id,"❌ ID de suscripción no válido."
-notification_invalid_id_delete,"❌ ID de suscripción no válido."
-notification_list_item,"%d. %s %s - %s a las %s
-"
-notification_load_error,"❌ Error al cargar la suscripción."
 notification_manage_btn,"🔔 Administrar Notificaciones"
-notification_manage_btn_after_delete,"⚙️ Administrar Notificaciones"
-notification_manage_btn_settings,"⚙️ Administrar Notificaciones"
-notification_manage_existing_btn,"⚙️ Administrar Existentes"
-notification_not_found,"❌ Suscripción no encontrada."
 notification_set_location_btn,"📍 Establecer Ubicación"
-notification_settings_btn_main,"⚙️ Configuración"
-notification_settings_failed_load,"❌ Error al cargar tu configuración de notificaciones. Por favor, inténtalo de nuevo."
-notification_type_alerts,alertas y avisos del tiempo
-notification_type_daily,actualizaciones diarias del tiempo
 notification_type_description,Esto muestra tu tipo de notificación. Usa los botones junto a ella para administrar esta notificación.
-notification_type_extreme,notificaciones de tiempo extremo
 notification_type_invalid,"❌ Tipo de notificación no válido."
-notification_type_invalid_create,"❌ Tipo de notificación no válido."
-notification_type_weekly,resúmenes semanales del tiempo
-notification_update_error,"❌ Error al actualizar la suscripción."
-notification_updated_message,"✅ ¡%s %s notificaciones %s exitosamente!"
-notifications_add_btn,"➕ Agregar Notificaciones"
-notifications_back_btn,"🔙 Volver"
-notifications_load_error,"❌ Error al cargar tus notificaciones. Por favor, inténtalo de nuevo."
-notifications_manage_title,"⚙️ *Administrar Tus Notificaciones*
-
-*Notificaciones Activas:*
-"
-notifications_none_message,"🔔 No tienes notificaciones activas.
-
-¡Usa los botones de abajo para agregar algunas!"
 role_admin,Administrador
 role_moderator,Moderador
 role_user,Usuario
@@ -553,30 +469,17 @@ Configura actualizaciones automáticas del clima para tu ubicación:
 • Selecciona frecuencia de notificación
 • Configura umbrales de alerta"
 subscribe_weekly_btn,"📊 Pronóstico semanal"
-subscription_add_new_btn,"🔔 Agregar Nueva Suscripción"
 subscription_air_created,"✅ Suscripción de calidad del aire creada. Recibirás alertas cuando la calidad del aire cambie."
 subscription_air_created_message,"✅ ¡Suscripción de calidad del aire creada! Recibirás actualizaciones diarias de calidad del aire a las 10:00 AM."
-subscription_air_failed_create,"❌ Error al crear la suscripción de calidad del aire. Por favor, inténtalo de nuevo."
 subscription_alerts_created,"✅ Suscripción de alertas creada. Recibirás notificaciones de alertas importantes."
 subscription_alerts_created_message,"✅ ¡Suscripción de alertas del tiempo creada! Recibirás notificaciones de alerta cuando se excedan los umbrales."
-subscription_alerts_failed_create,"❌ Error al crear la suscripción de alertas. Por favor, inténtalo de nuevo."
 subscription_daily_created,"✅ Suscripción meteorológica diaria creada. Recibirás actualizaciones matutinas a las 8:00 AM."
 subscription_daily_created_message,"✅ ¡Suscripción diaria del tiempo creada! Recibirás actualizaciones matutinas a las 8:00 AM."
 subscription_edit_coming_soon,"⚙️ ¡Función de edición de suscripción próximamente!"
-subscription_failed_create,"❌ Error al crear la suscripción. Por favor, inténtalo de nuevo."
-subscription_failed_create_weekly,"❌ Error al crear la suscripción. Por favor, inténtalo de nuevo."
-subscription_failed_get,"❌ Error al obtener las suscripciones. Por favor, inténtalo de nuevo."
-subscription_failed_remove,"❌ Error al eliminar la suscripción. Por favor, inténtalo de nuevo."
 subscription_invalid_id,"❌ ID de suscripción inválido."
 subscription_invalid_id_message,"❌ ID de suscripción no válido."
-subscription_list_item,"• **%s** - %s a las %s
-"
-subscription_none_message,"📋 No tienes suscripciones activas.
-
-Usa /subscribe para crear nuevas suscripciones."
 subscription_removed,"✅ Suscripción eliminada exitosamente."
 subscription_removed_message,"✅ Suscripción eliminada exitosamente."
-subscription_settings_btn,"⚙️ Configuración"
 subscription_type_alerts,Alertas meteorológicas
 subscription_type_daily,Clima diario
 subscription_type_extreme,Clima extremo
@@ -588,7 +491,6 @@ subscriptions_active,Suscripciones Activas
 subscriptions_none,"📋 No tienes suscripciones activas.
 
 Usa /subscribe para configurar notificaciones meteorológicas."
-system_stats_failed_get,"❌ Error al obtener estadísticas del sistema. Por favor, inténtalo de nuevo."
 timezone_confirm_change,"🕐 ¿Quieres cambiar tu zona horaria de *%s* a *%s*?"
 timezone_confirm_no_ignore,"❌ No, ignorar"
 timezone_confirm_no_keep,"❌ No, mantener actual"
@@ -600,7 +502,6 @@ timezone_input_prompt,"🕐 *Establecer zona horaria*
 Por favor escribe el nombre de tu zona horaria (ej. ""Europe/Madrid"", ""America/New_York"", ""Asia/Tokyo""):
 
 Puedes encontrar nombres de zonas horarias en: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
-timezone_setting_cancelled,"✅ Configuración de zona horaria cancelada"
 timezone_update_failed,"❌ Error al actualizar configuración de zona horaria. Por favor inténtalo de nuevo."
 timezone_update_success,"✅ Zona horaria actualizada a %s"
 unauthorized,"❌ **Acceso denegado**
@@ -613,8 +514,6 @@ units_metric,"🌡️ Métrico (°C, km/h, km)"
 units_metric_text,"🌡️ Métrico (°C, km/h, km)"
 units_update_failed,"❌ Error al actualizar configuración de unidades. Por favor inténtalo de nuevo."
 units_update_success,"✅ Unidades actualizadas a %s"
-unknown_command_did_you_mean,"¿Quisiste decir:
-"
 unknown_command_help,"
 Usa /help para ver todos los comandos disponibles."
 unknown_command_help_only,"❓ Comando desconocido: `/%s`
@@ -623,7 +522,6 @@ Usa /help para ver todos los comandos disponibles."
 unknown_command_message,"❓ Comando desconocido: `/%s`
 
 "
-user_stats_failed_get,"❌ Error al obtener estadísticas del usuario. Por favor, inténtalo de nuevo."
 version_built,"🕐 Construido: %s"
 version_commit,"🔨 Git Commit: %s"
 version_divider,---

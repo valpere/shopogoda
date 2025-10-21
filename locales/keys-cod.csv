@@ -163,9 +163,9 @@ error_weather_location_failed
 export_alert
 export_alert_configs_configured
 export_alert_configurations
-export_alert_type
 export_alerts_btn
 export_alerts_data_type
+export_alert_type
 export_all_btn
 export_all_data_type
 export_aqi
@@ -343,15 +343,15 @@ settings_lang_prefs
 settings_language
 settings_location
 settings_location_mgmt
-settings_not_set
 settings_notif_prefs
+settings_not_set
 settings_role
 settings_status
 settings_timezone
 settings_timezone_settings
 settings_title
-settings_unit_system
 settings_units
+settings_unit_system
 status_active
 status_inactive
 subscribe_air_btn
@@ -371,6 +371,8 @@ subscription_invalid_id
 subscription_invalid_id_message
 subscription_removed
 subscription_removed_message
+subscriptions_active
+subscriptions_none
 subscription_type_alerts
 subscription_type_daily
 subscription_type_extreme
@@ -378,8 +380,6 @@ subscription_type_unknown
 subscription_type_weekly
 subscription_weekly_created
 subscription_weekly_created_message
-subscriptions_active
-subscriptions_none
 timezone_confirm_change
 timezone_confirm_no_ignore
 timezone_confirm_no_keep
