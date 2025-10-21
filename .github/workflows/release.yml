@@ -160,33 +160,23 @@ jobs:
             const version = '${{ steps.version.outputs.version }}';
             const isPrerelease = ${{ steps.version.outputs.is_prerelease }};
             const changelog = `${{ steps.changelog.outputs.changelog }}`;
+            const repository = '${{ github.repository }}';
 
             // Create release body
-            const releaseBody = `${changelog}
+            const dockerCmd = 'docker pull ghcr.io/' + repository + ':' + version.replace('v', '');
+            const installSection = '\n\n## 📦 Installation\n\n' +
+              '### Docker\n```bash\n' + dockerCmd + '\n```\n\n' +
+              '### Binary Download\n' +
+              'Download the binary for your platform from the assets below and run:\n' +
+              '```bash\nchmod +x shopogoda-*\n./shopogoda-*\n```\n\n' +
+              '### Quick Start\n' +
+              'See [DEMO_SETUP.md](https://github.com/' + repository + '/blob/main/docs/DEMO_SETUP.md) for complete setup instructions.\n\n' +
+              '## 📊 Checksums\n' +
+              'See `checksums.txt` asset for SHA256 checksums of all binaries.\n\n' +
+              '## 🐛 Bug Reports\n' +
+              'Report issues at https://github.com/' + repository + '/issues\n';
 
-## 📦 Installation
-
-### Docker
-\`\`\`bash
-docker pull ghcr.io/${{ github.repository }}:${version.replace('v', '')}
-\`\`\`
-
-### Binary Download
-Download the binary for your platform from the assets below and run:
-\`\`\`bash
-chmod +x shopogoda-*
-./shopogoda-*
-\`\`\`
-
-### Quick Start
-See [DEMO_SETUP.md](https://github.com/${{ github.repository }}/blob/main/docs/DEMO_SETUP.md) for complete setup instructions.
-
-## 📊 Checksums
-See \`checksums.txt\` asset for SHA256 checksums of all binaries.
-
-## 🐛 Bug Reports
-Report issues at https://github.com/${{ github.repository }}/issues
-`;
+            const releaseBody = changelog + installSection;
 
             // Create the release
             const release = await github.rest.repos.createRelease({
