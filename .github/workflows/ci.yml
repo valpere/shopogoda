@@ -51,7 +51,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -311,7 +311,7 @@ jobs:
         go test -bench=. -benchmem -benchtime=3s -run=^$ ./... | tee benchmark.txt
 
     - name: Download previous benchmark results
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ./cache
         key: ${{ runner.os }}-benchmark-${{ github.sha }}
