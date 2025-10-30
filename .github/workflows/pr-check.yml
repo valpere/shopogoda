@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 
 env:
-  GO_VERSION: 1.21
+  GO_VERSION: 1.24
 
 jobs:
   pr-validation:
@@ -52,6 +52,7 @@ jobs:
 
     - name: Cache Go modules
       uses: actions/cache@v4
+      continue-on-error: true
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
