@@ -9,7 +9,7 @@ on:
     branches: [ main ]
 
 env:
-  GO_VERSION: 1.21
+  GO_VERSION: 1.24
 
 jobs:
   security-scan:
@@ -32,6 +32,7 @@ jobs:
 
     - name: Cache Go modules
       uses: actions/cache@v4
+      continue-on-error: true
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -74,6 +75,11 @@ jobs:
     name: Docker Image Security Scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
 
     steps:
     - name: Checkout code
@@ -133,10 +139,8 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
 
-    - name: Build project
-      run: |
-        go mod download
-        go build ./...
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v4
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
