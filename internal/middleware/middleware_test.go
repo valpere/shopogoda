@@ -220,7 +220,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 func TestAuthMiddleware(t *testing.T) {
 	t.Run("creates handler function", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -234,7 +234,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("calls user registration", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -264,14 +264,14 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("handles user registration error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
 		// Close DB to simulate error
 		sqlDB, _ := mockDB.DB.DB()
-		sqlDB.Close()
+		_ = sqlDB.Close()
 
 		logger := zerolog.Nop()
 		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)

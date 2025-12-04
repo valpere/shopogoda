@@ -21,7 +21,11 @@ func TestMigrate(t *testing.T) {
 	// Create mock database
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Logf("Failed to close mock database: %v", err)
+		}
+	}()
 
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
 		Conn: db,
@@ -135,7 +139,11 @@ func TestConnectRedis(t *testing.T) {
 	t.Run("successful connection", func(t *testing.T) {
 		// Create mock Redis client
 		client, mock := redismock.NewClientMock()
-		defer client.Close()
+		defer func() {
+			if err := client.Close(); err != nil {
+				t.Logf("Failed to close mock Redis client: %v", err)
+			}
+		}()
 
 		// Expect ping command
 		mock.ExpectPing().SetVal("PONG")
@@ -154,7 +162,11 @@ func TestConnectRedis(t *testing.T) {
 
 	t.Run("connection timeout", func(t *testing.T) {
 		client, mock := redismock.NewClientMock()
-		defer client.Close()
+		defer func() {
+			if err := client.Close(); err != nil {
+				t.Logf("Failed to close mock Redis client: %v", err)
+			}
+		}()
 
 		// Expect ping to fail
 		mock.ExpectPing().SetErr(context.DeadlineExceeded)

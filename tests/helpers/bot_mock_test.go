@@ -45,7 +45,7 @@ func TestNewMockContext(t *testing.T) {
 		})
 
 		assert.Equal(t, "/weather New York", mockCtx.Context.EffectiveMessage.Text)
-		assert.Equal(t, "/weather New York", mockCtx.Context.Update.Message.Text)
+		assert.Equal(t, "/weather New York", mockCtx.Context.Message.Text)
 	})
 
 	t.Run("with location", func(t *testing.T) {

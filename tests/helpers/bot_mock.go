@@ -136,7 +136,7 @@ func NewMockContext(opts MockContextOptions) *MockContext {
 	if len(opts.Args) > 0 {
 		text := strings.Join(opts.Args, " ")
 		ctx.EffectiveMessage.Text = text
-		ctx.Update.Message.Text = text
+		ctx.Message.Text = text
 	}
 
 	// Add location if coordinates provided

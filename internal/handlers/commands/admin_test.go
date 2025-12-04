@@ -33,7 +33,7 @@ func newTestServices(mockDB *helpers.MockDB, mockRedis *helpers.MockRedis) *serv
 func TestCommandHandler_Promote(t *testing.T) {
 	t.Run("successful promotion with usage help", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -70,7 +70,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 
 	t.Run("non-admin cannot promote", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -106,7 +106,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 
 	t.Run("promote user to moderator with confirmation", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -169,7 +169,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 
 	t.Run("invalid user ID format", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -205,7 +205,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 
 	t.Run("invalid role argument", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -268,7 +268,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 func TestCommandHandler_Demote(t *testing.T) {
 	t.Run("successful demotion with usage help", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -305,7 +305,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 
 	t.Run("non-admin cannot demote", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -341,7 +341,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 
 	t.Run("demote admin to moderator with warning", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -400,7 +400,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 
 	t.Run("cannot demote user role", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -461,7 +461,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 func TestCommandHandler_confirmRoleChange(t *testing.T) {
 	t.Run("successful role change confirmation", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -539,7 +539,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 
 	t.Run("invalid callback params", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -561,7 +561,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 func TestCommandHandler_cancelRoleChange(t *testing.T) {
 	t.Run("successful role change cancellation", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -582,7 +582,7 @@ func TestCommandHandler_cancelRoleChange(t *testing.T) {
 func TestCommandHandler_handleRoleCallback(t *testing.T) {
 	t.Run("route to confirm action", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -654,7 +654,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 
 	t.Run("route to cancel action", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)
@@ -673,7 +673,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 
 	t.Run("unknown action", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
 		testServices := newTestServices(mockDB, mockRedis)

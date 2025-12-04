@@ -20,7 +20,7 @@ import (
 
 func TestNewUserService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	logger := zerolog.Nop()
@@ -39,7 +39,7 @@ func TestNewUserService(t *testing.T) {
 func TestUserService_RegisterUser(t *testing.T) {
 	t.Run("successful registration", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -85,7 +85,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 	t.Run("upsert on conflict", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -131,7 +131,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 
 	t.Run("database error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -180,7 +180,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 func TestUserService_GetUser(t *testing.T) {
 	t.Run("get from cache", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -204,7 +204,7 @@ func TestUserService_GetUser(t *testing.T) {
 
 	t.Run("get from database and cache", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -243,7 +243,7 @@ func TestUserService_GetUser(t *testing.T) {
 
 	t.Run("user not found", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -266,7 +266,7 @@ func TestUserService_GetUser(t *testing.T) {
 
 func TestUserService_UpdateUserSettings(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -315,7 +315,7 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 
 func TestUserService_GetSystemStats(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -372,7 +372,7 @@ func TestUserService_GetSystemStats(t *testing.T) {
 
 func TestUserService_GetActiveUsers(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -422,7 +422,7 @@ func TestUserService_GetActiveUsers(t *testing.T) {
 
 func TestUserService_GetUserStatistics(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -475,7 +475,7 @@ func TestUserService_GetUserStatistics(t *testing.T) {
 
 func TestUserService_SetUserLocation(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -519,7 +519,7 @@ func TestUserService_SetUserLocation(t *testing.T) {
 func TestUserService_ClearUserLocation(t *testing.T) {
 	t.Run("successful location clear", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -547,7 +547,7 @@ func TestUserService_ClearUserLocation(t *testing.T) {
 
 func TestUserService_GetUserLocation(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -616,7 +616,7 @@ func TestUserService_GetUserLocation(t *testing.T) {
 
 func TestUserService_GetUserTimezone(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -687,7 +687,7 @@ func TestUserService_GetUserTimezone(t *testing.T) {
 
 func TestUserService_ConvertToUserTime(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -752,7 +752,7 @@ func TestUserService_ConvertToUserTime(t *testing.T) {
 
 func TestUserService_ConvertToUTC(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -789,7 +789,7 @@ func TestUserService_ConvertToUTC(t *testing.T) {
 
 func TestUserService_UpdateUserLanguage(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -815,7 +815,7 @@ func TestUserService_UpdateUserLanguage(t *testing.T) {
 func TestUserService_IncrementMessageCounter(t *testing.T) {
 	t.Run("successful increment - new key", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -841,7 +841,7 @@ func TestUserService_IncrementMessageCounter(t *testing.T) {
 
 	t.Run("successful increment - existing key with TTL", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -866,7 +866,7 @@ func TestUserService_IncrementMessageCounter(t *testing.T) {
 
 	t.Run("increment error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -887,7 +887,7 @@ func TestUserService_IncrementMessageCounter(t *testing.T) {
 
 	t.Run("TTL check error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -916,7 +916,7 @@ func TestUserService_IncrementMessageCounter(t *testing.T) {
 func TestUserService_IncrementWeatherRequestCounter(t *testing.T) {
 	t.Run("successful increment - new key", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -942,7 +942,7 @@ func TestUserService_IncrementWeatherRequestCounter(t *testing.T) {
 
 	t.Run("successful increment - existing key with TTL", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -967,7 +967,7 @@ func TestUserService_IncrementWeatherRequestCounter(t *testing.T) {
 
 	t.Run("increment error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -988,7 +988,7 @@ func TestUserService_IncrementWeatherRequestCounter(t *testing.T) {
 
 	t.Run("TTL check error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -1016,7 +1016,7 @@ func TestUserService_IncrementWeatherRequestCounter(t *testing.T) {
 func TestUserService_ChangeUserRole(t *testing.T) {
 	t.Run("successful role change", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -1073,7 +1073,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 
 	t.Run("non-admin cannot change role", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -1106,7 +1106,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 
 	t.Run("cannot change own role", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -1138,7 +1138,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 
 	t.Run("invalid role value", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -1171,7 +1171,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 
 	t.Run("cannot demote last admin", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -1223,7 +1223,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 
 	t.Run("target user not found", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
-		defer mockDB.Close()
+		defer func() { _ = mockDB.Close() }()
 		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
@@ -1262,7 +1262,7 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 
 func TestUserService_GetRoleName(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
@@ -1306,7 +1306,7 @@ func TestUserService_GetRoleName(t *testing.T) {
 
 func TestUserService_NormalizeLanguageCode(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()

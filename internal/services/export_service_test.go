@@ -17,7 +17,7 @@ import (
 
 func TestNewExportService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := helpers.NewSilentTestLogger()
 	localization := NewLocalizationService(logger)
 
@@ -31,7 +31,7 @@ func TestNewExportService(t *testing.T) {
 
 func TestExportService_GetWeatherData(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := helpers.NewSilentTestLogger()
 	service := NewExportService(mockDB.DB, logger, nil)
 
@@ -82,7 +82,7 @@ func TestExportService_GetWeatherData(t *testing.T) {
 
 func TestExportService_GetAlertConfigs(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := helpers.NewSilentTestLogger()
 	service := NewExportService(mockDB.DB, logger, nil)
 
@@ -112,7 +112,7 @@ func TestExportService_GetAlertConfigs(t *testing.T) {
 
 func TestExportService_GetTriggeredAlerts(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := helpers.NewSilentTestLogger()
 	service := NewExportService(mockDB.DB, logger, nil)
 
@@ -144,7 +144,7 @@ func TestExportService_GetTriggeredAlerts(t *testing.T) {
 
 func TestExportService_GetSubscriptions(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := helpers.NewSilentTestLogger()
 	service := NewExportService(mockDB.DB, logger, nil)
 
@@ -464,7 +464,7 @@ func TestExportService_ExportToTXT(t *testing.T) {
 
 func TestExportService_ExportUserData(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := helpers.NewSilentTestLogger()
 	mockLocalization := NewLocalizationService(logger)
 	service := NewExportService(mockDB.DB, logger, mockLocalization)
