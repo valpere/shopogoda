@@ -4017,8 +4017,16 @@ func (h *CommandHandler) processExportRequest(bot *gotgbot.Bot, ctx *ext.Context
 		h.logger.Error().Err(err).Msg("Failed to create temporary file for export")
 		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
-	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
+	defer func() {
+		if err := os.Remove(tempFile.Name()); err != nil {
+			h.logger.Warn().Err(err).Str("file", tempFile.Name()).Msg("Failed to remove temporary file")
+		}
+	}()
+	defer func() {
+		if err := tempFile.Close(); err != nil {
+			h.logger.Warn().Err(err).Str("file", tempFile.Name()).Msg("Failed to close temporary file")
+		}
+	}()
 
 	// Write buffer to temporary file
 	if _, err := buffer.WriteTo(tempFile); err != nil {

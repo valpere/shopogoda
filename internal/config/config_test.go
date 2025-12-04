@@ -46,25 +46,25 @@ func TestLoad(t *testing.T) {
 		resetViper()
 
 		// Set environment variables
-		os.Setenv("TELEGRAM_BOT_TOKEN", "test_token_123")
-		os.Setenv("BOT_DEBUG", "true")
-		os.Setenv("DB_HOST", "postgres.example.com")
-		os.Setenv("DB_PORT", "5433")
-		os.Setenv("REDIS_HOST", "redis.example.com")
-		os.Setenv("REDIS_PORT", "6380")
-		os.Setenv("OPENWEATHER_API_KEY", "weather_key_123")
-		os.Setenv("LOG_LEVEL", "debug")
-		os.Setenv("PROMETHEUS_PORT", "9090")
+		require.NoError(t, os.Setenv("TELEGRAM_BOT_TOKEN", "test_token_123"))
+		require.NoError(t, os.Setenv("BOT_DEBUG", "true"))
+		require.NoError(t, os.Setenv("DB_HOST", "postgres.example.com"))
+		require.NoError(t, os.Setenv("DB_PORT", "5433"))
+		require.NoError(t, os.Setenv("REDIS_HOST", "redis.example.com"))
+		require.NoError(t, os.Setenv("REDIS_PORT", "6380"))
+		require.NoError(t, os.Setenv("OPENWEATHER_API_KEY", "weather_key_123"))
+		require.NoError(t, os.Setenv("LOG_LEVEL", "debug"))
+		require.NoError(t, os.Setenv("PROMETHEUS_PORT", "9090"))
 		defer func() {
-			os.Unsetenv("TELEGRAM_BOT_TOKEN")
-			os.Unsetenv("BOT_DEBUG")
-			os.Unsetenv("DB_HOST")
-			os.Unsetenv("DB_PORT")
-			os.Unsetenv("REDIS_HOST")
-			os.Unsetenv("REDIS_PORT")
-			os.Unsetenv("OPENWEATHER_API_KEY")
-			os.Unsetenv("LOG_LEVEL")
-			os.Unsetenv("PROMETHEUS_PORT")
+			_ = os.Unsetenv("TELEGRAM_BOT_TOKEN")
+			_ = os.Unsetenv("BOT_DEBUG")
+			_ = os.Unsetenv("DB_HOST")
+			_ = os.Unsetenv("DB_PORT")
+			_ = os.Unsetenv("REDIS_HOST")
+			_ = os.Unsetenv("REDIS_PORT")
+			_ = os.Unsetenv("OPENWEATHER_API_KEY")
+			_ = os.Unsetenv("LOG_LEVEL")
+			_ = os.Unsetenv("PROMETHEUS_PORT")
 		}()
 
 		// Ensure we're in a directory without config files
@@ -454,11 +454,11 @@ func TestEnvironmentVariableMapping(t *testing.T) {
 		}
 
 		for key, value := range envVars {
-			os.Setenv(key, value)
+			require.NoError(t, os.Setenv(key, value))
 		}
 		defer func() {
 			for key := range envVars {
-				os.Unsetenv(key)
+				_ = os.Unsetenv(key)
 			}
 		}()
 
