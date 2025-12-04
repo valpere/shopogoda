@@ -406,7 +406,7 @@ func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName 
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Nominatim API request failed with status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("nominatim API request failed with status: %d", resp.StatusCode)
 	}
 
 	var apiResponse []struct {
@@ -481,7 +481,7 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Nominatim reverse API request failed with status: %d", resp.StatusCode)
+		return "", fmt.Errorf("nominatim reverse API request failed with status: %d", resp.StatusCode)
 	}
 
 	var result struct {
