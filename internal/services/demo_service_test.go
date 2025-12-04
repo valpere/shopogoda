@@ -11,7 +11,7 @@ import (
 
 func TestNewDemoService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := zerolog.Nop()
 
 	service := NewDemoService(mockDB.DB, &logger)
@@ -23,7 +23,7 @@ func TestNewDemoService(t *testing.T) {
 
 func TestIsDemoUser(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	logger := zerolog.Nop()
 	service := NewDemoService(mockDB.DB, &logger)
 

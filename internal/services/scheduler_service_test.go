@@ -14,7 +14,7 @@ import (
 
 func TestNewSchedulerService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
@@ -45,7 +45,7 @@ func TestNewSchedulerService(t *testing.T) {
 func TestSchedulerService_ShouldSendNotification(t *testing.T) {
 	logger := helpers.NewSilentTestLogger()
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 
 	service := NewSchedulerService(
@@ -154,7 +154,7 @@ func TestSchedulerService_ShouldSendNotification(t *testing.T) {
 func TestSchedulerService_Stop(t *testing.T) {
 	logger := helpers.NewSilentTestLogger()
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 
 	service := NewSchedulerService(
@@ -185,7 +185,7 @@ func TestSchedulerService_NotificationPlatformCount(t *testing.T) {
 
 func TestSchedulerService_CheckAndProcessAlerts(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
@@ -234,7 +234,7 @@ func TestSchedulerService_CheckAndProcessAlerts(t *testing.T) {
 
 func TestSchedulerService_ProcessDailyNotifications(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
@@ -326,7 +326,7 @@ func TestSchedulerService_ProcessDailyNotifications(t *testing.T) {
 
 func TestSchedulerService_SendScheduledNotification(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 

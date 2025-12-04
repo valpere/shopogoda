@@ -125,7 +125,11 @@ func (s *NotificationService) sendSlackMessage(message SlackMessage) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			s.logger.Warn().Err(err).Msg("Failed to close Slack webhook response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("slack webhook returned status %d", resp.StatusCode)

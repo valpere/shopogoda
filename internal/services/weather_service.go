@@ -399,7 +399,11 @@ func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName 
 	if err != nil {
 		return nil, fmt.Errorf("failed to make Nominatim request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			s.logger.Warn().Err(err).Msg("Failed to close Nominatim response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("Nominatim API request failed with status: %d", resp.StatusCode)
@@ -470,7 +474,11 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 	if err != nil {
 		return "", fmt.Errorf("failed to make Nominatim reverse request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			s.logger.Warn().Err(err).Msg("Failed to close Nominatim reverse response body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Nominatim reverse API request failed with status: %d", resp.StatusCode)

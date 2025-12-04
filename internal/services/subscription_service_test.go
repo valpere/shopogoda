@@ -15,7 +15,7 @@ import (
 
 func TestNewSubscriptionService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 
 	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
@@ -27,7 +27,7 @@ func TestNewSubscriptionService(t *testing.T) {
 
 func TestSubscriptionService_CreateSubscription(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
 
@@ -74,7 +74,7 @@ func TestSubscriptionService_CreateSubscription(t *testing.T) {
 
 func TestSubscriptionService_GetUserSubscriptions(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
 
@@ -117,7 +117,7 @@ func TestSubscriptionService_GetUserSubscriptions(t *testing.T) {
 
 func TestSubscriptionService_UpdateSubscription(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
 
@@ -160,7 +160,7 @@ func TestSubscriptionService_UpdateSubscription(t *testing.T) {
 
 func TestSubscriptionService_DeleteSubscription(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
 
@@ -198,7 +198,7 @@ func TestSubscriptionService_DeleteSubscription(t *testing.T) {
 
 func TestSubscriptionService_GetActiveSubscriptions(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
 
@@ -235,7 +235,7 @@ func TestSubscriptionService_GetActiveSubscriptions(t *testing.T) {
 
 func TestSubscriptionService_GetSubscriptionsByType(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
 

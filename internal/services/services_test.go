@@ -13,7 +13,7 @@ import (
 
 func TestNew(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
@@ -42,7 +42,7 @@ func TestNew(t *testing.T) {
 
 func TestServices_StartScheduler(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
@@ -76,7 +76,7 @@ func TestServices_StartScheduler(t *testing.T) {
 
 func TestServices_Stop(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 

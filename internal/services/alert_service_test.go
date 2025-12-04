@@ -15,7 +15,7 @@ import (
 func TestAlertService_CreateAlert(t *testing.T) {
 	// Setup
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
@@ -70,7 +70,7 @@ func TestAlertService_CreateAlert(t *testing.T) {
 func TestAlertService_GetAlert(t *testing.T) {
 	// Setup
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
@@ -123,7 +123,7 @@ func TestAlertService_GetAlert(t *testing.T) {
 func TestAlertService_GetUserAlerts(t *testing.T) {
 	// Setup
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
@@ -181,7 +181,7 @@ func TestAlertService_GetUserAlerts(t *testing.T) {
 func TestAlertService_CheckAlerts(t *testing.T) {
 	// Setup
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
@@ -262,7 +262,7 @@ func TestAlertService_CheckAlerts(t *testing.T) {
 func TestAlertService_UpdateAlert(t *testing.T) {
 	// Setup
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
@@ -309,7 +309,7 @@ func TestAlertService_UpdateAlert(t *testing.T) {
 func TestAlertService_DeleteAlert(t *testing.T) {
 	// Setup
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
@@ -366,7 +366,7 @@ func TestAlertService_DeleteAlert(t *testing.T) {
 
 func TestAlertService_EvaluateCondition(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
 
@@ -466,7 +466,7 @@ func TestAlertService_EvaluateCondition(t *testing.T) {
 
 func TestAlertService_CalculateSeverity(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
-	defer mockDB.Close()
+	defer func() { _ = mockDB.Close() }()
 	mockRedis := helpers.NewMockRedis()
 	service := NewAlertService(mockDB.DB, mockRedis.Client)
 
