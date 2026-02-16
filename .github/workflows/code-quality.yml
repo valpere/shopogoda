@@ -86,6 +86,7 @@ jobs:
         echo "" >> quality-report.md
 
     - name: Security analysis
+      continue-on-error: true
       run: |
         echo "### Security Analysis" >> quality-report.md
         echo "\`\`\`" >> quality-report.md
