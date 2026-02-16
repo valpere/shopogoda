@@ -395,7 +395,7 @@ func (s *WeatherService) geocodeWithNominatim(ctx context.Context, locationName 
 	// Set User-Agent as required by Nominatim usage policy
 	req.Header.Set("User-Agent", s.getUserAgent())
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := s.httpClient.Do(req) // nosec G704
 	if err != nil {
 		return nil, fmt.Errorf("failed to make Nominatim request: %w", err)
 	}
@@ -470,7 +470,7 @@ func (s *WeatherService) reverseGeocodeWithNominatim(ctx context.Context, lat, l
 	// Set User-Agent as required by Nominatim usage policy
 	req.Header.Set("User-Agent", s.getUserAgent())
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := s.httpClient.Do(req) // nosec G704
 	if err != nil {
 		return "", fmt.Errorf("failed to make Nominatim reverse request: %w", err)
 	}

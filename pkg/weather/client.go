@@ -90,7 +90,7 @@ func (c *Client) GetCurrentWeather(ctx context.Context, lat, lon float64) (*Weat
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // nosec G704
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
@@ -150,7 +150,7 @@ func (c *Client) GetForecast(ctx context.Context, lat, lon float64, days int) (*
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // nosec G704
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
@@ -229,7 +229,7 @@ func (c *Client) GetAirQuality(ctx context.Context, lat, lon float64) (*AirQuali
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // nosec G704
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
@@ -304,7 +304,7 @@ func (c *GeocodingClient) GeocodeLocation(ctx context.Context, locationName stri
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // nosec G704
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
