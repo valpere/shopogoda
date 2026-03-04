@@ -2381,10 +2381,10 @@ func (h *CommandHandler) listUserSubscriptions(bot *gotgbot.Bot, ctx *ext.Contex
 	text.WriteString("📋 *Your Active Subscriptions:*\n\n")
 
 	for _, sub := range subscriptions {
-		text.WriteString(fmt.Sprintf("• **%s** - %s at %s\n",
+		fmt.Fprintf(&text, "• **%s** - %s at %s\n",
 			sub.SubscriptionType.String(),
 			sub.Frequency.String(),
-			sub.TimeOfDay))
+			sub.TimeOfDay)
 	}
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
@@ -4041,11 +4041,7 @@ func (h *CommandHandler) processExportRequest(bot *gotgbot.Bot, ctx *ext.Context
 	}
 
 	// Send the file
-	namedFile := gotgbot.NamedFile{
-		File:     tempFile,
-		FileName: filename,
-	}
-	_, err = bot.SendDocument(ctx.EffectiveChat.Id, namedFile, &gotgbot.SendDocumentOpts{
+	_, err = bot.SendDocument(ctx.EffectiveChat.Id, gotgbot.InputFileByReader(filename, tempFile), &gotgbot.SendDocumentOpts{
 		Caption:   fmt.Sprintf("📊 Your %s export in %s format", exportType, format),
 		ParseMode: "Markdown",
 	})
