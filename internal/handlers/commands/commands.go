@@ -2381,10 +2381,10 @@ func (h *CommandHandler) listUserSubscriptions(bot *gotgbot.Bot, ctx *ext.Contex
 	text.WriteString("📋 *Your Active Subscriptions:*\n\n")
 
 	for _, sub := range subscriptions {
-		text.WriteString(fmt.Sprintf("• **%s** - %s at %s\n",
+		fmt.Fprintf(&text, "• **%s** - %s at %s\n",
 			sub.SubscriptionType.String(),
 			sub.Frequency.String(),
-			sub.TimeOfDay))
+			sub.TimeOfDay)
 	}
 
 	keyboard := [][]gotgbot.InlineKeyboardButton{
