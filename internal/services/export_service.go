@@ -369,7 +369,7 @@ func (s *ExportService) exportToTXT(data *ExportData, userLang string) (*bytes.B
 	fmt.Fprintf(&buffer, "%s: %s\n\n", exportedAt, data.ExportedAt.Format(time.RFC3339))
 
 	// User information
-	buffer.WriteString(fmt.Sprintf("%s:\n", userInformation))
+	fmt.Fprintf(&buffer, "%s:\n", userInformation)
 	buffer.WriteString("-----------------\n")
 	name := s.localization.T(context.Background(), userLang, "export_name")
 	language := s.localization.T(context.Background(), userLang, "export_language")
@@ -378,9 +378,9 @@ func (s *ExportService) exportToTXT(data *ExportData, userLang string) (*bytes.B
 	location := s.localization.T(context.Background(), userLang, "export_location")
 	coordinates := s.localization.T(context.Background(), userLang, "export_coordinates")
 
-	buffer.WriteString(fmt.Sprintf("%s: %s %s\n", name, data.User.FirstName, data.User.LastName))
-	buffer.WriteString(fmt.Sprintf("%s: %s\n", language, data.User.Language))
-	buffer.WriteString(fmt.Sprintf("%s: %s\n", units, data.User.Units))
+	fmt.Fprintf(&buffer, "%s: %s %s\n", name, data.User.FirstName, data.User.LastName)
+	fmt.Fprintf(&buffer, "%s: %s\n", language, data.User.Language)
+	fmt.Fprintf(&buffer, "%s: %s\n", units, data.User.Units)
 	buffer.WriteString(fmt.Sprintf("%s: %s\n", timezone, data.User.Timezone))
 	if data.User.LocationName != "" {
 		buffer.WriteString(fmt.Sprintf("%s: %s (%s, %s)\n", location, data.User.LocationName, data.User.City, data.User.Country))

@@ -151,7 +151,7 @@ type middlewareHandler struct {
 }
 
 func (m *middlewareHandler) CheckUpdate(_ *gotgbot.Bot, _ *ext.Context) bool { return true }
-func (m *middlewareHandler) Name() string                                     { return m.name }
+func (m *middlewareHandler) Name() string                                    { return m.name }
 
 // HandleUpdate calls the middleware function. On success (nil) it returns ext.ContinueGroups
 // so the next middleware in the same group also runs. Non-nil errors are propagated as-is,
