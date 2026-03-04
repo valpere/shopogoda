@@ -4041,11 +4041,7 @@ func (h *CommandHandler) processExportRequest(bot *gotgbot.Bot, ctx *ext.Context
 	}
 
 	// Send the file
-	namedFile := gotgbot.NamedFile{
-		File:     tempFile,
-		FileName: filename,
-	}
-	_, err = bot.SendDocument(ctx.EffectiveChat.Id, namedFile, &gotgbot.SendDocumentOpts{
+	_, err = bot.SendDocument(ctx.EffectiveChat.Id, gotgbot.InputFileByReader(filename, tempFile), &gotgbot.SendDocumentOpts{
 		Caption:   fmt.Sprintf("📊 Your %s export in %s format", exportType, format),
 		ParseMode: "Markdown",
 	})

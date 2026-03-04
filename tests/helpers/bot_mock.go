@@ -12,14 +12,10 @@ import (
 // MockBotClient is a mock BotClient for testing bot operations
 type MockBotClient struct{}
 
-func (m *MockBotClient) RequestWithContext(ctx context.Context, token string, method string, params map[string]string, data map[string]gotgbot.NamedReader, opts *gotgbot.RequestOpts) (json.RawMessage, error) {
+func (m *MockBotClient) RequestWithContext(ctx context.Context, token string, method string, params map[string]any, opts *gotgbot.RequestOpts) (json.RawMessage, error) {
 	// Return a mock successful response for all requests
 	mockResponse := `{"message_id":1,"date":1234567890,"chat":{"id":12345,"type":"private"},"text":"test"}`
 	return json.RawMessage(mockResponse), nil
-}
-
-func (m *MockBotClient) TimeoutContext(opts *gotgbot.RequestOpts) (context.Context, context.CancelFunc) {
-	return context.WithCancel(context.Background())
 }
 
 func (m *MockBotClient) GetAPIURL(opts *gotgbot.RequestOpts) string {
