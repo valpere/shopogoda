@@ -166,7 +166,7 @@ jobs:
     #   run: go test -v -tags=integration ./tests/integration/...
 
     - name: Archive test results
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: test-results
@@ -343,7 +343,7 @@ jobs:
         cp benchmark.txt ./cache/benchmark.txt
 
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: benchmark-results
         path: |
