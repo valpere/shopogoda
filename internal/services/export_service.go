@@ -362,11 +362,11 @@ func (s *ExportService) exportToTXT(data *ExportData, userLang string) (*bytes.B
 	exportedAt := s.localization.T(context.Background(), userLang, "export_exported_at")
 	userInformation := s.localization.T(context.Background(), userLang, "export_user_information")
 
-	buffer.WriteString(fmt.Sprintf("%s\n", header))
+	fmt.Fprintf(&buffer, "%s\n", header)
 	buffer.WriteString("=====================\n\n")
-	buffer.WriteString(fmt.Sprintf("%s: %s\n", exportType, data.Type))
-	buffer.WriteString(fmt.Sprintf("%s: %s (ID: %d)\n", username, data.User.Username, data.User.ID))
-	buffer.WriteString(fmt.Sprintf("%s: %s\n\n", exportedAt, data.ExportedAt.Format(time.RFC3339)))
+	fmt.Fprintf(&buffer, "%s: %s\n", exportType, data.Type)
+	fmt.Fprintf(&buffer, "%s: %s (ID: %d)\n", username, data.User.Username, data.User.ID)
+	fmt.Fprintf(&buffer, "%s: %s\n\n", exportedAt, data.ExportedAt.Format(time.RFC3339))
 
 	// User information
 	buffer.WriteString(fmt.Sprintf("%s:\n", userInformation))
