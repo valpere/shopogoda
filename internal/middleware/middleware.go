@@ -129,18 +129,43 @@ func Logging(logger zerolog.Logger) func(bot *gotgbot.Bot, ctx *ext.Context) err
 	}
 }
 
-// RateLimit creates a rate limiting handler function
+// RateLimit creates a rate limiting handler function.
+// Returns ext.EndGroups when the user is rate-limited (stops all further processing).
 func RateLimit(rateLimiter *UserRateLimiter) func(bot *gotgbot.Bot, ctx *ext.Context) error {
 	return func(bot *gotgbot.Bot, ctx *ext.Context) error {
 		userID := ctx.EffectiveUser.Id
 
 		if !rateLimiter.Allow(userID) {
-			_, err := ctx.EffectiveMessage.Reply(bot, "Rate limit exceeded. Please try again later.", nil)
-			return err
+			_, _ = ctx.EffectiveMessage.Reply(bot, "Rate limit exceeded. Please try again later.", nil)
+			return ext.EndGroups
 		}
 
 		return nil
 	}
+}
+
+// middlewareHandler adapts a function into an ext.Handler for use in a dispatcher group.
+type middlewareHandler struct {
+	name string
+	fn   func(bot *gotgbot.Bot, ctx *ext.Context) error
+}
+
+func (m *middlewareHandler) CheckUpdate(_ *gotgbot.Bot, _ *ext.Context) bool { return true }
+func (m *middlewareHandler) Name() string                                    { return m.name }
+
+// HandleUpdate calls the middleware function. On success (nil) it returns ext.ContinueGroups
+// so the next middleware in the same group also runs. Non-nil errors are propagated as-is,
+// which lets ext.EndGroups stop all processing (used by rate limiting).
+func (m *middlewareHandler) HandleUpdate(b *gotgbot.Bot, ctx *ext.Context) error {
+	if err := m.fn(b, ctx); err != nil {
+		return err
+	}
+	return ext.ContinueGroups
+}
+
+// Wrap adapts a middleware function into an ext.Handler suitable for AddHandlerToGroup.
+func Wrap(name string, fn func(bot *gotgbot.Bot, ctx *ext.Context) error) ext.Handler {
+	return &middlewareHandler{name: name, fn: fn}
 }
 
 // Auth creates an authentication handler function

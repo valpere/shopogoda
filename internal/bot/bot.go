@@ -19,21 +19,22 @@ import (
 	"github.com/valpere/shopogoda/internal/database"
 	"github.com/valpere/shopogoda/internal/handlers/commands"
 	"github.com/valpere/shopogoda/internal/locales"
-
-	// "github.com/valpere/shopogoda/internal/middleware" // Not used yet
+	"github.com/valpere/shopogoda/internal/middleware"
 	"github.com/valpere/shopogoda/internal/services"
 	"github.com/valpere/shopogoda/pkg/metrics"
+	"golang.org/x/time/rate"
 )
 
 type Bot struct {
-	bot        *gotgbot.Bot
-	updater    *ext.Updater
-	dispatcher *ext.Dispatcher
-	config     *config.Config
-	logger     zerolog.Logger
-	services   *services.Services
-	server     *http.Server
-	metrics    *metrics.Metrics
+	bot         *gotgbot.Bot
+	updater     *ext.Updater
+	dispatcher  *ext.Dispatcher
+	config      *config.Config
+	logger      zerolog.Logger
+	services    *services.Services
+	server      *http.Server
+	metrics     *metrics.Metrics
+	rateLimiter *middleware.UserRateLimiter
 }
 
 func New(cfg *config.Config) (*Bot, error) {
@@ -85,14 +86,18 @@ func New(cfg *config.Config) (*Bot, error) {
 	updater := ext.NewUpdater(dispatcher, &ext.UpdaterOpts{})
 
 	// Create bot instance
+	// 10 requests/minute per user, burst of 10
+	rateLimiter := middleware.NewUserRateLimiter(rate.Every(6*time.Second), 10)
+
 	weatherBot := &Bot{
-		bot:        botInstance,
-		updater:    updater,
-		dispatcher: dispatcher,
-		config:     cfg,
-		logger:     logger,
-		services:   services,
-		metrics:    metricsCollector,
+		bot:         botInstance,
+		updater:     updater,
+		dispatcher:  dispatcher,
+		config:      cfg,
+		logger:      logger,
+		services:    services,
+		metrics:     metricsCollector,
+		rateLimiter: rateLimiter,
 	}
 
 	// Setup handlers
@@ -117,11 +122,12 @@ func New(cfg *config.Config) (*Bot, error) {
 }
 
 func (b *Bot) setupHandlers() error {
-	// Add middleware (commented out for now due to implementation issues)
-	// b.dispatcher.AddHandlerToGroup(middleware.Logging(b.logger), -1)
-	// b.dispatcher.AddHandlerToGroup(middleware.Metrics(), -1)
-	// b.dispatcher.AddHandlerToGroup(middleware.UserRegistration(b.services), -1)
-	// b.dispatcher.AddHandlerToGroup(middleware.RateLimiting(), -1)
+	// Middleware runs in group -1 (before command handlers in group 0).
+	// Each middleware returns ext.ContinueGroups on success so the next one also runs.
+	b.dispatcher.AddHandlerToGroup(middleware.Wrap("logging", middleware.Logging(b.logger)), -1)
+	b.dispatcher.AddHandlerToGroup(middleware.Wrap("metrics", middleware.Metrics()), -1)
+	b.dispatcher.AddHandlerToGroup(middleware.Wrap("auth", middleware.Auth(b.services.User)), -1)
+	b.dispatcher.AddHandlerToGroup(middleware.Wrap("ratelimit", middleware.RateLimit(b.rateLimiter)), -1)
 
 	// Command handlers
 	cmdHandler := commands.New(b.services, &b.logger)
@@ -329,6 +335,9 @@ func (b *Bot) Stop() error {
 			b.logger.Error().Err(err).Msg("HTTP server shutdown error")
 		}
 	}
+
+	// Stop rate limiter cleanup goroutine
+	b.rateLimiter.Stop()
 
 	// Stop services
 	b.services.Stop()

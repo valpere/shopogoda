@@ -369,7 +369,7 @@ func (s *ExportService) exportToTXT(data *ExportData, userLang string) (*bytes.B
 	fmt.Fprintf(&buffer, "%s: %s\n\n", exportedAt, data.ExportedAt.Format(time.RFC3339))
 
 	// User information
-	buffer.WriteString(fmt.Sprintf("%s:\n", userInformation))
+	fmt.Fprintf(&buffer, "%s:\n", userInformation)
 	buffer.WriteString("-----------------\n")
 	name := s.localization.T(context.Background(), userLang, "export_name")
 	language := s.localization.T(context.Background(), userLang, "export_language")
@@ -378,69 +378,69 @@ func (s *ExportService) exportToTXT(data *ExportData, userLang string) (*bytes.B
 	location := s.localization.T(context.Background(), userLang, "export_location")
 	coordinates := s.localization.T(context.Background(), userLang, "export_coordinates")
 
-	buffer.WriteString(fmt.Sprintf("%s: %s %s\n", name, data.User.FirstName, data.User.LastName))
-	buffer.WriteString(fmt.Sprintf("%s: %s\n", language, data.User.Language))
-	buffer.WriteString(fmt.Sprintf("%s: %s\n", units, data.User.Units))
-	buffer.WriteString(fmt.Sprintf("%s: %s\n", timezone, data.User.Timezone))
+	fmt.Fprintf(&buffer, "%s: %s %s\n", name, data.User.FirstName, data.User.LastName)
+	fmt.Fprintf(&buffer, "%s: %s\n", language, data.User.Language)
+	fmt.Fprintf(&buffer, "%s: %s\n", units, data.User.Units)
+	fmt.Fprintf(&buffer, "%s: %s\n", timezone, data.User.Timezone)
 	if data.User.LocationName != "" {
-		buffer.WriteString(fmt.Sprintf("%s: %s (%s, %s)\n", location, data.User.LocationName, data.User.City, data.User.Country))
-		buffer.WriteString(fmt.Sprintf("%s: %.4f, %.4f\n", coordinates, data.User.Latitude, data.User.Longitude))
+		fmt.Fprintf(&buffer, "%s: %s (%s, %s)\n", location, data.User.LocationName, data.User.City, data.User.Country)
+		fmt.Fprintf(&buffer, "%s: %.4f, %.4f\n", coordinates, data.User.Latitude, data.User.Longitude)
 	}
 	buffer.WriteString("\n")
 
 	// Weather data
 	if len(data.WeatherData) > 0 {
-		buffer.WriteString(fmt.Sprintf("Weather Data (%d records):\n", len(data.WeatherData)))
+		fmt.Fprintf(&buffer, "Weather Data (%d records):\n", len(data.WeatherData))
 		buffer.WriteString("----------------------------\n")
 		for _, weather := range data.WeatherData {
-			buffer.WriteString(fmt.Sprintf("Date: %s\n", weather.Timestamp.Format("2006-01-02 15:04:05 UTC")))
-			buffer.WriteString(fmt.Sprintf("  Temperature: %.1f°C, Humidity: %d%%\n", weather.Temperature, weather.Humidity))
-			buffer.WriteString(fmt.Sprintf("  Pressure: %.1fhPa, Wind: %.1fkm/h at %d°\n", weather.Pressure, weather.WindSpeed, weather.WindDegree))
-			buffer.WriteString(fmt.Sprintf("  Visibility: %.1fkm, UV Index: %.1f\n", weather.Visibility, weather.UVIndex))
-			buffer.WriteString(fmt.Sprintf("  Conditions: %s, AQI: %d\n\n", weather.Description, weather.AQI))
+			fmt.Fprintf(&buffer, "Date: %s\n", weather.Timestamp.Format("2006-01-02 15:04:05 UTC"))
+			fmt.Fprintf(&buffer, "  Temperature: %.1f°C, Humidity: %d%%\n", weather.Temperature, weather.Humidity)
+			fmt.Fprintf(&buffer, "  Pressure: %.1fhPa, Wind: %.1fkm/h at %d°\n", weather.Pressure, weather.WindSpeed, weather.WindDegree)
+			fmt.Fprintf(&buffer, "  Visibility: %.1fkm, UV Index: %.1f\n", weather.Visibility, weather.UVIndex)
+			fmt.Fprintf(&buffer, "  Conditions: %s, AQI: %d\n\n", weather.Description, weather.AQI)
 		}
 		buffer.WriteString("\n")
 	}
 
 	// Subscriptions
 	if len(data.Subscriptions) > 0 {
-		buffer.WriteString(fmt.Sprintf("Subscriptions (%d active):\n", len(data.Subscriptions)))
+		fmt.Fprintf(&buffer, "Subscriptions (%d active):\n", len(data.Subscriptions))
 		buffer.WriteString("---------------------------\n")
 		for _, sub := range data.Subscriptions {
-			buffer.WriteString(fmt.Sprintf("Type: %s\n", sub.SubscriptionType.String()))
-			buffer.WriteString(fmt.Sprintf("  Frequency: %s\n", sub.Frequency.String()))
-			buffer.WriteString(fmt.Sprintf("  Time: %s\n", sub.TimeOfDay))
-			buffer.WriteString(fmt.Sprintf("  Active: %t\n", sub.IsActive))
-			buffer.WriteString(fmt.Sprintf("  Created: %s\n\n", sub.CreatedAt.Format("2006-01-02 15:04:05 UTC")))
+			fmt.Fprintf(&buffer, "Type: %s\n", sub.SubscriptionType.String())
+			fmt.Fprintf(&buffer, "  Frequency: %s\n", sub.Frequency.String())
+			fmt.Fprintf(&buffer, "  Time: %s\n", sub.TimeOfDay)
+			fmt.Fprintf(&buffer, "  Active: %t\n", sub.IsActive)
+			fmt.Fprintf(&buffer, "  Created: %s\n\n", sub.CreatedAt.Format("2006-01-02 15:04:05 UTC"))
 		}
 		buffer.WriteString("\n")
 	}
 
 	// Alert configs
 	if len(data.AlertConfigs) > 0 {
-		buffer.WriteString(fmt.Sprintf("Alert Configurations (%d configured):\n", len(data.AlertConfigs)))
+		fmt.Fprintf(&buffer, "Alert Configurations (%d configured):\n", len(data.AlertConfigs))
 		buffer.WriteString("---------------------------------------\n")
 		for _, alert := range data.AlertConfigs {
-			buffer.WriteString(fmt.Sprintf("Type: %s\n", alert.AlertType.String()))
-			buffer.WriteString(fmt.Sprintf("  Condition: %s\n", alert.Condition))
-			buffer.WriteString(fmt.Sprintf("  Threshold: %.1f\n", alert.Threshold))
-			buffer.WriteString(fmt.Sprintf("  Active: %t\n", alert.IsActive))
-			buffer.WriteString(fmt.Sprintf("  Created: %s\n\n", alert.CreatedAt.Format("2006-01-02 15:04:05 UTC")))
+			fmt.Fprintf(&buffer, "Type: %s\n", alert.AlertType.String())
+			fmt.Fprintf(&buffer, "  Condition: %s\n", alert.Condition)
+			fmt.Fprintf(&buffer, "  Threshold: %.1f\n", alert.Threshold)
+			fmt.Fprintf(&buffer, "  Active: %t\n", alert.IsActive)
+			fmt.Fprintf(&buffer, "  Created: %s\n\n", alert.CreatedAt.Format("2006-01-02 15:04:05 UTC"))
 		}
 		buffer.WriteString("\n")
 	}
 
 	// Triggered alerts
 	if len(data.TriggeredAlerts) > 0 {
-		buffer.WriteString(fmt.Sprintf("Triggered Alerts (%d alerts):\n", len(data.TriggeredAlerts)))
+		fmt.Fprintf(&buffer, "Triggered Alerts (%d alerts):\n", len(data.TriggeredAlerts))
 		buffer.WriteString("-------------------------------\n")
 		for _, alert := range data.TriggeredAlerts {
-			buffer.WriteString(fmt.Sprintf("Alert: %s\n", alert.Title))
-			buffer.WriteString(fmt.Sprintf("  Type: %s, Severity: %s\n", alert.AlertType.String(), alert.Severity.String()))
-			buffer.WriteString(fmt.Sprintf("  Value: %.1f (Threshold: %.1f)\n", alert.Value, alert.Threshold))
-			buffer.WriteString(fmt.Sprintf("  Description: %s\n", alert.Description))
-			buffer.WriteString(fmt.Sprintf("  Resolved: %t\n", alert.IsResolved))
-			buffer.WriteString(fmt.Sprintf("  Triggered: %s\n\n", alert.CreatedAt.Format("2006-01-02 15:04:05 UTC")))
+			fmt.Fprintf(&buffer, "Alert: %s\n", alert.Title)
+			fmt.Fprintf(&buffer, "  Type: %s, Severity: %s\n", alert.AlertType.String(), alert.Severity.String())
+			fmt.Fprintf(&buffer, "  Value: %.1f (Threshold: %.1f)\n", alert.Value, alert.Threshold)
+			fmt.Fprintf(&buffer, "  Description: %s\n", alert.Description)
+			fmt.Fprintf(&buffer, "  Resolved: %t\n", alert.IsResolved)
+			fmt.Fprintf(&buffer, "  Triggered: %s\n\n", alert.CreatedAt.Format("2006-01-02 15:04:05 UTC"))
 		}
 	}
 
