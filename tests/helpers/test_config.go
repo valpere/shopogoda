@@ -10,7 +10,7 @@ import (
 func GetTestConfig() *config.Config {
 	return &config.Config{
 		Bot: config.BotConfig{
-			Token: "test_bot_token",
+			Token: "test_bot_token", // #nosec G101
 			Debug: true,
 		},
 		Database: config.DatabaseConfig{
