@@ -31,7 +31,7 @@ type DatabaseConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
 	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
+	Password string `mapstructure:"password"` // #nosec G117
 	Name     string `mapstructure:"name"`
 	SSLMode  string `mapstructure:"ssl_mode"`
 }
@@ -39,7 +39,7 @@ type DatabaseConfig struct {
 type RedisConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"`
+	Password string `mapstructure:"password"` // #nosec G117
 	DB       int    `mapstructure:"db"`
 }
 
