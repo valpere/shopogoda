@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.42.0
 	golang.org/x/time v0.15.0
 	gorm.io/driver/postgres v1.5.4
-	gorm.io/gorm v1.31.1
+	gorm.io/gorm v1.31.2
 )
 
 require (
