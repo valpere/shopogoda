@@ -9,11 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
@@ -22,48 +19,14 @@ import (
 )
 
 type AlertServiceTestSuite struct {
-	db             *gorm.DB
-	redisClient    *redis.Client
-	redisContainer testcontainers.Container
-	alertService   *services.AlertService
-	testUserID     int64
+	db           *gorm.DB
+	alertService *services.AlertService
+	testUserID   int64
 }
 
 func setupAlertServiceTest(t *testing.T) *AlertServiceTestSuite {
-	ctx := context.Background()
-
-	// Start Redis container
-	redisReq := testcontainers.ContainerRequest{
-		Image:        "redis:7-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForListeningPort("6379/tcp"),
-	}
-
-	redisContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: redisReq,
-		Started:          true,
-	})
-	require.NoError(t, err)
-
-	// Get container ports
-	redisHost, err := redisContainer.Host(ctx)
-	require.NoError(t, err)
-
-	redisPort, err := redisContainer.MappedPort(ctx, "6379")
-	require.NoError(t, err)
-
 	// Open SQLite database
 	db := helpers.NewSQLiteDB(t)
-
-	// Connect to Redis
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: redisHost + ":" + redisPort.Port(),
-	})
-
-	// Test connections
-	pong, err := redisClient.Ping(ctx).Result()
-	require.NoError(t, err)
-	require.Equal(t, "PONG", pong)
 
 	// Create test user
 	testUserID := int64(12345678)
@@ -83,32 +46,17 @@ func setupAlertServiceTest(t *testing.T) *AlertServiceTestSuite {
 	require.NoError(t, db.Create(testUser).Error)
 
 	// Create alert service
-	alertService := services.NewAlertService(db, redisClient)
+	alertService := services.NewAlertService(db)
 
 	return &AlertServiceTestSuite{
-		db:             db,
-		redisClient:    redisClient,
-		redisContainer: redisContainer,
-		alertService:   alertService,
-		testUserID:     testUserID,
-	}
-}
-
-func (suite *AlertServiceTestSuite) teardown(t *testing.T) {
-	ctx := context.Background()
-
-	if suite.redisClient != nil {
-		suite.redisClient.Close()
-	}
-
-	if suite.redisContainer != nil {
-		require.NoError(t, suite.redisContainer.Terminate(ctx))
+		db:           db,
+		alertService: alertService,
+		testUserID:   testUserID,
 	}
 }
 
 func TestIntegration_AlertServiceCreateAlert(t *testing.T) {
 	suite := setupAlertServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -166,7 +114,6 @@ func TestIntegration_AlertServiceCreateAlert(t *testing.T) {
 
 func TestIntegration_AlertServiceGetUserAlerts(t *testing.T) {
 	suite := setupAlertServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -203,7 +150,6 @@ func TestIntegration_AlertServiceGetUserAlerts(t *testing.T) {
 
 func TestIntegration_AlertServiceUpdateAlert(t *testing.T) {
 	suite := setupAlertServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -230,7 +176,6 @@ func TestIntegration_AlertServiceUpdateAlert(t *testing.T) {
 
 func TestIntegration_AlertServiceDeleteAlert(t *testing.T) {
 	suite := setupAlertServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -259,7 +204,6 @@ func TestIntegration_AlertServiceDeleteAlert(t *testing.T) {
 
 func TestIntegration_AlertServiceCheckAlerts(t *testing.T) {
 	suite := setupAlertServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 

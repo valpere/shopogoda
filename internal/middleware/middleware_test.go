@@ -221,12 +221,11 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("creates handler function", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
 		logger := zerolog.Nop()
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		userService := services.NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		assert.NotNil(t, handler)
@@ -235,12 +234,11 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("calls user registration", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
 		logger := zerolog.Nop()
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		userService := services.NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}
@@ -265,7 +263,6 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("handles user registration error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 
@@ -274,7 +271,7 @@ func TestAuthMiddleware(t *testing.T) {
 		_ = sqlDB.Close()
 
 		logger := zerolog.Nop()
-		userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		userService := services.NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 		handler := Auth(userService)
 
 		bot := &gotgbot.Bot{}

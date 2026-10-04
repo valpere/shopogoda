@@ -5,21 +5,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
 )
 
 type SubscriptionService struct {
-	db    *gorm.DB
-	redis *redis.Client
+	db *gorm.DB
 }
 
-func NewSubscriptionService(db *gorm.DB, redis *redis.Client) *SubscriptionService {
+func NewSubscriptionService(db *gorm.DB) *SubscriptionService {
 	return &SubscriptionService{
-		db:    db,
-		redis: redis,
+		db: db,
 	}
 }
 

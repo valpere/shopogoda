@@ -12,7 +12,6 @@ import (
 type Config struct {
 	Bot          BotConfig          `mapstructure:"bot"`
 	Database     DatabaseConfig     `mapstructure:"database"`
-	Redis        RedisConfig        `mapstructure:"redis"`
 	Weather      WeatherConfig      `mapstructure:"weather"`
 	Logging      LoggingConfig      `mapstructure:"logging"`
 	Metrics      MetricsConfig      `mapstructure:"metrics"`
@@ -29,13 +28,6 @@ type BotConfig struct {
 
 type DatabaseConfig struct {
 	Path string `mapstructure:"path"` // SQLite database file
-}
-
-type RedisConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"` // #nosec G117
-	DB       int    `mapstructure:"db"`
 }
 
 type WeatherConfig struct {
@@ -81,11 +73,6 @@ func Load() (*Config, error) {
 
 	_ = viper.BindEnv("database.path", "DB_PATH")
 
-	_ = viper.BindEnv("redis.host", "REDIS_HOST")
-	_ = viper.BindEnv("redis.port", "REDIS_PORT")
-	_ = viper.BindEnv("redis.password", "REDIS_PASSWORD")
-	_ = viper.BindEnv("redis.db", "REDIS_DB")
-
 	_ = viper.BindEnv("weather.openweather_api_key", "OPENWEATHER_API_KEY")
 	_ = viper.BindEnv("weather.airquality_api_key", "AIRQUALITY_API_KEY")
 	_ = viper.BindEnv("weather.user_agent", "WEATHER_USER_AGENT")
@@ -122,11 +109,6 @@ func setDefaults() {
 
 	// Database defaults
 	viper.SetDefault("database.path", "./data/shopogoda.db")
-
-	// Redis defaults
-	viper.SetDefault("redis.host", "localhost")
-	viper.SetDefault("redis.port", 6379)
-	viper.SetDefault("redis.db", 0)
 
 	// Weather defaults
 	viper.SetDefault("weather.user_agent", "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)")

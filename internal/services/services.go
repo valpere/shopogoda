@@ -7,7 +7,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 
@@ -25,7 +24,7 @@ import (
 //
 // Usage:
 //
-//	svcs := services.New(db, redis, cfg, logger, metrics)
+//	svcs := services.New(db, cfg, logger, metrics)
 //	defer svcs.Stop()
 //
 //	user, err := svcs.User.GetUser(ctx, userID)
@@ -47,8 +46,7 @@ type Services struct {
 // This is the primary constructor for the service layer.
 //
 // Parameters:
-//   - db: GORM database connection (PostgreSQL)
-//   - redis: Redis client for caching
+//   - db: GORM database connection (SQLite)
 //   - cfg: Application configuration
 //   - logger: Structured logger (zerolog)
 //   - metricsCollector: Prometheus metrics collector
@@ -59,21 +57,20 @@ type Services struct {
 // Example:
 //
 //	db := database.Connect(cfg.Database)
-//	redis := database.ConnectRedis(cfg.Redis)
 //	logger := zerolog.New(os.Stdout)
 //	metrics := metrics.New()
 //
-//	svcs := services.New(db, redis, cfg, logger, metrics)
+//	svcs := services.New(db, cfg, logger, metrics)
 //	defer svcs.Stop()
-func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.Logger, metricsCollector *metrics.Metrics) *Services {
+func New(db *gorm.DB, cfg *config.Config, logger *zerolog.Logger, metricsCollector *metrics.Metrics) *Services {
 	startTime := time.Now()
 
-	userService := NewUserService(db, redis, metricsCollector, logger, startTime)
-	weatherService := NewWeatherService(&cfg.Weather, redis, logger)
-	alertService := NewAlertService(db, redis)
-	subscriptionService := NewSubscriptionService(db, redis)
+	userService := NewUserService(db, metricsCollector, logger, startTime)
+	weatherService := NewWeatherService(&cfg.Weather, logger)
+	alertService := NewAlertService(db)
+	subscriptionService := NewSubscriptionService(db)
 	notificationService := NewNotificationService(&cfg.Integrations, logger)
-	schedulerService := NewSchedulerService(db, redis, weatherService, alertService, notificationService, logger)
+	schedulerService := NewSchedulerService(db, weatherService, alertService, notificationService, logger)
 	localizationService := NewLocalizationService(logger)
 	exportService := NewExportService(db, logger, localizationService)
 	demoService := NewDemoService(db, logger)

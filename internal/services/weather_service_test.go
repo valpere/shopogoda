@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redismock/v9"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
@@ -18,33 +17,31 @@ import (
 
 func TestNewWeatherService(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, _ := redismock.NewClientMock()
 
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 		UserAgent:         "TestBot/1.0",
 	}
 
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.client)
 	assert.NotNil(t, service.geocoder)
-	assert.NotNil(t, service.redis)
+	assert.NotNil(t, service.cache)
 	assert.NotNil(t, service.httpClient)
 	assert.Equal(t, cfg, service.config)
 }
 
 func TestGetUserAgent(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, _ := redismock.NewClientMock()
 
 	t.Run("returns custom user agent from config", func(t *testing.T) {
 		cfg := &config.WeatherConfig{
 			OpenWeatherAPIKey: "test-key",
 			UserAgent:         "CustomBot/2.0",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		assert.Equal(t, "CustomBot/2.0", service.getUserAgent())
 	})
@@ -54,7 +51,7 @@ func TestGetUserAgent(t *testing.T) {
 			OpenWeatherAPIKey: "test-key",
 			UserAgent:         "",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		// Should return default
 		agent := service.getUserAgent()
@@ -66,11 +63,10 @@ func TestGetCurrentWeather(t *testing.T) {
 	logger := zerolog.Nop()
 
 	t.Run("returns cached weather data", func(t *testing.T) {
-		rdb, mock := redismock.NewClientMock()
 		cfg := &config.WeatherConfig{
 			OpenWeatherAPIKey: "test-key",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		ctx := context.Background()
 		lat, lon := 50.4501, 30.5234
@@ -84,7 +80,7 @@ func TestGetCurrentWeather(t *testing.T) {
 		cachedJSON, _ := json.Marshal(cachedData)
 		cacheKey := "weather:current:50.4501:30.5234"
 
-		mock.ExpectGet(cacheKey).SetVal(string(cachedJSON))
+		service.cache.Set(cacheKey, string(cachedJSON), time.Hour)
 
 		result, err := service.GetCurrentWeather(ctx, lat, lon)
 
@@ -92,31 +88,24 @@ func TestGetCurrentWeather(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Equal(t, 20.5, result.Temperature)
 		assert.Equal(t, "Clear sky", result.Description)
-		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("handles cache miss and API call", func(t *testing.T) {
-		rdb, mock := redismock.NewClientMock()
 		cfg := &config.WeatherConfig{
 			OpenWeatherAPIKey: "test-key",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		ctx := context.Background()
 		lat, lon := 50.4501, 30.5234
 		cacheKey := "weather:current:50.4501:30.5234"
 
-		// Expect cache miss
-		mock.ExpectGet(cacheKey).RedisNil()
-
-		// Expect cache set (will happen after API call, but API will fail in this test)
-		// Note: The actual API call will fail since we don't have a real API key
-		// This test demonstrates the cache logic
-
+		// Cache miss: the API call fails in a unit test (no real key), so nothing is cached
 		_, err := service.GetCurrentWeather(ctx, lat, lon)
 
-		// API call will fail, which is expected in unit test
 		assert.Error(t, err)
+		_, cached := service.cache.Get(cacheKey)
+		assert.False(t, cached, "failed API call must not populate the cache")
 	})
 }
 
@@ -124,11 +113,10 @@ func TestGetForecast(t *testing.T) {
 	logger := zerolog.Nop()
 
 	t.Run("returns cached forecast data", func(t *testing.T) {
-		rdb, mock := redismock.NewClientMock()
 		cfg := &config.WeatherConfig{
 			OpenWeatherAPIKey: "test-key",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		ctx := context.Background()
 		lat, lon := 50.4501, 30.5234
@@ -145,14 +133,13 @@ func TestGetForecast(t *testing.T) {
 		cachedJSON, _ := json.Marshal(cachedData)
 		cacheKey := "weather:forecast:50.4501:30.5234:5"
 
-		mock.ExpectGet(cacheKey).SetVal(string(cachedJSON))
+		service.cache.Set(cacheKey, string(cachedJSON), time.Hour)
 
 		result, err := service.GetForecast(ctx, lat, lon, days)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Len(t, result.Forecasts, 2)
-		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
@@ -160,12 +147,11 @@ func TestGetAirQuality(t *testing.T) {
 	logger := zerolog.Nop()
 
 	t.Run("returns cached air quality data", func(t *testing.T) {
-		rdb, mock := redismock.NewClientMock()
 		cfg := &config.WeatherConfig{
 			OpenWeatherAPIKey: "test-key",
 			AirQualityAPIKey:  "air-key",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		ctx := context.Background()
 		lat, lon := 50.4501, 30.5234
@@ -179,14 +165,13 @@ func TestGetAirQuality(t *testing.T) {
 		cachedJSON, _ := json.Marshal(cachedData)
 		cacheKey := "weather:air:50.4501:30.5234"
 
-		mock.ExpectGet(cacheKey).SetVal(string(cachedJSON))
+		service.cache.Set(cacheKey, string(cachedJSON), time.Hour)
 
 		result, err := service.GetAirQuality(ctx, lat, lon)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, 2, result.AQI)
-		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
@@ -194,11 +179,10 @@ func TestGeocodeLocation(t *testing.T) {
 	logger := zerolog.Nop()
 
 	t.Run("returns cached geocoded location", func(t *testing.T) {
-		rdb, mock := redismock.NewClientMock()
 		cfg := &config.WeatherConfig{
 			OpenWeatherAPIKey: "test-key",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		ctx := context.Background()
 		location := "Kyiv"
@@ -213,24 +197,22 @@ func TestGeocodeLocation(t *testing.T) {
 		cachedJSON, _ := json.Marshal(cachedResult)
 		cacheKey := "geocode:kyiv" // Normalized to lowercase
 
-		mock.ExpectGet(cacheKey).SetVal(string(cachedJSON))
+		service.cache.Set(cacheKey, string(cachedJSON), time.Hour)
 
 		result, err := service.GeocodeLocation(ctx, location)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "Київ", result.Name)
-		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
 func TestCacheLocation(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, mock := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	location := &weather.Location{
@@ -241,22 +223,23 @@ func TestCacheLocation(t *testing.T) {
 	}
 
 	cacheKey := "geocode:test"
-	locationJSON, _ := json.Marshal(location)
-	mock.ExpectSet(cacheKey, locationJSON, 24*time.Hour).SetVal("OK")
 
 	err := service.cacheLocation(ctx, cacheKey, location)
 
 	assert.NoError(t, err)
-	assert.NoError(t, mock.ExpectationsWereMet())
+	stored, ok := service.cache.Get(cacheKey)
+	assert.True(t, ok)
+	var got weather.Location
+	assert.NoError(t, json.Unmarshal([]byte(stored), &got))
+	assert.Equal(t, *location, got)
 }
 
 func TestGetCurrentWeatherByCoords(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, _ := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
@@ -268,11 +251,10 @@ func TestGetCurrentWeatherByCoords(t *testing.T) {
 
 func TestGetCurrentWeatherByLocation(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, mock := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	location := "Kyiv"
@@ -282,7 +264,7 @@ func TestGetCurrentWeatherByLocation(t *testing.T) {
 		Latitude: 50.4501, Longitude: 30.5234, Name: "Kyiv", Country: "UA",
 	}
 	geocodeJSON, _ := json.Marshal(geocodeResult)
-	mock.ExpectGet("geocode:Kyiv").SetVal(string(geocodeJSON))
+	service.cache.Set("geocode:Kyiv", string(geocodeJSON), time.Hour)
 
 	// Will fail on weather API call, but tests geocoding works
 	_, err := service.GetCurrentWeatherByLocation(ctx, location)
@@ -293,33 +275,30 @@ func TestGetLocationName(t *testing.T) {
 	logger := zerolog.Nop()
 
 	t.Run("returns cached location name", func(t *testing.T) {
-		rdb, mock := redismock.NewClientMock()
 		cfg := &config.WeatherConfig{
 			OpenWeatherAPIKey: "test-key",
 		}
-		service := NewWeatherService(cfg, rdb, &logger)
+		service := NewWeatherService(cfg, &logger)
 
 		ctx := context.Background()
 		lat, lon := 50.4501, 30.5234
 		cacheKey := "reverse_geocode:50.4501:30.5234"
 
-		mock.ExpectGet(cacheKey).SetVal("Київ (50.4501, 30.5234)")
+		service.cache.Set(cacheKey, "Київ (50.4501, 30.5234)", time.Hour)
 
 		result, err := service.GetLocationName(ctx, lat, lon)
 
 		assert.NoError(t, err)
 		assert.Equal(t, "Київ (50.4501, 30.5234)", result)
-		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
 func TestGetCompleteWeatherData(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, _ := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
@@ -331,11 +310,10 @@ func TestGetCompleteWeatherData(t *testing.T) {
 
 func TestGeocodeWithNominatim(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, _ := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -363,11 +341,10 @@ func TestGeocodeWithNominatim(t *testing.T) {
 
 func TestReverseGeocodeWithNominatim(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, _ := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
@@ -379,11 +356,10 @@ func TestReverseGeocodeWithNominatim(t *testing.T) {
 
 func TestFormatLocationFromAddress(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, _ := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	t.Run("formats city with coordinates", func(t *testing.T) {
 		addr := NominatimAddress{
@@ -475,94 +451,80 @@ func TestWeatherData_ToModelWeatherData(t *testing.T) {
 
 func TestGetForecast_CacheMiss(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, mock := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
 	days := 5
 	cacheKey := "weather:forecast:50.4501:30.5234:5"
 
-	// Expect cache miss
-	mock.ExpectGet(cacheKey).RedisNil()
-
-	// API call will fail in unit test (expected)
+	// API call will fail in unit test (expected) and must not populate the cache
 	_, err := service.GetForecast(ctx, lat, lon, days)
 
-	// API call failure is expected in unit test without real API
 	assert.Error(t, err)
+	_, cached := service.cache.Get(cacheKey)
+	assert.False(t, cached)
 }
 
 func TestGetAirQuality_CacheMiss(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, mock := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 		AirQualityAPIKey:  "air-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
 	cacheKey := "weather:air:50.4501:30.5234"
 
-	// Expect cache miss
-	mock.ExpectGet(cacheKey).RedisNil()
-
-	// API call will fail in unit test (expected)
+	// API call will fail in unit test (expected) and must not populate the cache
 	_, err := service.GetAirQuality(ctx, lat, lon)
 
-	// API call failure is expected in unit test without real API
 	assert.Error(t, err)
+	_, cached := service.cache.Get(cacheKey)
+	assert.False(t, cached)
 }
 
 func TestGetLocationName_CacheMiss(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, mock := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
 	cacheKey := "reverse_geocode:50.4501:30.5234"
 
-	// Expect cache miss
-	mock.ExpectGet(cacheKey).RedisNil()
-
-	// API call will fail or succeed depending on network
+	// API call will fail or succeed depending on network; either way the call must not panic
 	_, _ = service.GetLocationName(ctx, lat, lon)
+	_, _ = service.cache.Get(cacheKey)
 }
 
 func TestGetCompleteWeatherData_Success(t *testing.T) {
 	logger := zerolog.Nop()
-	rdb, mock := redismock.NewClientMock()
 	cfg := &config.WeatherConfig{
 		OpenWeatherAPIKey: "test-key",
 		AirQualityAPIKey:  "air-key",
 	}
-	service := NewWeatherService(cfg, rdb, &logger)
+	service := NewWeatherService(cfg, &logger)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
 
-	// Expect weather cache miss
-	weatherCacheKey := "weather:current:50.4501:30.5234"
-	mock.ExpectGet(weatherCacheKey).RedisNil()
-
-	// Expect air quality cache miss
-	airCacheKey := "weather:air:50.4501:30.5234"
-	mock.ExpectGet(airCacheKey).RedisNil()
-
 	// API calls will fail in unit test - this tests the error handling path
 	_, err := service.GetCompleteWeatherData(ctx, lat, lon)
 
-	// Error expected because we don't have real API access
+	// Error expected because we don't have real API access; nothing may be cached
 	assert.Error(t, err)
+	_, cachedWeather := service.cache.Get("weather:current:50.4501:30.5234")
+	_, cachedAir := service.cache.Get("weather:air:50.4501:30.5234")
+	assert.False(t, cachedWeather)
+	assert.False(t, cachedAir)
 }
 
 func TestGetCompleteWeatherData_AirQualityFailure(t *testing.T) {

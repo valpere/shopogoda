@@ -12,12 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/valpere/shopogoda/internal/cache"
 	"github.com/valpere/shopogoda/internal/config"
 	"github.com/valpere/shopogoda/internal/services"
 	"github.com/valpere/shopogoda/pkg/weather"
@@ -25,45 +23,12 @@ import (
 )
 
 type WeatherServiceTestSuite struct {
-	redisClient    *redis.Client
-	redisContainer testcontainers.Container
 	weatherService *services.WeatherService
 	mockServer     *httptest.Server
+	cacheStore     *cache.Cache
 }
 
 func setupWeatherServiceTest(t *testing.T) *WeatherServiceTestSuite {
-	ctx := context.Background()
-
-	// Start Redis container
-	redisReq := testcontainers.ContainerRequest{
-		Image:        "redis:7-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForListeningPort("6379/tcp"),
-	}
-
-	redisContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: redisReq,
-		Started:          true,
-	})
-	require.NoError(t, err)
-
-	// Get Redis container port
-	redisHost, err := redisContainer.Host(ctx)
-	require.NoError(t, err)
-
-	redisPort, err := redisContainer.MappedPort(ctx, "6379")
-	require.NoError(t, err)
-
-	// Connect to Redis
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: redisHost + ":" + redisPort.Port(),
-	})
-
-	// Test Redis connection
-	pong, err := redisClient.Ping(ctx).Result()
-	require.NoError(t, err)
-	require.Equal(t, "PONG", pong)
-
 	// Create mock OpenWeatherMap API server
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Mock weather endpoint
@@ -163,35 +128,46 @@ func setupWeatherServiceTest(t *testing.T) *WeatherServiceTestSuite {
 		UserAgent:         "ShoPogoda-Test/1.0",
 	}
 
-	weatherService := services.NewWeatherService(cfg, redisClient, logger)
+	weatherService := services.NewWeatherService(cfg, logger)
+	cacheStore := cache.New(100)
+	weatherService.SetCache(cacheStore)
 
 	return &WeatherServiceTestSuite{
-		redisClient:    redisClient,
-		redisContainer: redisContainer,
 		weatherService: weatherService,
 		mockServer:     mockServer,
+		cacheStore:     cacheStore,
 	}
 }
 
-func (suite *WeatherServiceTestSuite) teardown(t *testing.T) {
-	ctx := context.Background()
-
-	if suite.mockServer != nil {
-		suite.mockServer.Close()
+// seed injects a raw entry into the service's in-process cache
+// under the same key the service uses, so cache-hit paths can be exercised
+// without reaching the external weather APIs.
+func (suite *WeatherServiceTestSuite) seed(t *testing.T, key string, value interface{}, ttl time.Duration) {
+	t.Helper()
+	var str string
+	switch v := value.(type) {
+	case []byte:
+		str = string(v)
+	case string:
+		str = v
+	default:
+		t.Fatalf("unsupported cache value type %T", value)
 	}
+	suite.cache(t).Set(key, str, ttl)
+}
 
-	if suite.redisClient != nil {
-		suite.redisClient.Close()
-	}
+func (suite *WeatherServiceTestSuite) evict(t *testing.T, key string) {
+	t.Helper()
+	suite.cache(t).Delete(key)
+}
 
-	if suite.redisContainer != nil {
-		require.NoError(t, suite.redisContainer.Terminate(ctx))
-	}
+func (suite *WeatherServiceTestSuite) cache(t *testing.T) *cache.Cache {
+	t.Helper()
+	return suite.cacheStore
 }
 
 func TestIntegration_WeatherServiceGetCurrentWeather(t *testing.T) {
 	suite := setupWeatherServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234 // Kyiv coordinates
@@ -201,7 +177,7 @@ func TestIntegration_WeatherServiceGetCurrentWeather(t *testing.T) {
 		cacheKey := fmt.Sprintf("weather:current:%.4f:%.4f", lat, lon)
 
 		// Ensure cache is empty
-		suite.redisClient.Del(ctx, cacheKey)
+		suite.evict(t, cacheKey)
 
 		// Since we can't easily mock the OpenWeatherMap API client,
 		// we'll test the caching behavior instead
@@ -219,8 +195,7 @@ func TestIntegration_WeatherServiceGetCurrentWeather(t *testing.T) {
 
 		// Manually populate cache
 		weatherJSON, _ := json.Marshal(testData)
-		err := suite.redisClient.Set(ctx, cacheKey, weatherJSON, 10*time.Minute).Err()
-		require.NoError(t, err)
+		suite.seed(t, cacheKey, weatherJSON, 10*time.Minute)
 
 		// Call service - should return cached data
 		weatherData, err := suite.weatherService.GetCurrentWeather(ctx, lat, lon)
@@ -241,7 +216,7 @@ func TestIntegration_WeatherServiceGetCurrentWeather(t *testing.T) {
 			Description: "cached weather",
 		}
 		weatherJSON, _ := json.Marshal(testData)
-		suite.redisClient.Set(ctx, cacheKey, weatherJSON, 10*time.Minute)
+		suite.seed(t, cacheKey, weatherJSON, 10*time.Minute)
 
 		// Call service - should return cached data
 		weatherData, err := suite.weatherService.GetCurrentWeather(ctx, lat, lon)
@@ -253,7 +228,6 @@ func TestIntegration_WeatherServiceGetCurrentWeather(t *testing.T) {
 
 func TestIntegration_WeatherServiceGetForecast(t *testing.T) {
 	suite := setupWeatherServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
@@ -278,7 +252,7 @@ func TestIntegration_WeatherServiceGetForecast(t *testing.T) {
 			},
 		}
 		forecastJSON, _ := json.Marshal(testForecast)
-		suite.redisClient.Set(ctx, cacheKey, forecastJSON, time.Hour)
+		suite.seed(t, cacheKey, forecastJSON, time.Hour)
 
 		// Call service - should return cached data
 		forecastData, err := suite.weatherService.GetForecast(ctx, lat, lon, days)
@@ -293,7 +267,6 @@ func TestIntegration_WeatherServiceGetForecast(t *testing.T) {
 
 func TestIntegration_WeatherServiceGetAirQuality(t *testing.T) {
 	suite := setupWeatherServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
@@ -312,7 +285,7 @@ func TestIntegration_WeatherServiceGetAirQuality(t *testing.T) {
 			Timestamp: time.Now(),
 		}
 		airJSON, _ := json.Marshal(testAirData)
-		suite.redisClient.Set(ctx, cacheKey, airJSON, 30*time.Minute)
+		suite.seed(t, cacheKey, airJSON, 30*time.Minute)
 
 		// Call service - should return cached data
 		airData, err := suite.weatherService.GetAirQuality(ctx, lat, lon)
@@ -327,7 +300,6 @@ func TestIntegration_WeatherServiceGetAirQuality(t *testing.T) {
 
 func TestIntegration_WeatherServiceGeocodeLocation(t *testing.T) {
 	suite := setupWeatherServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -344,7 +316,7 @@ func TestIntegration_WeatherServiceGeocodeLocation(t *testing.T) {
 			City:      "Kyiv",
 		}
 		locationJSON, _ := json.Marshal(testLocation)
-		suite.redisClient.Set(ctx, cacheKey, locationJSON, 24*time.Hour)
+		suite.seed(t, cacheKey, locationJSON, 24*time.Hour)
 
 		// Call service - should return cached data
 		location, err := suite.weatherService.GeocodeLocation(ctx, locationName)
@@ -371,7 +343,7 @@ func TestIntegration_WeatherServiceGeocodeLocation(t *testing.T) {
 			Country:   "Ukraine",
 		}
 		locationJSON, _ := json.Marshal(testLocation)
-		suite.redisClient.Set(ctx, cacheKey, locationJSON, 24*time.Hour)
+		suite.seed(t, cacheKey, locationJSON, 24*time.Hour)
 
 		// Test with different casing and whitespace
 		location1, err := suite.weatherService.GeocodeLocation(ctx, " KYIV ")
@@ -386,7 +358,6 @@ func TestIntegration_WeatherServiceGeocodeLocation(t *testing.T) {
 
 func TestIntegration_WeatherServiceGetCompleteWeatherData(t *testing.T) {
 	suite := setupWeatherServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
@@ -409,7 +380,7 @@ func TestIntegration_WeatherServiceGetCompleteWeatherData(t *testing.T) {
 			Timestamp:     time.Now(),
 		}
 		weatherJSON, _ := json.Marshal(testWeather)
-		suite.redisClient.Set(ctx, weatherCacheKey, weatherJSON, 10*time.Minute)
+		suite.seed(t, weatherCacheKey, weatherJSON, 10*time.Minute)
 
 		testAir := &weather.AirQualityData{
 			AQI:  2,
@@ -420,7 +391,7 @@ func TestIntegration_WeatherServiceGetCompleteWeatherData(t *testing.T) {
 			PM10: 25.4,
 		}
 		airJSON, _ := json.Marshal(testAir)
-		suite.redisClient.Set(ctx, airCacheKey, airJSON, 30*time.Minute)
+		suite.seed(t, airCacheKey, airJSON, 30*time.Minute)
 
 		// Get complete weather data
 		completeData, err := suite.weatherService.GetCompleteWeatherData(ctx, lat, lon)
@@ -441,7 +412,7 @@ func TestIntegration_WeatherServiceGetCompleteWeatherData(t *testing.T) {
 	t.Run("get complete weather data with missing air quality", func(t *testing.T) {
 		// Clear air quality cache to test fallback
 		airCacheKey := fmt.Sprintf("weather:air:%.4f:%.4f", lat, lon)
-		suite.redisClient.Del(ctx, airCacheKey)
+		suite.evict(t, airCacheKey)
 
 		// Populate only weather cache
 		weatherCacheKey := fmt.Sprintf("weather:current:%.4f:%.4f", lat, lon)
@@ -451,7 +422,7 @@ func TestIntegration_WeatherServiceGetCompleteWeatherData(t *testing.T) {
 			Description: "partly cloudy",
 		}
 		weatherJSON, _ := json.Marshal(testWeather)
-		suite.redisClient.Set(ctx, weatherCacheKey, weatherJSON, 10*time.Minute)
+		suite.seed(t, weatherCacheKey, weatherJSON, 10*time.Minute)
 
 		// Should still return weather data with zero air quality values
 		completeData, err := suite.weatherService.GetCompleteWeatherData(ctx, lat, lon)
@@ -466,7 +437,6 @@ func TestIntegration_WeatherServiceGetCompleteWeatherData(t *testing.T) {
 
 func TestIntegration_WeatherServiceGetLocationName(t *testing.T) {
 	suite := setupWeatherServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 	lat, lon := 50.4501, 30.5234
@@ -476,7 +446,7 @@ func TestIntegration_WeatherServiceGetLocationName(t *testing.T) {
 
 		// Populate cache with location name
 		locationName := "Kyiv (50.4501, 30.5234)"
-		suite.redisClient.Set(ctx, cacheKey, locationName, 24*time.Hour)
+		suite.seed(t, cacheKey, locationName, 24*time.Hour)
 
 		// Call service - should return cached data
 		result, err := suite.weatherService.GetLocationName(ctx, lat, lon)
@@ -488,7 +458,7 @@ func TestIntegration_WeatherServiceGetLocationName(t *testing.T) {
 		// Use coordinates that won't be in cache
 		unusedLat, unusedLon := 40.7128, -74.0060
 		cacheKey := fmt.Sprintf("reverse_geocode:%.4f:%.4f", unusedLat, unusedLon)
-		suite.redisClient.Del(ctx, cacheKey)
+		suite.evict(t, cacheKey)
 
 		// Without mock Nominatim server, should return fallback coordinate format
 		result, err := suite.weatherService.GetLocationName(ctx, unusedLat, unusedLon)
@@ -496,65 +466,5 @@ func TestIntegration_WeatherServiceGetLocationName(t *testing.T) {
 		// Fallback format: "Location (lat, lon)"
 		assert.Contains(t, result, fmt.Sprintf("%.4f", unusedLat))
 		assert.Contains(t, result, fmt.Sprintf("%.4f", unusedLon))
-	})
-}
-
-func TestIntegration_WeatherServiceCacheTTL(t *testing.T) {
-	suite := setupWeatherServiceTest(t)
-	defer suite.teardown(t)
-
-	ctx := context.Background()
-	lat, lon := 50.4501, 30.5234
-
-	t.Run("weather cache has 10 minute TTL", func(t *testing.T) {
-		cacheKey := fmt.Sprintf("weather:current:%.4f:%.4f", lat, lon)
-		testData := &weather.WeatherData{Temperature: 15.0}
-		weatherJSON, _ := json.Marshal(testData)
-		suite.redisClient.Set(ctx, cacheKey, weatherJSON, 10*time.Minute)
-
-		// Check TTL
-		ttl, err := suite.redisClient.TTL(ctx, cacheKey).Result()
-		require.NoError(t, err)
-		assert.Greater(t, ttl, 9*time.Minute)
-		assert.LessOrEqual(t, ttl, 10*time.Minute)
-	})
-
-	t.Run("forecast cache has 1 hour TTL", func(t *testing.T) {
-		cacheKey := fmt.Sprintf("weather:forecast:%.4f:%.4f:5", lat, lon)
-		testData := &weather.ForecastData{Location: "Test"}
-		forecastJSON, _ := json.Marshal(testData)
-		suite.redisClient.Set(ctx, cacheKey, forecastJSON, time.Hour)
-
-		// Check TTL
-		ttl, err := suite.redisClient.TTL(ctx, cacheKey).Result()
-		require.NoError(t, err)
-		assert.Greater(t, ttl, 59*time.Minute)
-		assert.LessOrEqual(t, ttl, time.Hour)
-	})
-
-	t.Run("air quality cache has 30 minute TTL", func(t *testing.T) {
-		cacheKey := fmt.Sprintf("weather:air:%.4f:%.4f", lat, lon)
-		testData := &weather.AirQualityData{AQI: 2}
-		airJSON, _ := json.Marshal(testData)
-		suite.redisClient.Set(ctx, cacheKey, airJSON, 30*time.Minute)
-
-		// Check TTL
-		ttl, err := suite.redisClient.TTL(ctx, cacheKey).Result()
-		require.NoError(t, err)
-		assert.Greater(t, ttl, 29*time.Minute)
-		assert.LessOrEqual(t, ttl, 30*time.Minute)
-	})
-
-	t.Run("geocode cache has 24 hour TTL", func(t *testing.T) {
-		cacheKey := "geocode:test"
-		testData := &weather.Location{Name: "Test"}
-		locationJSON, _ := json.Marshal(testData)
-		suite.redisClient.Set(ctx, cacheKey, locationJSON, 24*time.Hour)
-
-		// Check TTL
-		ttl, err := suite.redisClient.TTL(ctx, cacheKey).Result()
-		require.NoError(t, err)
-		assert.Greater(t, ttl, 23*time.Hour)
-		assert.LessOrEqual(t, ttl, 24*time.Hour)
 	})
 }

@@ -32,9 +32,6 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, false, cfg.Bot.Debug)
 		assert.Equal(t, 8080, cfg.Bot.WebhookPort)
 		assert.Equal(t, "./data/shopogoda.db", cfg.Database.Path)
-		assert.Equal(t, "localhost", cfg.Redis.Host)
-		assert.Equal(t, 6379, cfg.Redis.Port)
-		assert.Equal(t, 0, cfg.Redis.DB)
 		assert.Equal(t, "info", cfg.Logging.Level)
 		assert.Equal(t, "json", cfg.Logging.Format)
 		assert.Equal(t, 2112, cfg.Metrics.Port)
@@ -47,8 +44,6 @@ func TestLoad(t *testing.T) {
 		require.NoError(t, os.Setenv("TELEGRAM_BOT_TOKEN", "test_token_123"))
 		require.NoError(t, os.Setenv("BOT_DEBUG", "true"))
 		require.NoError(t, os.Setenv("DB_PATH", "/var/lib/shopogoda/test.db"))
-		require.NoError(t, os.Setenv("REDIS_HOST", "redis.example.com"))
-		require.NoError(t, os.Setenv("REDIS_PORT", "6380"))
 		require.NoError(t, os.Setenv("OPENWEATHER_API_KEY", "weather_key_123"))
 		require.NoError(t, os.Setenv("LOG_LEVEL", "debug"))
 		require.NoError(t, os.Setenv("PROMETHEUS_PORT", "9090"))
@@ -56,8 +51,6 @@ func TestLoad(t *testing.T) {
 			_ = os.Unsetenv("TELEGRAM_BOT_TOKEN")
 			_ = os.Unsetenv("BOT_DEBUG")
 			_ = os.Unsetenv("DB_PATH")
-			_ = os.Unsetenv("REDIS_HOST")
-			_ = os.Unsetenv("REDIS_PORT")
 			_ = os.Unsetenv("OPENWEATHER_API_KEY")
 			_ = os.Unsetenv("LOG_LEVEL")
 			_ = os.Unsetenv("PROMETHEUS_PORT")
@@ -77,8 +70,6 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, "test_token_123", cfg.Bot.Token)
 		assert.Equal(t, true, cfg.Bot.Debug)
 		assert.Equal(t, "/var/lib/shopogoda/test.db", cfg.Database.Path)
-		assert.Equal(t, "redis.example.com", cfg.Redis.Host)
-		assert.Equal(t, 6380, cfg.Redis.Port)
 		assert.Equal(t, "weather_key_123", cfg.Weather.OpenWeatherAPIKey)
 		assert.Equal(t, "debug", cfg.Logging.Level)
 		assert.Equal(t, 9090, cfg.Metrics.Port)
@@ -159,12 +150,6 @@ func TestSetDefaults(t *testing.T) {
 		assert.Equal(t, "./data/shopogoda.db", viper.GetString("database.path"))
 	})
 
-	t.Run("redis defaults", func(t *testing.T) {
-		assert.Equal(t, "localhost", viper.GetString("redis.host"))
-		assert.Equal(t, 6379, viper.GetInt("redis.port"))
-		assert.Equal(t, 0, viper.GetInt("redis.db"))
-	})
-
 	t.Run("weather defaults", func(t *testing.T) {
 		assert.Equal(t, "ShoPogoda-Weather-Bot/1.0 (contact@shopogoda.bot)",
 			viper.GetString("weather.user_agent"))
@@ -208,30 +193,6 @@ func TestBotConfig(t *testing.T) {
 func TestDatabaseConfig(t *testing.T) {
 	cfg := DatabaseConfig{Path: "/data/shopogoda.db"}
 	assert.Equal(t, "/data/shopogoda.db", cfg.Path)
-}
-
-func TestRedisConfig(t *testing.T) {
-	t.Run("all fields", func(t *testing.T) {
-		cfg := RedisConfig{
-			Host:     "redis.example.com",
-			Port:     6380,
-			Password: "redis_pass",
-			DB:       5,
-		}
-
-		assert.Equal(t, "redis.example.com", cfg.Host)
-		assert.Equal(t, 6380, cfg.Port)
-		assert.Equal(t, "redis_pass", cfg.Password)
-		assert.Equal(t, 5, cfg.DB)
-	})
-
-	t.Run("database numbers", func(t *testing.T) {
-		// Redis supports DB 0-15
-		for db := 0; db <= 15; db++ {
-			cfg := RedisConfig{DB: db}
-			assert.Equal(t, db, cfg.DB)
-		}
-	})
 }
 
 func TestWeatherConfig(t *testing.T) {
@@ -352,10 +313,6 @@ func TestConfig(t *testing.T) {
 			Database: DatabaseConfig{
 				Path: "./data/shopogoda.db",
 			},
-			Redis: RedisConfig{
-				Host: "localhost",
-				Port: 6379,
-			},
 			Weather: WeatherConfig{
 				OpenWeatherAPIKey: "key",
 			},
@@ -373,7 +330,6 @@ func TestConfig(t *testing.T) {
 
 		assert.NotNil(t, cfg.Bot)
 		assert.NotNil(t, cfg.Database)
-		assert.NotNil(t, cfg.Redis)
 		assert.NotNil(t, cfg.Weather)
 		assert.NotNil(t, cfg.Logging)
 		assert.NotNil(t, cfg.Metrics)
@@ -381,7 +337,6 @@ func TestConfig(t *testing.T) {
 
 		assert.Equal(t, "token", cfg.Bot.Token)
 		assert.Equal(t, "./data/shopogoda.db", cfg.Database.Path)
-		assert.Equal(t, "localhost", cfg.Redis.Host)
 		assert.Equal(t, "key", cfg.Weather.OpenWeatherAPIKey)
 		assert.Equal(t, "info", cfg.Logging.Level)
 		assert.Equal(t, 2112, cfg.Metrics.Port)
@@ -400,10 +355,6 @@ func TestEnvironmentVariableMapping(t *testing.T) {
 			"BOT_WEBHOOK_URL":     "https://example.com",
 			"BOT_WEBHOOK_PORT":    "8443",
 			"DB_PATH":             "/data/shopogoda.db",
-			"REDIS_HOST":          "redis.example.com",
-			"REDIS_PORT":          "6380",
-			"REDIS_PASSWORD":      "redis_pass",
-			"REDIS_DB":            "5",
 			"OPENWEATHER_API_KEY": "weather_key",
 			"AIRQUALITY_API_KEY":  "air_key",
 			"WEATHER_USER_AGENT":  "TestBot/1.0",
@@ -440,10 +391,6 @@ func TestEnvironmentVariableMapping(t *testing.T) {
 		assert.Equal(t, "https://example.com", cfg.Bot.WebhookURL)
 		assert.Equal(t, 8443, cfg.Bot.WebhookPort)
 		assert.Equal(t, "/data/shopogoda.db", cfg.Database.Path)
-		assert.Equal(t, "redis.example.com", cfg.Redis.Host)
-		assert.Equal(t, 6380, cfg.Redis.Port)
-		assert.Equal(t, "redis_pass", cfg.Redis.Password)
-		assert.Equal(t, 5, cfg.Redis.DB)
 		assert.Equal(t, "weather_key", cfg.Weather.OpenWeatherAPIKey)
 		assert.Equal(t, "air_key", cfg.Weather.AirQualityAPIKey)
 		assert.Equal(t, "TestBot/1.0", cfg.Weather.UserAgent)

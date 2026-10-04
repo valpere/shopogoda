@@ -7,15 +7,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
 )
 
 type AlertService struct {
-	db    *gorm.DB
-	redis *redis.Client
+	db *gorm.DB
 }
 
 type AlertCondition struct {
@@ -23,10 +21,9 @@ type AlertCondition struct {
 	Value    float64 `json:"value"`
 }
 
-func NewAlertService(db *gorm.DB, redis *redis.Client) *AlertService {
+func NewAlertService(db *gorm.DB) *AlertService {
 	return &AlertService{
-		db:    db,
-		redis: redis,
+		db: db,
 	}
 }
 

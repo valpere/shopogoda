@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
 	"github.com/valpere/shopogoda/internal"
 
+	"github.com/valpere/shopogoda/internal/cache"
 	"github.com/valpere/shopogoda/internal/config"
 	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/pkg/weather"
@@ -33,16 +33,20 @@ type NominatimAddress struct {
 	Neighbourhood string `json:"neighbourhood"`
 }
 
+// weatherCacheMaxEntries bounds the in-process cache: keys are lat/lon at 4
+// decimals plus geocoding names, which are otherwise unbounded.
+const weatherCacheMaxEntries = 2000
+
 type WeatherService struct {
 	client     *weather.Client
 	geocoder   *weather.GeocodingClient
-	redis      *redis.Client
+	cache      *cache.Cache
 	config     *config.WeatherConfig
 	logger     *zerolog.Logger
 	httpClient *http.Client
 }
 
-func NewWeatherService(cfg *config.WeatherConfig, redis *redis.Client, logger *zerolog.Logger) *WeatherService {
+func NewWeatherService(cfg *config.WeatherConfig, logger *zerolog.Logger) *WeatherService {
 	// Create a reusable HTTP client with reasonable timeout and connection pooling
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
@@ -56,11 +60,16 @@ func NewWeatherService(cfg *config.WeatherConfig, redis *redis.Client, logger *z
 	return &WeatherService{
 		client:     weather.NewClient(cfg.OpenWeatherAPIKey),
 		geocoder:   weather.NewGeocodingClient(cfg.OpenWeatherAPIKey),
-		redis:      redis,
+		cache:      cache.New(weatherCacheMaxEntries),
 		config:     cfg,
 		logger:     logger,
 		httpClient: httpClient,
 	}
+}
+
+// SetCache replaces the in-process cache, e.g. to share one or to pre-seed it in tests.
+func (s *WeatherService) SetCache(c *cache.Cache) {
+	s.cache = c
 }
 
 // getUserAgent safely returns the UserAgent from config with fallback to default
@@ -95,8 +104,7 @@ func (s *WeatherService) GetLocalizedLocationName(location *weather.Location, us
 func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64) (*weather.WeatherData, error) {
 	// Try cache first
 	cacheKey := fmt.Sprintf("weather:current:%.4f:%.4f", lat, lon)
-	cached, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
+	if cached, ok := s.cache.Get(cacheKey); ok {
 		var weatherData weather.WeatherData
 		if err := json.Unmarshal([]byte(cached), &weatherData); err == nil {
 			return &weatherData, nil
@@ -114,9 +122,7 @@ func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("Failed to marshal weather data for caching")
 	} else {
-		if err := s.redis.Set(ctx, cacheKey, weatherJSON, 10*time.Minute).Err(); err != nil {
-			s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache weather data")
-		}
+		s.cache.Set(cacheKey, string(weatherJSON), 10*time.Minute)
 	}
 
 	return weatherData, nil
@@ -125,8 +131,7 @@ func (s *WeatherService) GetCurrentWeather(ctx context.Context, lat, lon float64
 func (s *WeatherService) GetForecast(ctx context.Context, lat, lon float64, days int) (*weather.ForecastData, error) {
 	// Try cache first
 	cacheKey := fmt.Sprintf("weather:forecast:%.4f:%.4f:%d", lat, lon, days)
-	cached, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
+	if cached, ok := s.cache.Get(cacheKey); ok {
 		var forecastData weather.ForecastData
 		if err := json.Unmarshal([]byte(cached), &forecastData); err == nil {
 			return &forecastData, nil
@@ -144,9 +149,7 @@ func (s *WeatherService) GetForecast(ctx context.Context, lat, lon float64, days
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("Failed to marshal forecast data for caching")
 	} else {
-		if err := s.redis.Set(ctx, cacheKey, forecastJSON, time.Hour).Err(); err != nil {
-			s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache forecast data")
-		}
+		s.cache.Set(cacheKey, string(forecastJSON), time.Hour)
 	}
 
 	return forecastData, nil
@@ -155,8 +158,7 @@ func (s *WeatherService) GetForecast(ctx context.Context, lat, lon float64, days
 func (s *WeatherService) GetAirQuality(ctx context.Context, lat, lon float64) (*weather.AirQualityData, error) {
 	// Try cache first
 	cacheKey := fmt.Sprintf("weather:air:%.4f:%.4f", lat, lon)
-	cached, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
+	if cached, ok := s.cache.Get(cacheKey); ok {
 		var airData weather.AirQualityData
 		if err := json.Unmarshal([]byte(cached), &airData); err == nil {
 			return &airData, nil
@@ -174,9 +176,7 @@ func (s *WeatherService) GetAirQuality(ctx context.Context, lat, lon float64) (*
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("Failed to marshal air quality data for caching")
 	} else {
-		if err := s.redis.Set(ctx, cacheKey, airJSON, 30*time.Minute).Err(); err != nil {
-			s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache air quality data")
-		}
+		s.cache.Set(cacheKey, string(airJSON), 30*time.Minute)
 	}
 
 	return airData, nil
@@ -191,8 +191,7 @@ func (s *WeatherService) GeocodeLocation(ctx context.Context, locationName strin
 
 	// Try cache first
 	cacheKey := fmt.Sprintf("geocode:%s", normalizedName)
-	cached, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
+	if cached, ok := s.cache.Get(cacheKey); ok {
 		var location weather.Location
 		if err := json.Unmarshal([]byte(cached), &location); err == nil {
 			return &location, nil
@@ -243,7 +242,8 @@ func (s *WeatherService) cacheLocation(ctx context.Context, cacheKey string, loc
 		return fmt.Errorf("failed to marshal location for caching: %w", err)
 	}
 
-	return s.redis.Set(ctx, cacheKey, locationJSON, 24*time.Hour).Err()
+	s.cache.Set(cacheKey, string(locationJSON), 24*time.Hour)
+	return nil
 }
 
 // GetCurrentWeatherByCoords gets weather data by coordinates (alias for GetCompleteWeatherData)
@@ -276,8 +276,7 @@ func (s *WeatherService) GetCurrentWeatherByLocation(ctx context.Context, locati
 func (s *WeatherService) GetLocationName(ctx context.Context, lat, lon float64) (string, error) {
 	// Try cache first
 	cacheKey := fmt.Sprintf("reverse_geocode:%.4f:%.4f", lat, lon)
-	cached, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
+	if cached, ok := s.cache.Get(cacheKey); ok {
 		return cached, nil
 	}
 
@@ -290,9 +289,7 @@ func (s *WeatherService) GetLocationName(ctx context.Context, lat, lon float64) 
 	}
 
 	// Cache for 24 hours
-	if err := s.redis.Set(ctx, cacheKey, locationName, 24*time.Hour).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache reverse geocoding result")
-	}
+	s.cache.Set(cacheKey, locationName, 24*time.Hour)
 
 	return locationName, nil
 }

@@ -17,8 +17,7 @@ func TestAlertService_CreateAlert(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
 
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	t.Run("successful alert creation", func(t *testing.T) {
 		userID := int64(123)
@@ -73,8 +72,7 @@ func TestAlertService_GetAlert(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
 
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	t.Run("successful alert retrieval", func(t *testing.T) {
 		userID := int64(123)
@@ -126,8 +124,7 @@ func TestAlertService_GetUserAlerts(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
 
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	t.Run("successful user alerts retrieval", func(t *testing.T) {
 		userID := int64(123)
@@ -184,8 +181,7 @@ func TestAlertService_CheckAlerts(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
 
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	weatherData := helpers.MockWeatherData(123)
 
@@ -265,8 +261,7 @@ func TestAlertService_UpdateAlert(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
 
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	t.Run("successful alert update", func(t *testing.T) {
 		userID := int64(123)
@@ -312,8 +307,7 @@ func TestAlertService_DeleteAlert(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
 
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	t.Run("successful alert deletion", func(t *testing.T) {
 		userID := int64(123)
@@ -368,8 +362,7 @@ func TestAlertService_DeleteAlert(t *testing.T) {
 func TestAlertService_EvaluateCondition(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	testCases := []struct {
 		name         string
@@ -468,8 +461,7 @@ func TestAlertService_EvaluateCondition(t *testing.T) {
 func TestAlertService_CalculateSeverity(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewAlertService(mockDB.DB, mockRedis.Client)
+	service := NewAlertService(mockDB.DB)
 
 	t.Run("temperature alert severities", func(t *testing.T) {
 		testCases := []struct {

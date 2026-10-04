@@ -9,11 +9,6 @@ bot:
 database:
   path: ./data/shopogoda.db
 
-redis:
-  host: localhost
-  port: 6379
-  db: 0
-
 logging:
   level: info
   format: json

@@ -14,7 +14,6 @@ import (
 func TestNew(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
 	cfg := &config.Config{
@@ -27,7 +26,7 @@ func TestNew(t *testing.T) {
 	}
 
 	metricsCollector := metrics.New()
-	services := New(mockDB.DB, mockRedis.Client, cfg, logger, metricsCollector)
+	services := New(mockDB.DB, cfg, logger, metricsCollector)
 
 	assert.NotNil(t, services)
 	assert.NotNil(t, services.User)
@@ -43,7 +42,6 @@ func TestNew(t *testing.T) {
 func TestServices_StartScheduler(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
 	cfg := &config.Config{
@@ -56,7 +54,7 @@ func TestServices_StartScheduler(t *testing.T) {
 	}
 
 	metricsCollector := metrics.New()
-	services := New(mockDB.DB, mockRedis.Client, cfg, logger, metricsCollector)
+	services := New(mockDB.DB, cfg, logger, metricsCollector)
 
 	// Create a cancellable context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -77,7 +75,6 @@ func TestServices_StartScheduler(t *testing.T) {
 func TestServices_Stop(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
 	cfg := &config.Config{
@@ -90,7 +87,7 @@ func TestServices_Stop(t *testing.T) {
 	}
 
 	metricsCollector := metrics.New()
-	services := New(mockDB.DB, mockRedis.Client, cfg, logger, metricsCollector)
+	services := New(mockDB.DB, cfg, logger, metricsCollector)
 
 	// Stop should not panic even without starting scheduler
 	assert.NotPanics(t, func() {
