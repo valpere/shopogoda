@@ -2211,7 +2211,7 @@ func TestIntegration(t *testing.T) {
 
 ### Test Coverage
 
-- **Current:** 33.7% overall, 40.5% for testable packages
+- **Current:** 34.2% overall, 39.4% for testable packages
 - **Target:** 80% for service layer
 - See [Testing Guide](TESTING.md) for details
 

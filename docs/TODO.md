@@ -102,24 +102,24 @@ func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error
 
 **Testable Code vs Infrastructure**:
 
-- **10 testable packages** (business logic): **40.5% average coverage** ✅ **TARGET MET**
+- **10 testable packages** (business logic): **39.4% statement-weighted coverage**
 - **6 infrastructure packages** (cmd/bot, internal/bot, scripts): 0% coverage (intentionally untested)
-- **Overall**: 33.7% (pulled down by infrastructure code)
+- **Overall**: 34.2% (pulled down by infrastructure code)
 
 **Breakdown by Package** (testable packages only):
 
 - `internal/models`: 99.0% ⭐
 - `pkg/alerts`: 99.2% ⭐
 - `internal/config`: 97.9% ⭐
-- `pkg/weather`: 97.6% ⭐
-- `internal/middleware`: 97.2% ⭐
+- `pkg/weather`: 97.7% ⭐
+- `internal/middleware`: 77.0% ✅
 - `pkg/metrics`: 84.6% ✅
-- `internal/services`: 74.5% ✅
-- `internal/database`: 61.9% ⚠️
-- `tests/helpers`: 24.5% ⚠️
-- `internal/handlers/commands`: 5.9% ❌
+- `internal/services`: 74.1% ✅
+- `internal/database`: 59.1% ⚠️
+- `tests/helpers`: 25.0% ⚠️
+- `internal/handlers/commands`: 10.9% ❌
 
-**Key Finding**: We've achieved **40% coverage on testable business logic code**. The overall 33.7% includes infrastructure code (bot initialization, CLI entry points) that's typically excluded from coverage targets.
+**Key Finding**: Testable business logic code sits at **~39%** (statement-weighted). The overall 34.2% includes infrastructure code (bot initialization, CLI entry points) that's typically excluded from coverage targets.
 
 **Test Infrastructure**:
 
@@ -132,7 +132,7 @@ func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error
 
 **Future Work**:
 
-To reach 40% overall coverage (currently 33.7%), would need +6.3% from handlers:
+To reach 40% overall coverage (currently 34.2%), would need +5.8% from handlers:
 
 - Command handlers: `/weather`, `/forecast`, `/air`, `/alert`
 - Callback handlers: Settings, notifications, export

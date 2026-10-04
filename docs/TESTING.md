@@ -43,10 +43,10 @@ The project uses dependency injection with concrete service types rather than in
 
 ### Current Test Coverage
 
-- **Overall**: 30.5%
-- **Services Package**: 75.6% (core business logic)
-- **Handlers Package**: 4.2% (bot command handlers)
-- **Tests/Helpers Package**: 24.5% (test infrastructure)
+- **Overall**: 34.2%
+- **Services Package**: 74.1% (core business logic)
+- **Handlers Package**: 10.9% (bot command handlers)
+- **Tests/Helpers Package**: 25.0% (test infrastructure)
 
 ## Test Coverage
 
@@ -54,11 +54,11 @@ The project uses dependency injection with concrete service types rather than in
 
 | Package | Coverage | Test Files |
 |---------|----------|------------|
-| `internal/services` | 75.6% | `*_test.go`, `tests/integration/*_test.go` |
-| `internal/handlers/commands` | 4.2% | `commands_test.go` |
-| `internal/models` | 2.6% | `models_test.go` |
-| `internal/database` | 0.2% | `database_test.go` |
-| `tests/helpers` | 24.5% | `bot_mock_test.go` |
+| `internal/services` | 74.1% | `*_test.go`, `tests/integration/*_test.go` |
+| `internal/handlers/commands` | 10.9% | `commands_test.go` |
+| `internal/models` | 99.0% | `models_test.go` |
+| `internal/database` | 59.1% | `database_test.go` |
+| `tests/helpers` | 25.0% | `bot_mock_test.go` |
 
 ### Coverage Target
 
@@ -645,7 +645,7 @@ mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
 
 ## Future Improvements
 
-- [ ] Increase handler coverage to 20% (current: 4.2%)
+- [ ] Increase handler coverage to 20% (current: 10.9%)
 - [ ] Add E2E tests with real Telegram API
 - [ ] Add benchmark tests for performance tracking
 - [ ] Add mutation testing for test quality validation
