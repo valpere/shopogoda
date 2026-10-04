@@ -90,3 +90,5 @@ locales/bak/
 .cursor
 .vercel/
 .claude/settings.local.json
+.claude/sessions.db*
+.claude/session-log.md

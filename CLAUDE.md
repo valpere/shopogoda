@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git & PR Workflow
+
+- `main` is branch-protected: never commit to it directly. Branch (`<type>-<slug>`), push, open a PR.
+- Review each PR with `/code-review` (no local `/fix-review` in this project) and address findings in one follow-up commit.
+- Merge (squash) only after review and green required CI (`gh pr checks <n>`); `--auto` does not wait for non-required checks.
+- Work only inside this repository; other projects (e.g. `~/wrk/common`) are read-only without explicit permission.
+
 ## Project Overview
 
 ShoPogoda (Що Погода - "What Weather" in Ukrainian) is a production-ready Telegram bot for enterprise weather monitoring, environmental alerts, and safety compliance. Built with Go, gotgbot v2, SQLite (pure-Go driver), an in-process cache, and a comprehensive monitoring stack.
