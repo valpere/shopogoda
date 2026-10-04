@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,11 +10,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
-)
-
-const (
-	// NotificationPlatformCount represents the number of notification platforms (Slack + Telegram)
-	NotificationPlatformCount = 2
 )
 
 type SchedulerService struct {
@@ -113,40 +107,12 @@ func (s *SchedulerService) checkAndProcessAlerts(ctx context.Context) {
 
 		// Send notifications for triggered alerts
 		for _, alert := range alerts {
-			// Track alert notification errors but don't fail processing
-			var alertErrors []string
-
-			// Send Slack alert
-			if err := s.notification.SendSlackAlert(&alert, &user); err != nil {
-				s.logger.Error().Err(err).Msg("Failed to send Slack alert")
-				alertErrors = append(alertErrors, fmt.Sprintf("Slack: %v", err))
-			}
-
-			// Send Telegram alert
-			if err := s.notification.SendTelegramAlert(&alert, &user); err != nil {
-				s.logger.Error().Err(err).Msg("Failed to send Telegram alert")
-				alertErrors = append(alertErrors, fmt.Sprintf("Telegram: %v", err))
-			}
-
-			// Log alert delivery status
-			if len(alertErrors) == 0 {
-				s.logger.Info().
-					Str("alert_type", alert.AlertType.String()).
-					Int64("user_id", user.ID).
-					Msg("Alert notifications sent successfully to all platforms")
-			} else if len(alertErrors) == NotificationPlatformCount {
-				s.logger.Error().
-					Strs("failed_platforms", alertErrors).
-					Str("alert_type", alert.AlertType.String()).
-					Int64("user_id", user.ID).
-					Msg("Alert notification failed on all platforms")
-			} else {
-				s.logger.Warn().
-					Strs("failed_platforms", alertErrors).
-					Str("alert_type", alert.AlertType.String()).
-					Int64("user_id", user.ID).
-					Msg("Alert notification partially failed but at least one platform succeeded")
-			}
+			s.deliver(fmt.Sprintf("slack-alert user=%d type=%s", user.ID, alert.AlertType), func() error {
+				return s.notification.SendSlackAlert(&alert, &user)
+			})
+			s.deliver(fmt.Sprintf("telegram-alert user=%d type=%s", user.ID, alert.AlertType), func() error {
+				return s.notification.SendTelegramAlert(&alert, &user)
+			})
 		}
 
 		if len(alerts) > 0 {
@@ -260,29 +226,12 @@ func (s *SchedulerService) sendScheduledNotification(ctx context.Context, subscr
 		// Send daily weather update
 		users := []models.User{subscription.User}
 
-		// Track notification errors but don't fail completely if one platform fails
-		var notificationErrors []string
-
-		// Send Slack notification
-		if err := s.notification.SendSlackWeatherUpdate(weather, users); err != nil {
-			s.logger.Error().Err(err).Msg("Failed to send Slack daily notification")
-			notificationErrors = append(notificationErrors, fmt.Sprintf("Slack: %v", err))
-		}
-
-		// Send Telegram notification
-		if err := s.notification.SendTelegramWeatherUpdate(weather, &subscription.User); err != nil {
-			s.logger.Error().Err(err).Msg("Failed to send Telegram daily notification")
-			notificationErrors = append(notificationErrors, fmt.Sprintf("Telegram: %v", err))
-		}
-
-		// Return error only if all platforms failed
-		if len(notificationErrors) > 0 {
-			if len(notificationErrors) == NotificationPlatformCount {
-				return fmt.Errorf("all notification platforms failed: %v", strings.Join(notificationErrors, "; "))
-			}
-			// Log partial failure but don't return error
-			s.logger.Warn().Strs("failed_platforms", notificationErrors).Msg("Some notification platforms failed but at least one succeeded")
-		}
+		s.deliver(fmt.Sprintf("slack-daily user=%d", subscription.UserID), func() error {
+			return s.notification.SendSlackWeatherUpdate(weather, users)
+		})
+		s.deliver(fmt.Sprintf("telegram-daily user=%d", subscription.UserID), func() error {
+			return s.notification.SendTelegramWeatherUpdate(weather, &subscription.User)
+		})
 
 	case models.SubscriptionWeekly:
 		// Send weekly summary (simplified for now)
@@ -294,10 +243,18 @@ func (s *SchedulerService) sendScheduledNotification(ctx context.Context, subscr
 
 Stay weather-aware!`, weather.Temperature, weather.Humidity, weather.WindSpeed, weather.AQI)
 
-		if err := s.notification.SendTelegramWeeklyUpdate(&subscription.User, summary); err != nil {
-			return fmt.Errorf("failed to send weekly notification: %w", err)
-		}
+		s.deliver(fmt.Sprintf("telegram-weekly user=%d", subscription.UserID), func() error {
+			return s.notification.SendTelegramWeeklyUpdate(&subscription.User, summary)
+		})
 	}
 
 	return nil
+}
+
+// deliver hands a send to the retrying delivery queue. Errors surface here
+// only when the queue is unavailable and the send ran synchronously.
+func (s *SchedulerService) deliver(label string, send func() error) {
+	if err := s.notification.Deliver(label, send); err != nil {
+		s.logger.Error().Err(err).Str("job", label).Msg("Notification delivery failed")
+	}
 }

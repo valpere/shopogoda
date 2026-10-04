@@ -2,9 +2,11 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/rs/zerolog"
@@ -18,6 +20,8 @@ type NotificationService struct {
 	logger *zerolog.Logger
 	client *http.Client
 	bot    *gotgbot.Bot // Telegram bot instance for sending notifications
+	queue  *DeliveryQueue
+	queued atomic.Bool // true between StartDelivery and StopDelivery
 }
 
 type SlackMessage struct {
@@ -43,7 +47,39 @@ func NewNotificationService(config *config.IntegrationsConfig, logger *zerolog.L
 		config: config,
 		logger: logger,
 		client: &http.Client{},
+		queue:  NewDeliveryQueue(logger, DefaultRetryPolicy, deliveryWorkers, deliveryQueueCapacity),
 	}
+}
+
+const (
+	deliveryWorkers       = 4
+	deliveryQueueCapacity = 1024
+)
+
+// StartDelivery launches the background workers that Deliver relies on.
+func (s *NotificationService) StartDelivery(ctx context.Context) {
+	s.queue.Start(ctx)
+	s.queued.Store(true)
+}
+
+// StopDelivery stops the workers; undelivered notifications are dropped.
+func (s *NotificationService) StopDelivery() {
+	s.queued.Store(false)
+	s.queue.Stop()
+}
+
+// Deliver sends via the retrying queue. If the queue is not running (or is
+// full) it falls back to one synchronous attempt so a notification is never
+// silently dropped; in that case the send error is returned.
+func (s *NotificationService) Deliver(label string, send func() error) error {
+	if s.queued.Load() {
+		err := s.queue.Enqueue(DeliveryJob{Label: label, Send: send})
+		if err == nil {
+			return nil
+		}
+		s.logger.Warn().Err(err).Str("job", label).Msg("Delivery queue unavailable, sending synchronously")
+	}
+	return send()
 }
 
 // SetBot sets the Telegram bot instance for sending notifications
@@ -132,7 +168,7 @@ func (s *NotificationService) sendSlackMessage(message SlackMessage) error {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("slack webhook returned status %d", resp.StatusCode)
+		return &slackStatusError{Code: resp.StatusCode}
 	}
 
 	s.logger.Info().Msg("Slack notification sent successfully")

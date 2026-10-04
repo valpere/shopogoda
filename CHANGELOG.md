@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Notification delivery queue with retry**: Scheduler notifications (alerts, daily, weekly; Slack and Telegram) are delivered by background workers via an in-memory queue. Transient failures retry with exponential backoff and jitter (5 attempts, 2s base, 1m cap); Telegram `429` honors `retry_after`; permanent errors (4xx other than 429, e.g. bot blocked) are not retried. Queue contents are lost on restart.
 - **Interactive Alert Management (PR #103)**: Comprehensive alert editing and management system
   - **Interactive Alert Editing**: Edit thresholds with smart range-based options
     - Alert type-specific threshold generation (Temperature: -20 to 40°C, Humidity: 0-100%, etc.)

@@ -596,12 +596,11 @@ Add configurable rate limits:
 
 ### 14. Notification Delivery Optimization
 
-**Status**: Synchronous delivery, no retry
+**Status**: ✅ In-memory queue + retry with exponential backoff implemented (`internal/services/delivery_queue.go`). Remaining items below are not done.
 
-Implement robust notification delivery:
+Remaining for robust notification delivery:
 
-- Background job queue for notifications
-- Retry failed deliveries with exponential backoff
+- Durable queue (Postgres outbox) so queued notifications survive restarts
 - Track delivery status per notification
 - Batch notifications for efficiency
 - Priority queue (critical alerts first)

@@ -246,6 +246,7 @@ SendSlackWeatherUpdate(weather *WeatherData, subscribers []models.User) error
 - Separate processing for alerts (every 10 minutes) and scheduled notifications (hourly check)
 - User timezone conversion for accurate local time delivery
 - Efficient batching and error handling
+- Sends go through `NotificationService.Deliver` → in-memory `DeliveryQueue` (4 workers, exponential backoff with jitter, 5 attempts; permanent 4xx errors not retried; queue lost on restart). Without a running queue `Deliver` sends once synchronously
 
 ### Benefits
 
