@@ -1,38 +1,6 @@
+# Optional observability stack. The bot itself needs no containers:
+# it keeps its state in one SQLite file (DB_PATH, default ./data/shopogoda.db).
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: shopogoda-db
-    environment:
-      POSTGRES_DB: weather_bot
-      POSTGRES_USER: weather_user
-      POSTGRES_PASSWORD: weather_pass
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U weather_user -d weather_bot"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Redis for caching and sessions
-  redis:
-    image: redis:7-alpine
-    container_name: shopogoda-redis
-    ports:
-      - "6380:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   # Prometheus for metrics
   prometheus:
     image: prom/prometheus:latest
@@ -73,8 +41,6 @@ services:
       COLLECTOR_OTLP_ENABLED: true
 
 volumes:
-  postgres_data:
-  redis_data:
   prometheus_data:
   grafana_data:
 

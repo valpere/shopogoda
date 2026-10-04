@@ -6,7 +6,10 @@ metadata:
   labels:
     app: shopogoda
 spec:
-  replicas: 2
+  # SQLite allows a single writer: exactly one replica, recreated (not rolled) on update
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: shopogoda
@@ -15,12 +18,16 @@ spec:
       labels:
         app: shopogoda
     spec:
+      # Image runs as uid/gid 10001 (docker/Dockerfile); fsGroup makes the PVC writable for SQLite
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
       containers:
       - name: shopogoda
         image: shopogoda:latest
         ports:
         - containerPort: 8080
-        - containerPort: 2112
         envFrom:
         - configMapRef:
             name: shopogoda-config
@@ -38,6 +45,9 @@ spec:
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
         resources:
           requests:
             memory: "128Mi"
@@ -45,3 +55,7 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: shopogoda-data

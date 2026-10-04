@@ -8,7 +8,7 @@
 
 **Completion**: ~80%
 **Released**: January 10, 2025
-**Production URL**: <https://shopogoda-svc-production.up.railway.app>
+**Deployment**: single binary or container with one SQLite file (see [DEPLOYMENT.md](DEPLOYMENT.md)); the earlier Railway + Supabase + Upstash production was retired
 
 ### ✅ Completed Features
 
@@ -51,8 +51,8 @@
 
 #### Infrastructure
 
-- [x] PostgreSQL database with GORM
-- [x] Redis caching (10-min weather, 1-hour forecasts)
+- [x] SQLite database with GORM (pure-Go driver, single file)
+- [x] In-process caching (10-min weather, 1-hour forecasts)
 - [x] Prometheus metrics collection
 - [x] Grafana dashboards
 - [x] Jaeger distributed tracing
@@ -69,22 +69,22 @@
   - Current: 34.2% overall (74.1% services, 10.9% handlers)
   - Latest: Added 35 new tests for alert threshold generation (PR #103)
   - Focus: Command handlers, callback handlers, integration tests
-  - See [TODO.md](../TODO.md) for detailed testing roadmap
+  - See [TODO.md](TODO.md) for detailed testing roadmap
 
 #### Documentation
 
-- [x] Demo setup guide (DEMO_SETUP.md) ✅ Done
-- [x] Production deployment guide (DEPLOYMENT_RAILWAY.md) ✅ Done
+- [x] Demo setup guide (DEMO_GUIDE.md) ✅ Done
+- [x] Deployment guide (DEPLOYMENT.md) ✅ Done
 - [ ] API documentation for services (priority for v0.2.0)
 - [ ] Video walkthrough (5-10 min)
 
 #### Admin & Statistics Enhancement
 
 - [ ] Real metrics collection (replace placeholder values)
-- [ ] Message & request tracking (Redis counters)
+- [ ] Message & request tracking (in-memory counters)
 - [ ] User role management UI (`/promote`, `/demote`)
 - [ ] Enhanced user management (`/userinfo`, `/ban`)
-- See [TODO.md](../TODO.md) sections 1-6 for details
+- See [TODO.md](TODO.md) sections 1-6 for details
 
 #### Release Management
 
@@ -135,9 +135,8 @@
 
 #### Infrastructure
 
-- [ ] Horizontal scaling support
+- [ ] Horizontal scaling support (requires moving off single-writer SQLite)
 - [ ] Database replication
-- [ ] Redis Cluster for high availability
 - [ ] Automated backup and restore
 - [ ] Blue-green deployment support
 
@@ -326,11 +325,11 @@ We welcome contributions! Here's how you can help:
 ### Current Metrics (v0.1.1 Production)
 
 - **Test Coverage**: 34.2% overall (74.1% services, 10.9% handlers); 39.4% on testable packages
-- **Response Time**: <500ms (production avg 200-400ms warm) → Target: <200ms
+- **Response Time**: target <200ms (measure on your own host)
 - **Languages**: 5 (en, uk, de, fr, es) with complete localization
 - **Commands**: 20+ user-facing commands
-- **Uptime**: 99.5%+ on Railway free tier
-- **Cache Hit Rate**: >85% (Upstash Redis)
+- **Uptime**: measure on your own host
+- **Cache Hit Rate**: exposed via Prometheus metrics (in-process cache)
 
 ### Target Metrics (v1.0.0)
 
@@ -366,6 +365,5 @@ We welcome contributions! Here's how you can help:
 
 ## Additional Resources
 
-- **[TODO.md](../TODO.md)** - Detailed technical debt and implementation tasks
+- **[TODO.md](TODO.md)** - Detailed technical debt and implementation tasks
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history and changes
-- **[OVERVIEW.md](../OVERVIEW.md)** - Comprehensive project overview for stakeholders

@@ -86,12 +86,10 @@ docker-build: ## Build Docker image
 	@echo "$(CYAN)Building Docker image...$(NC)"
 	@docker build -t $(DOCKER_IMAGE):$(VERSION) -t $(DOCKER_IMAGE):latest .
 
-docker-up: ## Start development environment
+docker-up: ## Start optional observability stack (Prometheus, Grafana, Jaeger)
 	@echo "$(CYAN)Starting development environment...$(NC)"
 	@docker compose -f docker/docker-compose.yml up -d
 	@echo "$(GREEN)Development environment started!$(NC)"
-	@echo "$(GREEN)PostgreSQL: localhost:5432$(NC)"
-	@echo "$(GREEN)Redis: localhost:6380$(NC)"
 	@echo "$(GREEN)Prometheus: http://localhost:9090$(NC)"
 	@echo "$(GREEN)Grafana: http://localhost:3000 (admin/admin123)$(NC)"
 	@echo "$(GREEN)Jaeger: http://localhost:16686$(NC)"
@@ -186,12 +184,10 @@ security-scan: ## Run security scans
 	@echo "$(GREEN)Security scan completed$(NC)"
 
 # Database helpers
-db-reset: ## Reset database (WARNING: destroys all data)
+db-reset: ## Reset the SQLite database file (WARNING: destroys all data)
 	@echo "$(RED)WARNING: This will destroy all database data!$(NC)"
 	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ]
-	@docker compose -f docker/docker-compose.yml down -v
-	@docker compose -f docker/docker-compose.yml up -d postgres redis
-	@sleep 5
+	@rm -f $${DB_PATH:-./data/shopogoda.db} $${DB_PATH:-./data/shopogoda.db}-wal $${DB_PATH:-./data/shopogoda.db}-shm
 	@$(MAKE) migrate
 	@echo "$(GREEN)Database reset complete$(NC)"
 

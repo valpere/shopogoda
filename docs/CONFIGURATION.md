@@ -49,21 +49,9 @@ bot:
   webhook_url: ""
   webhook_port: 8080
 
-# Database configuration
+# Database configuration (SQLite file; no external database)
 database:
-  host: localhost
-  port: 5432
-  user: shopogoda
-  password: ""  # Set via DB_PASSWORD env var for security
-  name: shopogoda
-  ssl_mode: disable
-
-# Redis configuration
-redis:
-  host: localhost
-  port: 6379
-  password: ""  # Set via REDIS_PASSWORD env var if needed
-  db: 0
+  path: ./data/shopogoda.db  # Set via DB_PATH env var
 
 # Weather service configuration
 weather:
@@ -121,19 +109,8 @@ BOT_DEBUG=false
 BOT_WEBHOOK_URL=
 BOT_WEBHOOK_PORT=8080
 
-# Database Settings
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=shopogoda
-DB_PASSWORD=your_password
-DB_NAME=shopogoda
-DB_SSL_MODE=disable
-
-# Redis Settings
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
+# Database Settings (SQLite file; parent directory must be writable)
+DB_PATH=./data/shopogoda.db
 
 # Weather API Settings
 AIRQUALITY_API_KEY=your_api_key
@@ -168,21 +145,11 @@ GRAFANA_URL=http://localhost:3000
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `host` | string | `localhost` | PostgreSQL server hostname |
-| `port` | int | `5432` | PostgreSQL server port |
-| `user` | string | `shopogoda` | Database username |
-| `password` | string | - | Database password (set via env var) |
-| `name` | string | `shopogoda` | Database name |
-| `ssl_mode` | string | `disable` | SSL mode: disable, require, verify-ca, verify-full |
+| `path` | string | `./data/shopogoda.db` | Path to the SQLite database file (env: `DB_PATH`). Created if missing; WAL sidecar files `-wal`/`-shm` appear next to it. Single writer: run one instance per file |
 
-### Redis Configuration
+### Cache
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `host` | string | `localhost` | Redis server hostname |
-| `port` | int | `6379` | Redis server port |
-| `password` | string | - | Redis password (if auth enabled) |
-| `db` | int | `0` | Redis database number |
+There is nothing to configure for caching: it is in-process and lost on restart (weather 10m, forecast 1h, air quality 30m, geocoding 24h, user profile 1h, invalidated on updates).
 
 ### Weather Configuration
 
@@ -203,7 +170,7 @@ GRAFANA_URL=http://localhost:3000
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `port` | int | `2112` | Prometheus metrics server port |
+| `port` | int | `2112` | Metrics port setting (`PROMETHEUS_PORT`); `/metrics` is currently served on the main HTTP port (`webhook_port`) |
 | `jaeger_endpoint` | string | - | Jaeger tracing endpoint URL |
 
 ### Integrations Configuration
@@ -228,30 +195,22 @@ OPENWEATHER_API_KEY=your_api_key
 BOT_DEBUG=true
 LOG_LEVEL=debug
 
-# Start development services
-make docker-up
-
-# Run the bot
+# Run the bot (SQLite file is created automatically)
 make run
+
+# Optional: Prometheus, Grafana, Jaeger
+make docker-up
 ```
 
 ### Docker Container
 
-```dockerfile
-FROM your-base-image
-
-# Copy config file
-COPY shopogoda.yaml /etc/shopogoda.yaml
-
-# Set environment variables
-ENV TELEGRAM_BOT_TOKEN=your_token
-ENV OPENWEATHER_API_KEY=your_key
-ENV DB_HOST=postgres
-ENV REDIS_HOST=redis
-
-# Run the bot
-CMD ["./bot"]
+```bash
+docker run -d --env-file .env.production -p 8080:8080 \
+  -v shopogoda_data:/app/data \
+  ghcr.io/valpere/shopogoda:latest
 ```
+
+The image sets `DB_PATH=/app/data/shopogoda.db` and declares `/app/data` as a volume; mount a volume there to persist the database. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Kubernetes Deployment
 
@@ -277,10 +236,8 @@ spec:
             secretKeyRef:
               name: shopogoda-secrets
               key: weather-api-key
-        - name: DB_HOST
-          value: "postgres-service"
-        - name: REDIS_HOST
-          value: "redis-service"
+        - name: DB_PATH
+          value: "/app/data/shopogoda.db"
         volumeMounts:
         - name: config
           mountPath: /etc/shopogoda.yaml
@@ -290,6 +247,8 @@ spec:
         configMap:
           name: shopogoda-config
 ```
+
+SQLite allows one writer: use `replicas: 1` with `strategy: Recreate` and mount a PersistentVolumeClaim at `/app/data`. Complete manifests are in `deployments/k8s/`.
 
 ### Production Server
 
@@ -302,7 +261,7 @@ sudo cp shopogoda.yaml /etc/shopogoda.yaml
 export TELEGRAM_BOT_TOKEN=your_production_token
 export OPENWEATHER_API_KEY=your_production_key
 export BOT_WEBHOOK_URL=https://yourdomain.com/webhook
-export DB_SSL_MODE=require
+export DB_PATH=/var/lib/shopogoda/data/shopogoda.db
 
 # Run with systemd
 sudo systemctl start shopogoda
@@ -320,7 +279,7 @@ sudo systemctl start shopogoda
 ### 2. **Network Security**
 
 - Use webhook mode for production deployments
-- Enable SSL/TLS for database connections (`ssl_mode: require`)
+- Keep the SQLite file on local disk with restrictive permissions (it contains user data)
 - Use strong, unique passwords for all services
 - Restrict network access with firewalls
 
@@ -335,11 +294,11 @@ sudo systemctl start shopogoda
 
 - [ ] `BOT_DEBUG=false`
 - [ ] `LOG_LEVEL=info`
-- [ ] `DB_SSL_MODE=require`
+- [ ] `DB_PATH` on a persistent volume, owned by the bot user
 - [ ] Webhook URL configured
 - [ ] All secrets via environment variables
 - [ ] Monitoring and alerting configured
-- [ ] Regular backups enabled
+- [ ] Regular SQLite backups enabled (`sqlite3 <file> ".backup out.db"`)
 
 ## Troubleshooting
 
@@ -359,29 +318,23 @@ ls -la /etc/shopogoda.yaml
 
 ```bash
 # Verify environment variables are set
-env | grep -E "(TELEGRAM|DB_|REDIS_|WEATHER_)"
+env | grep -E "(TELEGRAM|DB_|WEATHER_)"
 
 # Check variable names (case-sensitive)
 export TELEGRAM_BOT_TOKEN=your_token  # Correct
 export telegram_bot_token=your_token  # Wrong
 ```
 
-### Database Connection Issues
+### Database Issues
 
-**Problem:** "Connection refused"
+**Problem:** "unable to open database file" / "readonly database"
 
-- Check if PostgreSQL is running: `systemctl status postgresql`
-- Verify connection settings: host, port, credentials
-- Check network connectivity: `telnet localhost 5432`
-- Review PostgreSQL logs for authentication errors
+- Check that the directory of `DB_PATH` exists and is writable by the bot user
+- In containers, bind mounts must be chowned to the container user (see [DEPLOYMENT.md](DEPLOYMENT.md))
 
-**Problem:** "SSL connection required"
+**Problem:** "database is locked"
 
-```yaml
-database:
-  ssl_mode: require  # For production
-  ssl_mode: disable  # For development
-```
+- Another process uses the same file; run exactly one instance
 
 ### API Key Issues
 

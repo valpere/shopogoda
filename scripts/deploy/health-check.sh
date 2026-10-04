@@ -98,30 +98,16 @@ check_http_endpoint() {
     fi
 }
 
-check_database_connection() {
+check_database_file() {
     local container_name=$1
 
-    echo -n "Checking database connection... "
+    echo -n "Checking SQLite database file... "
 
-    if docker exec "${container_name}" pg_isready -U shopogoda > /dev/null 2>&1; then
-        log_success "Database connection OK"
+    if docker exec "${container_name}" test -s /app/data/shopogoda.db > /dev/null 2>&1; then
+        log_success "Database file present"
         return 0
     else
-        log_error "Database connection failed"
-        return 1
-    fi
-}
-
-check_redis_connection() {
-    local container_name=$1
-
-    echo -n "Checking Redis connection... "
-
-    if docker exec "${container_name}" redis-cli ping | grep -q "PONG"; then
-        log_success "Redis connection OK"
-        return 0
-    else
-        log_error "Redis connection failed"
+        log_error "Database file missing or empty"
         return 1
     fi
 }
@@ -174,8 +160,6 @@ echo ""
 all_healthy=0
 
 # Check all services
-check_service_health "PostgreSQL" "${PREFIX}-db-${SUFFIX}" || all_healthy=1
-check_service_health "Redis" "${PREFIX}-redis-${SUFFIX}" || all_healthy=1
 check_service_health "Bot" "${PREFIX}-bot-${SUFFIX}" || all_healthy=1
 check_service_health "Prometheus" "${PREFIX}-prometheus-${SUFFIX}" || all_healthy=1
 check_service_health "Grafana" "${PREFIX}-grafana-${SUFFIX}" || all_healthy=1
@@ -183,8 +167,7 @@ check_service_health "Grafana" "${PREFIX}-grafana-${SUFFIX}" || all_healthy=1
 echo ""
 
 # Additional connection checks
-check_database_connection "${PREFIX}-db-${SUFFIX}" || all_healthy=1
-check_redis_connection "${PREFIX}-redis-${SUFFIX}" || all_healthy=1
+check_database_file "${PREFIX}-bot-${SUFFIX}" || all_healthy=1
 
 # HTTP endpoint checks
 if [ "${ENVIRONMENT}" = "production" ]; then

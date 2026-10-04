@@ -90,7 +90,7 @@ func Load() (*Config, error) {
 	// Set defaults
 	setDefaults()
 
-	// Skip YAML config file loading entirely for Railway/production
+	// Skip YAML config file loading entirely (environment variables only)
 	// This prevents any YAML parsing errors from cached or malformed config files
 	// All configuration MUST come from environment variables in production
 

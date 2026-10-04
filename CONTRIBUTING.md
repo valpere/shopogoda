@@ -34,7 +34,7 @@ ShoPogoda follows a welcoming and inclusive Code of Conduct. Please be respectfu
 ### Prerequisites
 
 - **Go 1.24+**: [Installation guide](https://golang.org/doc/install)
-- **Docker & Docker Compose**: [Installation guide](https://docs.docker.com/get-docker/)
+- **Docker & Docker Compose** (optional): only for the Prometheus/Grafana/Jaeger stack; tests need no Docker. [Installation guide](https://docs.docker.com/get-docker/)
 - **Git**: Version control
 - **Make**: Build automation
 
@@ -453,8 +453,9 @@ shopogoda/
 ├── cmd/bot/              # Application entry points
 ├── internal/             # Private application code
 │   ├── bot/             # Bot initialization
+│   ├── cache/           # In-process TTL/LRU cache
 │   ├── config/          # Configuration management
-│   ├── database/        # Database connections
+│   ├── database/        # SQLite connection (pure-Go driver)
 │   ├── handlers/        # Telegram command handlers
 │   ├── middleware/      # Bot middleware
 │   ├── models/          # Data models

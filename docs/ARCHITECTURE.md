@@ -74,8 +74,8 @@ ShoPogoda is built with a modern, layered architecture optimized for maintainabi
          ┌───────────────┼───────────────┐
          ▼               ▼               ▼
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│  PostgreSQL  │  │    Redis     │  │  External    │
-│   Database   │  │    Cache     │  │    APIs      │
+│    SQLite    │  │  In-process  │  │  External    │
+│  (one file)  │  │    Cache     │  │    APIs      │
 └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
@@ -85,9 +85,9 @@ ShoPogoda is built with a modern, layered architecture optimized for maintainabi
 |-------|------------|---------|
 | **Bot Framework** | gotgbot v2 | Telegram Bot API integration |
 | **HTTP Server** | gin-gonic/gin | Webhook endpoint, health checks |
-| **Database** | PostgreSQL 15 | Persistent data storage |
+| **Database** | SQLite (`glebarez/sqlite`, pure Go) | Persistent data storage (single file) |
 | **ORM** | GORM | Database abstraction |
-| **Cache** | Redis 7 | Performance optimization |
+| **Cache** | In-process (`internal/cache`) | TTL + bounded LRU cache |
 | **Logging** | zerolog | Structured JSON logging |
 | **Metrics** | Prometheus | Monitoring and metrics |
 | **Configuration** | Viper | Hierarchical configuration |
@@ -144,7 +144,7 @@ dispatcher.AddHandler(handlers.WeatherCommand(...))
 
 4. **Rate Limiting Middleware**
    - Per-user rate limits (10 req/min)
-   - Distributed rate limiting via Redis
+   - In-process rate limiting (`golang.org/x/time/rate`)
    - Graceful cleanup of expired limiters
 
 ### 3. Handler Layer (`internal/handlers/`)
@@ -223,8 +223,8 @@ type Services struct {
         ┌───────────────────┼───────────────────┐
         ▼                   ▼                   ▼
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Database   │    │    Redis     │    │   Config     │
-│  Connection  │    │  Connection  │    │    Viper     │
+│   Database   │    │ In-process   │    │   Config     │
+│  (SQLite)    │    │    Cache     │    │    Viper     │
 └──────┬───────┘    └──────┬───────┘    └──────┬───────┘
        │                   │                   │
        └───────────────────┼───────────────────┘
@@ -245,15 +245,15 @@ type Services struct {
 
 ```go
 // services/services.go
-func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.Logger) *Services {
+func New(db *gorm.DB, cfg *config.Config, logger *zerolog.Logger, metricsCollector *metrics.Metrics) *Services {
     // Initialize core services first
-    user := NewUserService(db, redis, logger)
-    weather := NewWeatherService(cfg, redis, logger)
-    localization := NewLocalizationService(cfg, logger)
+    user := NewUserService(db, metricsCollector, logger, startTime)
+    weather := NewWeatherService(&cfg.Weather, logger)
+    localization := NewLocalizationService(logger)
 
     // Initialize dependent services
-    alert := NewAlertService(db, user, weather, logger)
-    notification := NewNotificationService(cfg, logger, bot)
+    alert := NewAlertService(db)
+    notification := NewNotificationService(&cfg.Integrations, logger)
     // ... other services
 
     return &Services{
@@ -269,11 +269,11 @@ func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.L
 
 | Service | Responsibility | Dependencies |
 |---------|---------------|--------------|
-| **UserService** | User management, locations, timezones | DB, Redis |
-| **WeatherService** | Weather data retrieval, geocoding | Config, Redis, OpenWeatherMap API |
-| **AlertService** | Custom alert configurations | DB, UserService, WeatherService |
+| **UserService** | User management, locations, timezones | DB, in-process cache |
+| **WeatherService** | Weather data retrieval, geocoding | Config, in-process cache, OpenWeatherMap API |
+| **AlertService** | Custom alert configurations | DB |
 | **SubscriptionService** | Notification subscriptions | DB |
-| **NotificationService** | Dual-platform delivery | Config, Telegram Bot, Slack/Teams APIs |
+| **NotificationService** | Dual-platform delivery with in-memory retry queue (`delivery_queue.go`) | Config, Telegram Bot, Slack/Teams APIs |
 | **SchedulerService** | Background job scheduling | All services |
 | **ExportService** | Data export (JSON/CSV/TXT) | DB |
 | **LocalizationService** | Multi-language translation | Config |
@@ -398,77 +398,49 @@ CREATE INDEX idx_subscriptions_active_type ON subscriptions(is_active, subscript
 
 ## Caching Strategy
 
-### Redis Cache Architecture
+### In-Process Cache Architecture
+
+`internal/cache` is an in-process cache: TTL per entry, bounded LRU (weather cache 2000 entries, user cache 10000). It is lost on restart. `WeatherService.SetCache` is a test seam.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                      Redis Cache Layer                        │
+│                  In-Process Cache (internal/cache)            │
 ├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Weather Cache (10min TTL)                                   │
-│  ├── Key: weather:lat:lon                                    │
-│  └── Value: JSON weather data                                │
-│                                                               │
-│  Forecast Cache (1hour TTL)                                  │
-│  ├── Key: forecast:lat:lon                                   │
-│  └── Value: JSON forecast data                               │
-│                                                               │
-│  Air Quality Cache (10min TTL)                               │
-│  ├── Key: air:lat:lon                                        │
-│  └── Value: JSON AQI data                                    │
-│                                                               │
-│  Geocoding Cache (24hour TTL)                                │
-│  ├── Key: geocode:location_name                              │
-│  └── Value: JSON coordinates                                 │
-│                                                               │
-│  Rate Limiting (Rolling window)                              │
-│  ├── Key: rate:user_id                                       │
-│  └── Value: Request counter                                  │
-│                                                               │
-│  Statistics (24hour rolling)                                 │
-│  ├── Key: stats:messages_24h                                 │
-│  ├── Key: stats:weather_requests_24h                         │
-│  └── Value: Counter with TTL                                 │
-│                                                               │
+│  Current weather   (10min TTL)   weather:current:lat:lon      │
+│  Forecast          (1hour TTL)   weather:forecast:lat:lon:N   │
+│  Air quality       (30min TTL)   weather:air:lat:lon          │
+│  Geocoding         (24hour TTL)  geocode:<name>               │
+│  Reverse geocoding (24hour TTL)  reverse_geocode:lat:lon      │
+│  User profile      (1hour TTL)   user:<id> (invalidated on    │
+│                                  updates)                     │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ### Cache Key Patterns
 
 ```go
-// Weather data
-fmt.Sprintf("weather:%f:%f", lat, lon)
-
-// Forecast data
-fmt.Sprintf("forecast:%f:%f", lat, lon)
-
-// Air quality
-fmt.Sprintf("air:%f:%f", lat, lon)
-
-// Geocoding
-fmt.Sprintf("geocode:%s", strings.ToLower(locationName))
-
-// Rate limiting
-fmt.Sprintf("rate:%d", userID)
-
-// Statistics
-"stats:messages_24h"
-"stats:weather_requests_24h"
+fmt.Sprintf("weather:current:%.4f:%.4f", lat, lon)
+fmt.Sprintf("weather:forecast:%.4f:%.4f:%d", lat, lon, days)
+fmt.Sprintf("weather:air:%.4f:%.4f", lat, lon)
+fmt.Sprintf("geocode:%s", normalizedName)
+fmt.Sprintf("reverse_geocode:%.4f:%.4f", lat, lon)
+fmt.Sprintf("user:%d", userID)
 ```
+
+### Rate Limiting and Activity Counters
+
+- Rate limiting is in-process (`golang.org/x/time/rate`), 10 req/min per user
+- Activity counters (messages, weather requests) are in-memory atomics, reset on restart and labelled "since start" (`MessagesSinceStart`, `WeatherRequestsSinceStart`)
+- "New users (24h)" is a real 24-hour database query
 
 ### Cache Invalidation
 
 - **Time-based**: Automatic expiration via TTL
-- **Event-based**: Location changes invalidate related caches
-- **Manual**: Admin commands can clear specific caches
+- **Event-based**: User profile (`user:<id>`) is invalidated on updates
 
 ### Cache Performance
 
-| Metric | Target | Actual (Production) |
-|--------|--------|---------------------|
-| Cache Hit Rate | >85% | >85% |
-| Cache Read Latency | <50ms | <50ms |
-| Cache Write Latency | <100ms | <100ms |
+Hit rate and latency depend on traffic and host; measure on your deployment (cache hits are served in-process without network round trips).
 
 ---
 
@@ -523,7 +495,7 @@ func (s *NotificationService) SendSlackAlert(
 
 ## Deployment Architecture
 
-### Production Stack (Railway + Supabase + Upstash)
+### Single-Instance Stack
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -534,28 +506,26 @@ func (s *NotificationService) SendSlackAlert(
 ┌──────────────────────────────────────────────────────────┐
 │               Telegram API Servers                       │
 └────────────────────┬─────────────────────────────────────┘
-                     │ HTTPS Webhook
+                     │ HTTPS Webhook (or polling)
                      ▼
 ┌──────────────────────────────────────────────────────────┐
-│         Railway (Bot Application)                        │
+│     Single binary / one container (exactly 1 instance)   │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │    ShoPogoda Bot                                   │  │
-│  │    - Webhook endpoint (:8080/webhook)             │  │
-│  │    - Health check (:8080/health)                  │  │
-│  │    - Metrics (:8080/metrics)                      │  │
-│  └────────────────────────────────────────────────────┘  │
-└────────────────────┬────────────┬─────────────────────────┘
-                     │            │
-         ┌───────────┘            └──────────────┐
-         ▼                                       ▼
-┌─────────────────────┐                ┌─────────────────────┐
-│  Supabase           │                │  Upstash Redis      │
-│  (PostgreSQL 15)    │                │  (Redis 7)          │
-│  - 500MB storage    │                │  - 10K cmds/day     │
-│  - Connection pool  │                │  - TLS enabled      │
-│  - RLS enabled      │                │  - Cache layer      │
-└─────────────────────┘                └─────────────────────┘
+│  │    - Webhook endpoint (:8080/webhook)              │  │
+│  │    - Health check (:8080/health)                   │  │
+│  │    - Metrics (:8080/metrics)                       │  │
+│  │    - In-process cache, rate limiter, retry queue   │  │
+│  └──────────────────────┬─────────────────────────────┘  │
+└─────────────────────────┼────────────────────────────────┘
+                          ▼
+              ┌───────────────────────┐
+              │  Volume: /app/data    │
+              │  shopogoda.db (SQLite)│
+              └───────────────────────┘
 ```
+
+SQLite runs in WAL mode with `busy_timeout` 5000, `foreign_keys` on and `SetMaxOpenConns(1)`. A single writer means the bot must run as exactly one instance/replica (Kubernetes: `replicas: 1`, strategy `Recreate`, PVC).
 
 ### Deployment Configuration
 
@@ -566,40 +536,28 @@ TELEGRAM_BOT_TOKEN=<from @BotFather>
 OPENWEATHER_API_KEY=<from openweathermap.org>
 
 # Mode
-BOT_WEBHOOK_MODE=true  # Production: webhook; Development: polling
+BOT_WEBHOOK_MODE=true  # Webhook needs a public HTTPS URL; polling also works
 BOT_WEBHOOK_URL=https://your-domain.com
 BOT_WEBHOOK_PORT=8080
 
-# Database (Supabase pooler)
-DB_HOST=aws-1-us-east-2.pooler.supabase.com
-DB_PORT=6543  # Connection pooler port
-DB_NAME=postgres
-DB_USER=postgres.<project-ref>
-DB_PASSWORD=<supabase-password>
-DB_SSL_MODE=require
-
-# Redis (Upstash with TLS)
-REDIS_HOST=<region>-<name>.upstash.io
-REDIS_PORT=6379  # TLS auto-enabled for non-localhost
-REDIS_PASSWORD=<upstash-password>
+# Database (SQLite file)
+DB_PATH=/app/data/shopogoda.db  # default ./data/shopogoda.db
 
 # Logging
 LOG_LEVEL=info
 LOG_FORMAT=json
 ```
 
+See [Deployment Guide](DEPLOYMENT.md) for Docker Compose, Kubernetes and bare-binary setups. Backups: `sqlite3 <file> ".backup out.db"` or Litestream.
+
 ### Scaling Considerations
 
-**Current Limits (Free Tier)**:
-- Railway: 500 execution hours/month (~20 days continuous)
-- Supabase: 500MB storage, 2GB bandwidth/month
-- Upstash: 10,000 Redis commands/day
+The design is intentionally single-instance: state is one SQLite file and the cache, rate limiter, counters and retry queue are per-process.
 
 **Scaling Options**:
-1. **Vertical Scaling**: Upgrade to paid tiers
-2. **Horizontal Scaling**: Multiple bot instances with load balancer
-3. **Database Scaling**: Read replicas, connection pooling
-4. **Cache Scaling**: Redis Cluster
+1. **Vertical Scaling**: Give the single instance more CPU/RAM
+2. **Cache sizing**: Adjust the bounded LRU sizes in `internal/cache` usage
+3. **Beyond one instance**: Would require replacing SQLite with a networked database and the in-process cache, rate limiter and queue with shared equivalents (not implemented)
 
 ---
 
@@ -638,27 +596,13 @@ func RequireRole(minRole Role) ext.HandlerFunc {
 ### Data Protection
 
 - Passwords/tokens never logged
-- Sensitive data encrypted at rest (DB level)
+- Protect the SQLite file with filesystem permissions and volume/disk encryption as needed
 - TLS for all external communications
 - Environment variables for secrets
 
-### Row Level Security (RLS)
+### Data Isolation
 
-Supabase RLS policies ensure data isolation:
-
-```sql
--- Users can only read their own data
-CREATE POLICY user_read_own ON users
-    FOR SELECT
-    USING (telegram_id = current_user_id());
-
--- Users can only modify their own weather data
-CREATE POLICY user_write_own_weather ON weather_data
-    FOR ALL
-    USING (user_id = current_user_id());
-```
-
-See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for complete RLS documentation.
+All queries are scoped to the owning user (no cross-user data leakage); the bot is the only client of the SQLite file, so there is no database-level access layer to secure.
 
 ---
 
@@ -666,51 +610,24 @@ See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for complete RLS documentation.
 
 ### Performance Targets
 
-| Metric | Target | Current (Production) |
-|--------|--------|---------------------|
-| Response Time | <200ms | <500ms (avg) |
-| Throughput | 100 req/s | ~10 req/s (free tier) |
-| Concurrent Users | 1000+ | <100 (current) |
-| Uptime | 99.9% | 99.5%+ |
+| Metric | Target |
+|--------|--------|
+| Response Time | <200ms (cache hits) |
+
+Measure throughput, latency and uptime on your own host; no benchmarks are claimed here.
 
 ### Bottlenecks & Mitigation
 
-**1. Database Connections**
-- **Issue**: Limited connection pool
-- **Solution**: Connection pooling with Supabase pooler
-- **Configuration**: 25 max connections
+**1. Single SQLite writer**
+- **Issue**: One connection (`SetMaxOpenConns(1)`) serializes DB access
+- **Mitigation**: WAL mode, `busy_timeout` 5000, short transactions
 
-**2. Redis Command Limits**
-- **Issue**: Upstash 10K commands/day
-- **Solution**: Optimize cache TTLs, batch operations
-- **Monitor**: Daily command usage
+**2. Per-process state**
+- **Issue**: Cache, counters and delivery queue are lost on restart
+- **Mitigation**: TTLs are short; counters are labelled "since start"; state worth keeping lives in SQLite
 
-**3. Railway Execution Hours**
-- **Issue**: 500 hours/month on free tier
-- **Solution**: Upgrade to paid tier or optimize wake/sleep patterns
-
-### Future Scaling Architecture
-
-```
-┌────────────────────────────────────────────────────────┐
-│            Load Balancer (NGINX/HAProxy)               │
-└───────────┬────────────────────────┬───────────────────┘
-            │                        │
-    ┌───────▼───────┐        ┌───────▼───────┐
-    │  Bot Instance │        │  Bot Instance │
-    │      #1       │        │      #2       │
-    └───────┬───────┘        └───────┬───────┘
-            │                        │
-            └───────────┬────────────┘
-                        │
-        ┌───────────────┼───────────────┐
-        ▼               ▼               ▼
-┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│  PostgreSQL  │ │Redis Cluster │ │  External    │
-│   Primary    │ │ (3 nodes)    │ │    APIs      │
-│   + Replica  │ │              │ │              │
-└──────────────┘ └──────────────┘ └──────────────┘
-```
+**3. OpenWeatherMap quota**
+- **Mitigation**: In-process caching (see TTLs above)
 
 ---
 
@@ -723,7 +640,7 @@ See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for complete RLS documentation.
 - Response time histogram
 - Error rate by type
 - Cache hit/miss ratio
-- Database connection pool stats
+- Database connection stats
 - Active users gauge
 
 ### Structured Logging
@@ -749,7 +666,6 @@ See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for complete RLS documentation.
 
 **Future Enhancements**:
 - Database connectivity check
-- Redis connectivity check
 - External API availability
 - Queue depth monitoring
 
@@ -758,8 +674,6 @@ See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for complete RLS documentation.
 ## Additional Resources
 
 - **[API Reference](API_REFERENCE.md)**: Complete service layer API
-- **[Database Migration Guide](DATABASE_MIGRATION_GUIDE.md)**: Schema management
-- **[Database Security](DATABASE_SECURITY.md)**: RLS and security practices
 - **[Deployment Guide](DEPLOYMENT.md)**: Production deployment instructions
 - **[Testing Guide](TESTING.md)**: Testing strategies and best practices
 
@@ -767,4 +681,4 @@ See [DATABASE_SECURITY.md](DATABASE_SECURITY.md) for complete RLS documentation.
 
 **Last Updated**: 2025-10-14
 **Version**: 0.1.2-dev
-**Status**: Production Deployed
+**Status**: Production Deployed (single instance)

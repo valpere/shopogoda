@@ -50,8 +50,7 @@
 **/*.sqlite
 
 # Docker volumes
-**/postgres_data
-**/redis_data
+**/data
 **/prometheus_data
 **/grafana_data
 

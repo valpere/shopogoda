@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (BREAKING)
+
+- **PostgreSQL and Redis removed**: state is one SQLite file (`DB_PATH`, default `./data/shopogoda.db`; pure-Go driver, `CGO_ENABLED=0` builds). Caches are in-process (TTL + bounded LRU) and lost on restart. Single writer: run exactly one instance (k8s `replicas: 1`, `Recreate`, PVC). `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`/`DB_SSL_MODE` and `REDIS_*` no longer exist. There is no Postgres→SQLite data migration tool.
+- **Admin activity counters** (messages, weather requests) are in-memory and now labelled "since start" in all locales instead of "24h".
+- Integration tests (`make test-integration`) need no Docker; CI runs them.
+- Removed Railway/Vercel/Fly.io/Replit/GCP deployment guides, Supabase/Postgres SQL scripts and `railway.toml`; deployment is a single binary or container with a volume (see `docs/DEPLOYMENT.md`).
+
 ### Added
 
 - **Notification delivery queue with retry**: Scheduler notifications (alerts, daily, weekly; Slack and Telegram) are delivered by background workers via an in-memory queue. Transient failures retry with exponential backoff and jitter (5 attempts, 2s base, 1m cap); Telegram `429` honors `retry_after`; permanent errors (4xx other than 429, e.g. bot blocked) are not retried. Queue contents are lost on restart.

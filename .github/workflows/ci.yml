@@ -16,31 +16,6 @@ jobs:
     name: Test & Quality
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_USER: testuser
-          POSTGRES_DB: testdb
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
@@ -102,14 +77,6 @@ jobs:
 
     - name: Run unit tests
       env:
-        WB_DATABASE_HOST: localhost
-        WB_DATABASE_PORT: 5432
-        WB_DATABASE_USER: testuser
-        WB_DATABASE_PASSWORD: testpass
-        WB_DATABASE_NAME: testdb
-        WB_DATABASE_SSLMODE: disable
-        WB_REDIS_ADDR: localhost:6379
-        WB_REDIS_PASSWORD: ""
         WB_BOT_TOKEN: "test_token"
         WB_WEATHER_API_KEY: "test_api_key"
       run: |
@@ -150,20 +117,8 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-    # Integration tests disabled temporarily - need refactoring to match current codebase
-    # - name: Run integration tests
-    #   env:
-    #     WB_DATABASE_HOST: localhost
-    #     WB_DATABASE_PORT: 5432
-    #     WB_DATABASE_USER: testuser
-    #     WB_DATABASE_PASSWORD: testpass
-    #     WB_DATABASE_NAME: testdb
-    #     WB_DATABASE_SSLMODE: disable
-    #     WB_REDIS_ADDR: localhost:6379
-    #     WB_REDIS_PASSWORD: ""
-    #     WB_BOT_TOKEN: "test_token"
-    #     WB_WEATHER_API_KEY: "test_api_key"
-    #   run: go test -v -tags=integration ./tests/integration/...
+    - name: Run integration tests
+      run: go test -tags=integration ./tests/integration/...
 
     - name: Archive test results
       uses: actions/upload-artifact@v7
@@ -221,10 +176,8 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # Deploy jobs disabled - application deployed to Railway
-  # The deploy.sh script is designed for VM/server deployments, not GitHub Actions
-  # Production: https://shopogoda-svc-production.up.railway.app
-  # See: docs/DEPLOYMENT_RAILWAY.md and RAILWAY_DEPLOYMENT_SUCCESS.md
+  # Deploy jobs disabled - the bot runs as a single container with a mounted volume
+  # (see docs/DEPLOYMENT.md). deploy.sh targets VM/server deployments, not GitHub Actions.
   #
   # deploy-staging:
   #   name: Deploy to Staging
@@ -265,31 +218,6 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main'
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_USER: testuser
-          POSTGRES_DB: testdb
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
@@ -301,14 +229,6 @@ jobs:
 
     - name: Run benchmark tests
       env:
-        WB_DATABASE_HOST: localhost
-        WB_DATABASE_PORT: 5432
-        WB_DATABASE_USER: testuser
-        WB_DATABASE_PASSWORD: testpass
-        WB_DATABASE_NAME: testdb
-        WB_DATABASE_SSLMODE: disable
-        WB_REDIS_ADDR: localhost:6379
-        WB_REDIS_PASSWORD: ""
         WB_BOT_TOKEN: "test_token"
         WB_WEATHER_API_KEY: "test_api_key"
       run: |
