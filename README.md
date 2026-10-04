@@ -1,12 +1,12 @@
 # ShoPogoda (Що Погода) - Enterprise Weather Bot
 
-[![Go Version](https://img.shields.io/badge/Go-1.24%2B-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.25%2B-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/valpere/shopogoda)](https://goreportcard.com/report/github.com/valpere/shopogoda)
 [![codecov](https://codecov.io/gh/valpere/shopogoda/branch/main/graph/badge.svg)](https://codecov.io/gh/valpere/shopogoda)
 [![GitHub release](https://img.shields.io/github/release/valpere/shopogoda.svg)](https://github.com/valpere/shopogoda/releases)
 
-A production-ready Telegram bot for weather monitoring, environmental alerts, and enterprise integrations. Currently deployed on Railway with Supabase PostgreSQL and Upstash Redis.
+A production-ready Telegram bot for weather monitoring, environmental alerts, and enterprise integrations. Runs as a single binary or one container, with state in a single SQLite file and an in-process cache; no external database or cache services required.
 
 ## Live Demo
 
@@ -30,7 +30,7 @@ A production-ready Telegram bot for weather monitoring, environmental alerts, an
 - **Slack/Teams Integration**: Automated notifications
 - **Role-Based Access Control**: Admin, moderator, and user roles
 - **Monitoring & Analytics**: Prometheus metrics and Grafana dashboards
-- **High Availability**: Redis caching and PostgreSQL clustering
+- **Simple Operations**: Single instance, SQLite storage, in-process cache (no external services)
 
 ### Technical Excellence
 - **Scalable Architecture**: Microservices-ready design
@@ -43,15 +43,14 @@ A production-ready Telegram bot for weather monitoring, environmental alerts, an
 ### Prerequisites
 
 **For Local Development:**
-- Go 1.24+
-- Docker & Docker Compose
+- Go 1.25+
+- Docker & Docker Compose (optional, only for the Prometheus/Grafana/Jaeger stack)
 - Telegram Bot Token (from @BotFather)
 - OpenWeatherMap API Key
 
 **For Production Deployment:**
-- Railway account (free tier available)
-- Supabase account (PostgreSQL - free tier)
-- Upstash account (Redis - free tier)
+- A host that can run one instance (binary or container) with a persistent volume for the SQLite file
+- A public HTTPS URL if using webhook mode (polling also works)
 
 ### Setup Commands
 
@@ -92,6 +91,7 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 OPENWEATHER_API_KEY=your_openweather_api_key
 
 # Optional
+DB_PATH=./data/shopogoda.db
 SLACK_WEBHOOK_URL=your_slack_webhook_url
 BOT_DEBUG=true
 LOG_LEVEL=debug
@@ -189,63 +189,29 @@ make migrate        # Run database migrations
 
 ## 🚀 Deployment
 
-### Production Deployment (Railway)
+### Production Deployment
 
-**Currently deployed and running in production:**
+ShoPogoda runs as **exactly one instance** (SQLite single writer): a single binary, or one container with a volume mounted at `/app/data`.
 
-```bash
-# Quick deploy to Railway (recommended)
-railway login
-railway init
-railway up
+- **Docker Compose**: `docker/docker-compose.prod.yml` / `docker-compose.staging.yml` run the bot with optional Prometheus/Grafana/Jaeger and a named data volume
+- **Kubernetes**: `deployments/k8s/` (`replicas: 1`, strategy `Recreate`, PVC)
+- **Backups**: `sqlite3 <file> ".backup out.db"` or Litestream
 
-# Configure environment variables in Railway dashboard
-# See docs/DEPLOYMENT_RAILWAY.md for complete guide
-```
-
-**Live Production:**
-- Health: https://shopogoda-svc-production.up.railway.app/health
-- Stack: Railway + Supabase (PostgreSQL) + Upstash (Redis)
-- Cost: $0/month (free tier)
-- Status: ✅ Production-ready
-
-**📖 Complete deployment guide:** [DEPLOYMENT_RAILWAY.md](docs/DEPLOYMENT_RAILWAY.md)
-
-### Alternative Deployment Options
-
-The bot supports multiple platforms:
-- **Railway** - Primary production platform (free tier, 500 hrs/month)
-- **Vercel** - Serverless functions (free tier, 100GB bandwidth/month)
-- **Fly.io** - Global edge deployment (~$5-10/month)
-- **Replit** - All-in-one IDE (free with sleep, $20/month always-on)
-- **Docker** - Traditional container deployment (any cloud)
-
-**📖 Platform comparison:** [DEPLOYMENT.md](docs/DEPLOYMENT.md)
+**📖 Complete deployment guide:** [DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ## 📈 Performance
 
-**Production Metrics (Railway deployment):**
-- **Response Time**: < 500ms average (including cold starts)
-- **Uptime**: 99.5%+ on free tier
-- **Cache Hit Rate**: > 85% (Upstash Redis)
-- **Database Latency**: 100-200ms (Supabase pooler)
-- **Database Indexes**: Optimized composite indexes for 2-3x faster queries
-
-**Free Tier Limits:**
-- Railway: 500 execution hours/month (continuous uptime: ~20.8 days; webhook mode requires always-on)
-- Supabase: 500MB storage, 2GB bandwidth/month
-- Upstash: 10,000 commands/day (~6.9 commands/minute on average; actual usage varies by traffic patterns)
+- **Caching**: In-process TTL cache (weather 10m, forecast 1h, air quality 30m, geocoding 24h); lost on restart
+- **Database**: SQLite in WAL mode; optimized composite indexes
+- **Latency / hit rate**: depend on your host; measure on your deployment
 
 ## 🔒 Security
 
-- **Row Level Security (RLS)**: Supabase PostgREST API secured with deny-by-default policies
 - **Input Validation**: Comprehensive validation and sanitization of all user inputs
-- **Rate Limiting**: 10 requests/minute per user to prevent abuse
+- **Rate Limiting**: 10 requests/minute per user to prevent abuse (in-process)
 - **SQL Injection Prevention**: GORM ORM with parameterized queries
 - **Secure Credential Management**: Environment variables and secret management
 - **Audit Logging**: Complete audit trail for compliance and monitoring
-
-**📖 Security documentation:** [DATABASE_SECURITY.md](docs/DATABASE_SECURITY.md)
 
 ## 🌐 Multi-Language Support
 
@@ -277,8 +243,6 @@ ShoPogoda offers comprehensive internationalization with complete localization i
 - **[Architecture](docs/ARCHITECTURE.md)** - System architecture and design
 - **[API Reference](docs/API_REFERENCE.md)** - Complete service layer API documentation
 - **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation (34.2% overall, 39.4% testable packages)
-- **[Database Migration Guide](docs/DATABASE_MIGRATION_GUIDE.md)** - When to run SQL patches and migrations
-- **[Database Security](docs/DATABASE_SECURITY.md)** - Row Level Security (RLS) implementation guide
 - **[Code Quality Guidelines](docs/CODE_QUALITY.md)** - Contribution standards
 
 ### Project Management

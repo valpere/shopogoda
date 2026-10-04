@@ -16,75 +16,17 @@ services:
       BOT_DEBUG: "false"
       LOG_LEVEL: "info"
       LOG_FORMAT: "json"
-      DB_HOST: postgres
-      DB_PORT: 5432
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      DB_PATH: /app/data/shopogoda.db
     ports:
       - "${BOT_WEBHOOK_PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    volumes:
+      - bot_data:/app/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - shopogoda-prod
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: shopogoda-db-prod
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_NAME:-shopogoda}
-      POSTGRES_USER: ${DB_USER:-shopogoda}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-shopogoda} -d ${DB_NAME:-shopogoda}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - shopogoda-prod
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: shopogoda-redis-prod
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
     networks:
       - shopogoda-prod
     logging:
@@ -166,10 +108,9 @@ services:
         max-file: "3"
 
 volumes:
-  postgres_data:
+  bot_data:
     driver: local
-  redis_data:
-    driver: local
+    name: shopogoda_data_prod
   prometheus_data:
     driver: local
   grafana_data:

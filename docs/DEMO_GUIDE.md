@@ -19,7 +19,7 @@ Get the ShoPogoda weather bot running locally in under 5 minutes!
 
 ### Prerequisites
 
-- **Docker & Docker Compose** (for PostgreSQL, Redis, monitoring)
+- **Docker & Docker Compose** (optional, only for the Prometheus/Grafana/Jaeger monitoring stack)
 - **Go 1.24.6** (for building the bot)
 - **Telegram Account** (to interact with your bot)
 - **API Keys**:
@@ -44,8 +44,8 @@ make init
 This command:
 
 - Creates `.env` from `.env.example`
-- Starts PostgreSQL, Redis, Prometheus, Grafana containers
-- Applies database migrations
+- Starts the optional monitoring containers (Prometheus, Grafana, Jaeger)
+- The SQLite database file (`./data/shopogoda.db`) is created and migrated automatically on first run
 
 #### 3. Configure Your Bot
 
@@ -75,7 +75,6 @@ Expected output:
 
 ```plaintext
 ✓ Database connected
-✓ Redis connected
 ✓ Bot initialized
 ✓ Listening for updates...
 ```
@@ -401,7 +400,7 @@ Access the monitoring dashboards:
 │                  └──────┬───────┘  │
 │                         v           │
 │  ┌──────────┐    ┌──────────────┐  │
-│  │  Redis   │←── │  PostgreSQL  │  │
+│  │ In-proc  │←── │    SQLite    │  │
 │  │ (Cache)  │    │  (Storage)   │  │
 │  └──────────┘    └──────────────┘  │
 └─────────────────────────────────────┘
@@ -440,9 +439,9 @@ make migrate          # Run migrations
 make migrate-rollback # Rollback last migration
 
 # Docker
-make docker-up        # Start all containers
-make docker-down      # Stop all containers
-make docker-logs      # View container logs
+make docker-up        # Start optional monitoring stack (Prometheus, Grafana, Jaeger)
+make docker-down      # Stop monitoring containers
+make docker-logs      # View monitoring container logs
 make docker-build     # Build production image
 
 # Cleanup
@@ -457,7 +456,7 @@ shopogoda/
 ├── internal/             # Private application code
 │   ├── bot/             # Bot initialization
 │   ├── config/          # Configuration management
-│   ├── database/        # DB connections (PostgreSQL, Redis)
+│   ├── database/        # SQLite connection and in-process cache
 │   ├── handlers/
 │   │   ├── commands/    # Telegram command handlers
 │   │   └── callbacks/   # Callback query handlers
@@ -510,30 +509,19 @@ curl http://localhost:8080/health
 # Common issues:
 # - Invalid TELEGRAM_BOT_TOKEN
 # - Invalid OPENWEATHER_API_KEY
-# - Database connection failure
+# - Database file not writable (check DB_PATH)
 ```
 
-### Database connection failed
+### Database errors
 
-**Ensure containers are running:**
+**Check the database path is writable:**
 
 ```bash
-docker ps
-# Should show: postgres, redis, prometheus, grafana
-
-# If not running:
-make docker-up
+# Default location (override with DB_PATH in .env)
+ls -la ./data/
 ```
 
-**Check database credentials in `.env`:**
-
-```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=shopogoda
-DB_PASSWORD=your_password
-DB_NAME=shopogoda
-```
+The bot creates `./data/shopogoda.db` on first start; the `data` directory must be writable. To start from a clean database: `make db-reset` (destroys all data).
 
 ### Weather API errors
 
@@ -549,18 +537,9 @@ curl "https://api.openweathermap.org/data/2.5/weather?q=London&appid=YOUR_API_KE
 - Free tier: 60 calls/minute, 1,000,000 calls/month
 - Upgrade if needed at openweathermap.org
 
-### Redis connection issues
+### Stale data after changes
 
-**Check Redis container:**
-
-```bash
-docker ps | grep redis
-docker logs shopogoda-redis
-
-# Test Redis connection:
-docker exec -it shopogoda-redis redis-cli ping
-# Should return: PONG
-```
+The cache is in-process (no external service) and is emptied on every restart. If a manual database edit does not show up, restart the bot.
 
 ### Demo data not appearing
 

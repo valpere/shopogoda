@@ -224,6 +224,8 @@ kubectl set image deployment/shopogoda \
   -n production
 ```
 
+ShoPogoda runs as a single instance on one SQLite file: the Kubernetes Deployment uses `replicas: 1` with the `Recreate` strategy, so a release causes a brief downtime. Take a database backup (`sqlite3 <file> ".backup out.db"`) before deploying a release that changes the schema. See [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Rollback Procedure
 
 If a release has critical issues:
@@ -241,13 +243,15 @@ If a release has critical issues:
 kubectl rollout undo deployment/shopogoda -n production
 
 # Docker Compose
-docker compose pull  # Pull previous version
-docker compose up -d --no-deps shopogoda
+VERSION=<previous> docker compose -f docker/docker-compose.prod.yml pull bot  # Pull previous version
+VERSION=<previous> docker compose -f docker/docker-compose.prod.yml up -d --no-deps bot
 
 # Verify rollback
 kubectl get pods -n production
 docker compose ps
 ```
+
+If the failed release changed the database schema in a way the previous version cannot read, also restore the pre-release SQLite backup (stop the bot, replace the file, delete the `-wal`/`-shm` files, start the bot; see [DEPLOYMENT.md](DEPLOYMENT.md#backups-and-restore)).
 
 ## Hotfix Process
 

@@ -57,8 +57,8 @@ type Services struct {
 ### Dependency Chain
 
 ```plaintext
-Database (PostgreSQL) → GORM
-Cache (Redis) → go-redis
+Database (SQLite file) → GORM (pure-Go driver)
+Cache (in-process, internal/cache)
 Config → Viper
 Logger → zerolog
 Metrics → Prometheus
@@ -84,12 +84,11 @@ import (
 // Initialize dependencies
 cfg := config.Load()
 db := database.Connect(cfg.Database)
-redis := database.ConnectRedis(cfg.Redis)
 logger := zerolog.New(os.Stdout)
 metricsCollector := metrics.New()
 
 // Create services container
-svcs := services.New(db, redis, cfg, logger, metricsCollector)
+svcs := services.New(db, cfg, logger, metricsCollector)
 
 // Start background scheduler
 ctx := context.Background()
@@ -104,7 +103,6 @@ defer svcs.Stop()
 ```go
 func New(
     db *gorm.DB,
-    redis *redis.Client,
     cfg *config.Config,
     logger *zerolog.Logger,
     metricsCollector *metrics.Metrics,
@@ -122,8 +120,8 @@ Manages user accounts, locations, timezones, and system statistics.
 ```go
 func NewUserService(
     db *gorm.DB,
-    redis *redis.Client,
     metricsCollector *metrics.Metrics,
+    logger *zerolog.Logger,
     startTime time.Time,
 ) *UserService
 ```
@@ -250,7 +248,7 @@ lang := services.User.NormalizeLanguageCode("EN-us")    // "en-us" (normalized t
 
 #### GetUser
 
-Retrieves user data with Redis caching (1-hour TTL).
+Retrieves user data with in-process caching (1-hour TTL, key `user:<id>`).
 
 ```go
 func (s *UserService) GetUser(ctx context.Context, userID int64) (*models.User, error)
@@ -446,15 +444,17 @@ func (s *UserService) GetSystemStats(ctx context.Context) (*SystemStats, error)
 
 ```go
 type SystemStats struct {
-    TotalUsers            int64
-    ActiveUsers           int64
-    TotalSubscriptions    int64
-    TotalAlerts           int64
-    CacheHitRate          float64  // Real Prometheus gauge
-    AverageResponseTime   float64  // Real histogram average
-    SystemUptime          string   // Calculated from start time
-    Messages24h           int64    // Redis counter
-    WeatherRequests24h    int64    // Redis counter
+    TotalUsers                int64
+    ActiveUsers               int64
+    NewUsers24h               int64   // Real 24h DB query
+    UsersWithLocation         int64
+    ActiveSubscriptions       int64
+    AlertsConfigured          int64
+    MessagesSentSinceStart    int64   // In-memory counter, reset on restart
+    WeatherRequestsSinceStart int64   // In-memory counter, reset on restart
+    CacheHitRate              float64 // Real Prometheus gauge
+    AvgResponseTime           int     // Real histogram average
+    Uptime                    float64 // Calculated from start time
 }
 ```
 
@@ -468,8 +468,8 @@ if err != nil {
 
 fmt.Printf("Users: %d (Active: %d)\n", stats.TotalUsers, stats.ActiveUsers)
 fmt.Printf("Cache Hit Rate: %.2f%%\n", stats.CacheHitRate*100)
-fmt.Printf("Avg Response Time: %.2fms\n", stats.AverageResponseTime*1000)
-fmt.Printf("Uptime: %s\n", stats.SystemUptime)
+fmt.Printf("Messages since start: %d\n", stats.MessagesSentSinceStart)
+fmt.Printf("Uptime: %.0f\n", stats.Uptime)
 ```
 
 #### GetUserStatistics
@@ -484,10 +484,15 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
 
 ```go
 type UserStatistics struct {
-    TotalUsers    int64
-    ActiveUsers   int64
-    UsersByRole   map[string]int64
-    RecentSignups int64  // Last 24 hours
+    TotalUsers                int64
+    ActiveUsers               int64
+    NewUsers24h               int64 // Real 24h DB query
+    AdminCount                int64
+    ModeratorCount            int64
+    MessagesSinceStart        int64 // In-memory counter, reset on restart
+    WeatherRequestsSinceStart int64 // In-memory counter, reset on restart
+    LocationsSaved            int64
+    ActiveAlerts              int64
 }
 ```
 
@@ -503,25 +508,19 @@ func (s *UserService) GetActiveUsers(ctx context.Context) ([]models.User, error)
 
 #### IncrementMessageCounter
 
-Increments 24-hour rolling message counter in Redis.
+Increments the in-memory message counter (atomic). Reports activity since the bot started; reset on restart.
 
 ```go
-func (s *UserService) IncrementMessageCounter(ctx context.Context) error
+func (s *UserService) IncrementMessageCounter()
 ```
-
-**Redis Key:** `stats:messages_24h`
-**TTL:** 24 hours (auto-set on first increment)
 
 #### IncrementWeatherRequestCounter
 
-Increments 24-hour rolling weather request counter in Redis.
+Increments the in-memory weather request counter (atomic). Reports activity since the bot started; reset on restart.
 
 ```go
-func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error
+func (s *UserService) IncrementWeatherRequestCounter()
 ```
-
-**Redis Key:** `stats:weather_requests_24h`
-**TTL:** 24 hours
 
 ### Language Management
 
@@ -665,7 +664,6 @@ Handles weather data retrieval with caching and geocoding.
 ```go
 func NewWeatherService(
     cfg *config.WeatherConfig,
-    redis *redis.Client,
     logger *zerolog.Logger,
 ) *WeatherService
 ```
@@ -879,7 +877,7 @@ Manages custom weather alerts and threshold monitoring with comprehensive UI for
 ### Constructor
 
 ```go
-func NewAlertService(db *gorm.DB, redis *redis.Client) *AlertService
+func NewAlertService(db *gorm.DB) *AlertService
 ```
 
 ### Alert Management
@@ -1310,7 +1308,7 @@ Manages notification subscriptions (daily/weekly weather updates).
 ### Constructor
 
 ```go
-func NewSubscriptionService(db *gorm.DB, redis *redis.Client) *SubscriptionService
+func NewSubscriptionService(db *gorm.DB) *SubscriptionService
 ```
 
 ### Subscription Management
@@ -1570,7 +1568,6 @@ Manages background job scheduling for alerts and notifications.
 ```go
 func NewSchedulerService(
     db *gorm.DB,
-    redis *redis.Client,
     weather *WeatherService,
     alert *AlertService,
     notification *NotificationService,
@@ -1956,12 +1953,9 @@ Common GORM errors:
 - `gorm.ErrInvalidData` - Data validation failed
 - `gorm.ErrDuplicatedKey` - Unique constraint violation
 
-### Redis Errors
+### Cache Behavior
 
-Common Redis errors:
-
-- `redis.Nil` - Key not found (cache miss)
-- Connection errors - Graceful degradation (continue without cache)
+The in-process cache (`internal/cache`) has no error paths: `Get` returns `(value, ok)`, and a miss (`ok == false`) falls through to the source. The cache is empty after a restart.
 
 ### Service-Level Errors
 
@@ -1981,20 +1975,19 @@ return err
 
 ### Cache Layers
 
-1. **Redis** - Primary cache for frequently accessed data
-2. **In-Memory** - Not currently used (all caching in Redis)
+1. **In-process cache** (`internal/cache`) - TTL per entry, bounded LRU (weather cache 2000 entries, user cache 10000); lost on restart
+2. **Shared cache** - None; the bot runs as a single instance
 
 ### Cache TTLs
 
 | Data Type | TTL | Key Pattern |
 |-----------|-----|-------------|
 | User data | 1 hour | `user:{userID}` |
-| Weather data | 10 minutes | `weather:{lat}:{lon}` |
-| Forecasts | 1 hour | `forecast:{lat}:{lon}:{days}` |
-| Air quality | 30 minutes | `airquality:{lat}:{lon}` |
+| Weather data | 10 minutes | `weather:current:{lat}:{lon}` |
+| Forecasts | 1 hour | `weather:forecast:{lat}:{lon}:{days}` |
+| Air quality | 30 minutes | `weather:air:{lat}:{lon}` |
 | Geocoding | 24 hours | `geocode:{location}` |
-| Reverse geocode | 24 hours | `reverse:{lat}:{lon}` |
-| Activity counters | 24 hours | `stats:messages_24h`, `stats:weather_requests_24h` |
+| Reverse geocode | 24 hours | `reverse_geocode:{lat}:{lon}` |
 
 ### Cache Invalidation
 
@@ -2005,7 +1998,7 @@ return err
 
 **Manual:**
 
-- `redis.Del(ctx, key)` for immediate invalidation
+- `cache.Delete(key)` for immediate invalidation
 
 ### Cache Miss Handling
 
@@ -2013,7 +2006,7 @@ All services implement graceful cache miss handling:
 
 ```go
 // Try cache first
-if cached, err := redis.Get(ctx, key).Result(); err == nil {
+if cached, ok := s.cache.Get(key); ok {
     return parseCached(cached)
 }
 
@@ -2021,7 +2014,7 @@ if cached, err := redis.Get(ctx, key).Result(); err == nil {
 data := fetchFromAPI()
 
 // Store in cache for next time
-redis.Set(ctx, key, serialize(data), ttl)
+s.cache.Set(key, serialize(data), ttl)
 
 return data
 ```
@@ -2090,20 +2083,17 @@ Services receive dependencies via constructors:
 ```go
 type MyService struct {
     db      *gorm.DB
-    redis   *redis.Client
     logger  *zerolog.Logger
     weather *WeatherService  // Inject other services
 }
 
 func NewMyService(
     db *gorm.DB,
-    redis *redis.Client,
     logger *zerolog.Logger,
     weather *WeatherService,
 ) *MyService {
     return &MyService{
         db:      db,
-        redis:   redis,
         logger:  logger,
         weather: weather,
     }
@@ -2142,14 +2132,12 @@ defer func() {
 ### Response Time Targets
 
 - **Local Development:** <200ms for cached weather queries
-- **Production (Railway):** <500ms average (including cold starts)
-  - Cold start: ~2-3 seconds
-  - Warm requests: 200-400ms
+- **Production:** depends on your host; measure on your deployment
 
 ### Database Optimization
 
 - Indexes on frequently queried columns (user_id, created_at)
-- Connection pooling (25 connections default)
+- Single SQLite connection (`SetMaxOpenConns(1)`), WAL mode, `busy_timeout` 5000
 - Query optimization for large datasets
 - Embedded user locations (no joins required)
 
@@ -2180,10 +2168,10 @@ func TestUserService_GetUser(t *testing.T) {
     mockDB := helpers.NewMockDB(t)
     defer mockDB.Close()
 
-    mockRedis := helpers.NewMockRedis()
     metricsCollector := metrics.New()
+    logger := zerolog.Nop()
 
-    service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, time.Now())
+    service := NewUserService(mockDB.DB, metricsCollector, &logger, time.Now())
 
     // Test implementation
 }
@@ -2191,21 +2179,13 @@ func TestUserService_GetUser(t *testing.T) {
 
 ### Integration Testing
 
-Integration tests use testcontainers for real database/Redis:
+Integration tests use a real SQLite file in `t.TempDir()` (no Docker):
 
 ```go
 func TestIntegration(t *testing.T) {
-    ctx := context.Background()
+    db := helpers.NewSQLiteDB(t) // migrated, closed on test cleanup
 
-    // Start PostgreSQL container
-    postgres := testcontainers.PostgreSQL(ctx, t)
-    db := postgres.Connect()
-
-    // Start Redis container
-    redis := testcontainers.Redis(ctx, t)
-    client := redis.Connect()
-
-    // Run tests with real infrastructure
+    // Run tests against the real database
 }
 ```
 

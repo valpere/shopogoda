@@ -16,75 +16,17 @@ services:
       BOT_DEBUG: "true"
       LOG_LEVEL: "debug"
       LOG_FORMAT: "json"
-      DB_HOST: postgres
-      DB_PORT: 5432
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      DB_PATH: /app/data/shopogoda.db
     ports:
       - "${BOT_WEBHOOK_PORT:-8081}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    volumes:
+      - bot_data:/app/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - shopogoda-staging
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: shopogoda-db-staging
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_NAME:-shopogoda_staging}
-      POSTGRES_USER: ${DB_USER:-shopogoda}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-staging_password}
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ../scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-shopogoda} -d ${DB_NAME:-shopogoda_staging}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - shopogoda-staging
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: shopogoda-redis-staging
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    ports:
-      - "6381:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
     networks:
       - shopogoda-staging
     logging:
@@ -142,10 +84,9 @@ services:
         max-file: "2"
 
 volumes:
-  postgres_data:
+  bot_data:
     driver: local
-  redis_data:
-    driver: local
+    name: shopogoda_data_staging
   prometheus_data:
     driver: local
   grafana_data:

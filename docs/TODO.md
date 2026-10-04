@@ -75,6 +75,8 @@ func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error
 
 **Redis Keys**: `stats:messages_24h`, `stats:weather_requests_24h` with 24-hour TTL
 
+**Superseded**: Redis was removed (#169); these counters are now in-memory, labelled "since start", and reset on restart.
+
 ---
 
 ### Testing & Quality
@@ -124,7 +126,7 @@ func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error
 **Test Infrastructure**:
 
 - ✅ Basic bot mocks exist in `tests/helpers/bot_mock.go`
-- ✅ Redis mock with redismock
+- ✅ Redis mock with redismock (historical; removed together with Redis)
   - Known limitation: Expire() operation tracking issues
   - Known limitation: SetErr() doesn't propagate errors on Expire
 - ✅ Database mock with sqlmock
@@ -178,7 +180,7 @@ To reach 40% overall coverage (currently 34.2%), would need +5.8% from handlers:
 - Service initialization and dependency injection
 - Complete method signatures with parameters and returns
 - Error handling patterns and best practices
-- Caching strategy (Redis TTLs, key patterns)
+- Caching strategy (in-process cache TTLs, key patterns)
 - Common patterns (transactions, context usage, logging)
 - Performance considerations and optimization tips
 - Testing approaches (unit, integration, mocking)
@@ -570,7 +572,7 @@ Add ability for users to see their command history:
 Add comprehensive health checks:
 
 - Database connection status
-- Redis connection status
+- SQLite database file accessible and writable
 - External API availability (OpenWeatherMap)
 - Queue depth (if background jobs implemented)
 - Last successful weather update timestamp
@@ -600,16 +602,15 @@ Add configurable rate limits:
 
 Remaining for robust notification delivery:
 
-- Durable queue (Postgres outbox) so queued notifications survive restarts
+- Durable queue (outbox table in the SQLite database) so queued notifications survive restarts
 - Track delivery status per notification
 - Batch notifications for efficiency
 - Priority queue (critical alerts first)
 
 **Technology Options**:
 
-- Asynq (Redis-based job queue)
-- River (PostgreSQL-based job queue)
-- Simple goroutine pool with channels
+- Outbox table in the existing SQLite database (single writer, no new infrastructure)
+- Keep the current in-memory goroutine queue for non-critical messages
 
 **Estimated Effort**: 12-16 hours
 
@@ -639,7 +640,7 @@ CREATE INDEX idx_alerts_active_user ON alert_configs(is_active, user_id);
 
 #### Database Migrations Management
 
-**Status**: Manual migration script used
+**Status**: GORM AutoMigrate on startup (`models.Migrate`; `make migrate` runs it standalone); no versioned migrations
 
 Implement proper migration system:
 
@@ -697,7 +698,7 @@ Add comprehensive config validation:
 
 ## 🔮 Future Enhancements (v0.2.0+)
 
-See [ROADMAP.md](docs/ROADMAP.md) for comprehensive future plans:
+See [ROADMAP.md](ROADMAP.md) for comprehensive future plans:
 
 - Historical weather data (past 7 days)
 - Weather comparisons
@@ -753,8 +754,7 @@ Tasks that provide immediate value with minimal effort:
    - `/a` for `/air`
 
 4. **Health Check Enhancements** (3 hours)
-   - Add database connectivity check
-   - Add Redis connectivity check
+   - Add database connectivity check (SQLite file reachable)
    - Return detailed status JSON
 
 5. **Logging Improvements** (3 hours)

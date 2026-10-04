@@ -4,13 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ShoPogoda (Що Погода - "What Weather" in Ukrainian) is a production-ready Telegram bot for enterprise weather monitoring, environmental alerts, and safety compliance. Built with Go, gotgbot v2, PostgreSQL, Redis, and comprehensive monitoring stack.
+ShoPogoda (Що Погода - "What Weather" in Ukrainian) is a production-ready Telegram bot for enterprise weather monitoring, environmental alerts, and safety compliance. Built with Go, gotgbot v2, SQLite (pure-Go driver), an in-process cache, and a comprehensive monitoring stack.
 
 **Production Status:**
-- ✅ Deployed on Railway (https://shopogoda-svc-production.up.railway.app)
-- Database: Supabase PostgreSQL (free tier, 500MB)
-- Cache: Upstash Redis (free tier, 10K commands/day)
-- Cost: $0/month on free tiers
+- Single-instance deployment: one binary or one container with a mounted data volume
+- State: one SQLite file (`DB_PATH`); cache and rate limiting are in-process (lost on restart)
+- No external database or cache services required
 - Version: 0.1.2-dev (production runs 0.1.1)
 
 ## Core Development Commands
@@ -18,28 +17,28 @@ ShoPogoda (Що Погода - "What Weather" in Ukrainian) is a production-read
 ### Quick Start
 ```bash
 # Initialize project (first time setup)
-make init                # Copies .env.example to .env and starts containers
+make init                # Copies .env.example to .env and starts the observability stack
 
 # Development workflow
 make deps               # Install Go dependencies
 make build              # Build the application
-make run                # Build and run the bot
+make run                # Build and run the bot (on the host)
 make dev                # Start dev environment + build
 
 # Testing
 make test               # Run unit tests
 make test-coverage      # Run tests with HTML coverage report
-make test-integration   # Run integration tests (requires containers)
+make test-integration   # Run integration tests (real SQLite file, no Docker)
 make test-e2e          # Run end-to-end tests
 
 # Code quality
 make lint               # Run golangci-lint
 
 # Infrastructure
-make docker-up          # Start PostgreSQL, Redis, Prometheus, Grafana
+make docker-up          # Start optional observability stack (Prometheus, Grafana, Jaeger)
 make docker-down        # Stop all containers
 make docker-logs        # View container logs
-make migrate            # Run database migrations
+make migrate            # Run database migrations (AutoMigrate only)
 ```
 
 ### Essential Configuration
@@ -47,6 +46,7 @@ make migrate            # Run database migrations
 Copy `.env.example` to `.env` and configure:
 - `TELEGRAM_BOT_TOKEN` - Required from @BotFather
 - `OPENWEATHER_API_KEY` - Required from openweathermap.org
+- `DB_PATH` - Optional SQLite file path (default `./data/shopogoda.db`)
 - `SLACK_WEBHOOK_URL` - Optional for enterprise notifications
 
 ### Monitoring URLs (after `make docker-up`)
@@ -62,8 +62,9 @@ Copy `.env.example` to `.env` and configure:
 cmd/bot/main.go              # Application entry point with graceful shutdown
 internal/
 ├── bot/                     # Bot initialization, HTTP server, webhook setup
+├── cache/                   # In-process cache (TTL per entry, bounded LRU)
 ├── config/                  # Viper-based configuration with environment variables
-├── database/                # PostgreSQL + Redis connection management
+├── database/                # SQLite connection management (WAL, single writer)
 ├── handlers/commands/       # Telegram command handlers (/weather, /forecast, etc.)
 ├── middleware/              # Logging, metrics, auth, rate limiting middleware
 ├── models/                  # GORM models with relationships and migrations
@@ -90,7 +91,7 @@ type Services struct {
 }
 ```
 
-Services are initialized in `services.New()` with proper dependency chain: DB → Redis → Config → Logger.
+Services are initialized in `services.New(db, cfg, logger, metrics)` with proper dependency chain: DB → Config → Logger → Metrics (caching is in-process).
 
 **Note**: `LocationService` has been removed - location management is now handled directly by `UserService` with embedded location fields.
 
@@ -98,16 +99,17 @@ Services are initialized in `services.New()` with proper dependency chain: DB �
 
 Uses Viper with hierarchical precedence:
 1. Environment variables (prefixed with `WB_`)
-2. Config files (config.yaml) - **Disabled in production** (Railway deployment)
+2. Config files (config.yaml) - **Disabled in production** (environment variables only)
 3. Defaults
 
 Environment variable mapping: `WB_BOT_TOKEN` → `bot.token` in config struct.
 
 **Production Configuration Notes:**
-- Railway deployment uses environment variables exclusively
+- Production uses environment variables exclusively
 - YAML config loading is disabled to avoid parsing errors
-- Supabase requires `PreferSimpleProtocol: true` to disable prepared statement cache
-- Upstash Redis auto-enables TLS for non-localhost connections
+- Database is one SQLite file (`DB_PATH`, default `./data/shopogoda.db`; `/app/data/shopogoda.db` in the container, on a volume)
+- Driver: `github.com/glebarez/sqlite` (pure Go, `CGO_ENABLED=0` works). WAL, `busy_timeout` 5000, `foreign_keys` on, `SetMaxOpenConns(1)`
+- Single writer means exactly ONE instance/replica (k8s: `replicas: 1`, strategy `Recreate`, with a PVC)
 
 ### Database Models
 
@@ -116,17 +118,17 @@ Environment variable mapping: `WB_BOT_TOKEN` → `bot.token` in config struct.
 Key models with GORM relationships:
 - `User` (1:many) → `Subscription`, `AlertConfig`, `WeatherData`
 - `User` contains embedded location fields: `location_name`, `latitude`, `longitude`, `country`, `city`
-- int64 for User (Telegram user ID), UUIDs for Weather/Alert entities
+- int64 for User (Telegram user ID), UUIDs for Weather/Alert entities (stored as text, assigned in `BeforeCreate` hooks)
 
 **Location and Timezone Separation**:
 - Location and timezone are completely independent entities
 - Location operations (set/clear) do not modify timezone settings
 - Timezone operations do not modify location settings
-- All timestamps stored in UTC in the database
+- All timestamps stored in UTC in the database (GORM `NowFunc` returns UTC; SQLite compares timestamps as text)
 - User timezone defaults to 'UTC' when not explicitly set
 - Timezone conversion handled on-demand via `UserService` helper methods
 
-Migration: `models.Migrate(db)` handles all schema changes.
+Migration: `models.Migrate(db)` (GORM AutoMigrate) handles all schema changes; `scripts/migrate.go` is AutoMigrate only.
 
 ### Bot Command Architecture
 
@@ -135,15 +137,18 @@ Commands in `internal/handlers/commands/` follow pattern:
 func WeatherCommand(bot *gotgbot.Bot, ctx *gotgbot.CallbackContext, services *Services) error
 ```
 
-Middleware applied: logging, metrics, auth, rate limiting (10 req/min per user).
+Middleware applied: logging, metrics, auth, rate limiting (10 req/min per user, in-process via `golang.org/x/time/rate`).
 
 ### Caching Strategy
 
-Redis caching with TTL:
-- Weather data: 10 minutes
+In-process cache (`internal/cache`: TTL per entry, bounded LRU; weather cache 2000 entries, user cache 10000). Lost on restart:
+- Current weather: 10 minutes
 - Forecasts: 1 hour
-- Geocoding: 24 hours
-- User sessions: configurable
+- Air quality: 30 minutes
+- Geocoding / reverse geocoding: 24 hours
+- User profile `user:<id>`: 1 hour (invalidated on updates)
+
+`WeatherService.SetCache` is a test seam. Activity counters (messages, weather requests) are in-memory atomics reset on restart, exposed as `*SinceStart` fields; "New users (24h)" is a real 24h DB query. Notification delivery uses an in-memory retry queue (`internal/services/delivery_queue.go`).
 
 ### Enterprise Features
 
@@ -318,7 +323,7 @@ const (
 
 ### Test Types
 - **Unit Tests**: `*_test.go` files alongside source
-- **Integration Tests**: `tests/integration/` with testcontainers (PostgreSQL + Redis)
+- **Integration Tests**: `tests/integration/` against a real SQLite file in `t.TempDir()` (`tests/helpers/sqlite_db.go` `NewSQLiteDB`); no Docker. sqlmock unit tests use a mock dialector
 - **Bot Mock Tests**: Handler tests using `tests/helpers/bot_mock.go` infrastructure
 - **E2E Tests**: `tests/e2e/` with real bot instance (planned)
 
@@ -376,13 +381,13 @@ func TestParseLocationFromArgs(t *testing.T) {
 ```
 
 ### Test Database
-Integration tests use testcontainers for isolated PostgreSQL and Redis instances.
+Integration tests use a real SQLite file per test (`helpers.NewSQLiteDB`), created in `t.TempDir()`; no containers needed.
 
 ### Running Tests
 ```bash
 make test              # Run all unit tests
 make test-coverage     # Generate HTML coverage report
-make test-integration  # Run integration tests (requires Docker)
+make test-integration  # Run integration tests (no Docker needed)
 ```
 
 See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation.
@@ -392,8 +397,9 @@ See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation.
 ### Core Framework
 - `gotgbot/v2` - Telegram Bot API with webhook support
 - `gin-gonic/gin` - HTTP server for webhooks and health checks
-- `gorm.io/gorm` - ORM with PostgreSQL driver
-- `redis/go-redis/v9` - Redis client
+- `gorm.io/gorm` - ORM
+- `github.com/glebarez/sqlite` - Pure-Go SQLite driver (no CGO)
+- `golang.org/x/time/rate` - In-process rate limiting
 
 ### Configuration & Logging
 - `spf13/viper` - Configuration management
@@ -404,62 +410,36 @@ See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation.
 - Custom collectors in `pkg/metrics/`
 
 ### Testing
-- `testcontainers/testcontainers-go` - Integration test containers
 - `stretchr/testify` - Test assertions
 
 ## Build & Deployment
 
 ### Local Development
 ```bash
-make dev    # Starts all services and builds app
+make dev    # Starts the optional observability stack and builds the app
+make run    # Run the bot on the host (state in ./data/shopogoda.db)
 ```
 
-### Production Deployment (Railway)
+### Production Deployment
 
-**Primary deployment platform: Railway + Supabase + Upstash**
+Single instance only (SQLite single writer). Options: a single binary, or one container with a volume mounted at `/app/data` (`docker/Dockerfile`: non-root user, `ENV DB_PATH`, `VOLUME /app/data`).
+
+- `docker/docker-compose.{prod,staging}.yml` - bot plus optional Prometheus/Grafana/Jaeger, named data volume
+- `docker/docker-compose.yml` - only the optional observability stack for local dev (the bot runs on the host via `make run`)
+- `deployments/k8s/` - `replicas: 1`, strategy `Recreate`, PVC for the data directory
+- Backups: `sqlite3 <file> ".backup out.db"` or Litestream
 
 ```bash
-# Deploy to Railway
-railway login
-railway init
-railway up
-
-# Configure environment in Railway dashboard
-railway variables set TELEGRAM_BOT_TOKEN=your_token
-railway variables set OPENWEATHER_API_KEY=your_key
-# ... (see docs/DEPLOYMENT_RAILWAY.md for complete list)
+make docker-build    # Creates production image
 ```
 
-**Production Fixes Applied:**
-1. YAML config disabled (environment variables only)
-2. Supabase compatibility: `PreferSimpleProtocol: true` in GORM
-3. AutoMigrate disabled (manual migration script used)
-4. Upstash Redis: Automatic TLS for non-localhost hosts
-
-**Live Production:**
-- Health: https://shopogoda-svc-production.up.railway.app/health
-- Webhook: https://shopogoda-svc-production.up.railway.app/webhook
-- Dashboard: https://railway.app/project/191564b9-7a3a-4c8f-bff1-5b214398e3a5
-
-### Docker Production
-```bash
-make docker-build    # Creates production image (for Fly.io, custom deployment)
-```
-
-### Alternative Platforms
-
-**Documented deployment guides:**
-- Railway (primary) - `docs/DEPLOYMENT_RAILWAY.md`
-- Vercel (serverless) - `docs/DEPLOYMENT_VERCEL.md`
-- Fly.io (containers) - `docs/DEPLOYMENT_FLYIO.md`
-- Replit (IDE) - `docs/DEPLOYMENT_REPLIT.md`
-- GCP - `docs/DEPLOYMENT_GCP.md`
+See [Deployment Guide](docs/DEPLOYMENT.md) for details.
 
 ### Environment Variables
 All configuration via environment variables. See `.env.example` for full reference.
 
 **Production Mode:**
-- Webhook mode (not polling) - required for Railway/Vercel
+- Webhook mode needs a public HTTPS URL; polling also works
 - Set `BOT_WEBHOOK_MODE=true` and `BOT_WEBHOOK_URL=https://your-domain.com`
 
 ## Bot Commands Reference
@@ -495,7 +475,7 @@ Structured logging with correlation IDs for request tracing.
 Always use transactions for multi-table operations.
 
 ### API Rate Limiting
-Respect OpenWeatherMap limits. Use Redis for request counting.
+Respect OpenWeatherMap limits. Cache responses in the in-process cache; rate limiting is in-process.
 
 ### Security
 - Input validation on all user data
@@ -509,37 +489,16 @@ Respect OpenWeatherMap limits. Use Redis for request counting.
 
 **Local Development:** <200ms for weather queries through intelligent caching
 
-**Production (Railway):** <500ms average (including cold starts)
-- Cold start: ~2-3 seconds (Railway free tier)
-- Warm requests: 200-400ms
-- Database queries: 100-200ms (Supabase pooler)
-- Redis operations: <50ms (Upstash)
+Production latency depends on the host; measure on your deployment. Cache hits are served in-process; misses call OpenWeatherMap.
 
 ### Database Optimization
 - Indexes on frequently queried columns (user_id, timestamp)
-- Connection pooling (25 connections default, adjusted for Supabase)
+- Single SQLite connection (`SetMaxOpenConns(1)`) with WAL and `busy_timeout` 5000
 - Query optimization for large datasets
 - Simplified schema with embedded user locations reduces join complexity
-- **Supabase specific:** PreferSimpleProtocol enabled for connection pooler compatibility
 
 ### Memory Management
-- Bounded cache sizes in Redis (Upstash 10K commands/day limit)
+- Bounded in-process caches (LRU: weather 2000 entries, user 10000); lost on restart
+- In-memory activity counters and delivery retry queue are reset on restart
 - Graceful degradation on API failures
-- Resource limits in containerized deployments (Railway: 1GB RAM on free tier)
-
-### Free Tier Resource Limits
-
-**Railway:**
-- 500 execution hours/month (continuous uptime: ~20.8 days)
-- 1GB RAM
-- Webhook mode prevents sleep (always-on required)
-
-**Supabase:**
-- 500MB database storage
-- 2GB bandwidth/month
-- Automatic pause after 7 days inactivity (can be disabled)
-
-**Upstash:**
-- 10,000 Redis commands/day (~6.9 commands/minute on average; actual usage varies by traffic patterns)
-- Increase cache TTL to reduce operations
-- Monitor daily usage in dashboard
+- Set resource limits in containerized deployments

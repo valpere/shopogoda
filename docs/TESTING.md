@@ -18,14 +18,14 @@ Comprehensive testing guide for ShoPogoda, covering unit tests, integration test
 ShoPogoda uses a comprehensive testing strategy with multiple test types:
 
 - **Unit Tests**: Fast, isolated tests for individual functions and methods
-- **Integration Tests**: Tests with real database and Redis using testcontainers
+- **Integration Tests**: Tests against a real SQLite database file (created in a per-test temp dir, no Docker needed)
 - **Bot Mock Tests**: Tests for Telegram bot handler functions using mock infrastructure
 
 ### Testing Philosophy
 
 This project follows a **pragmatic testing approach** using concrete types and real dependencies where possible:
 
-- ✅ **testcontainers** for PostgreSQL/Redis (real database behavior)
+- ✅ **Real SQLite** files in `t.TempDir()` for integration tests (real database behavior, no containers)
 - ✅ **sqlmock** for database unit tests (fast, isolated)
 - ✅ **Custom bot mocks** in `tests/helpers/bot_mock.go` (Telegram-specific)
 - ❌ **No interface-based mocking** (gomock/mockgen not used)
@@ -44,6 +44,7 @@ The project uses dependency injection with concrete service types rather than in
 ### Current Test Coverage
 
 - **Overall**: 34.2%
+  (39.4% excluding 0%-coverage infrastructure packages, statement-weighted)
 - **Services Package**: 74.1% (core business logic)
 - **Handlers Package**: 10.9% (bot command handlers)
 - **Tests/Helpers Package**: 25.0% (test infrastructure)
@@ -77,8 +78,11 @@ make test
 # Run tests with coverage report
 make test-coverage
 
-# Run integration tests (requires Docker)
+# Run integration tests (real SQLite file per test; no Docker required)
 make test-integration
+
+# Run E2E tests (needs a real bot; skipped without TEST_TELEGRAM_BOT_TOKEN)
+make test-e2e
 
 # Run specific package tests
 go test ./internal/services/... -v
@@ -175,7 +179,7 @@ func TestGetAQIDescription(t *testing.T) {
 
 **Location**: `tests/integration/*_test.go`
 
-**Purpose**: Test service interactions with real database and Redis
+**Purpose**: Test service interactions with a real SQLite database
 
 **Example**: `tests/integration/user_service_test.go`
 
@@ -185,11 +189,10 @@ func TestIntegration_UserServiceRegisterUser(t *testing.T) {
         t.Skip("Skipping integration test")
     }
 
-    testDB, testRedis, cleanup := helpers.SetupTestEnvironment(t)
-    defer cleanup()
+    db := helpers.NewSQLiteDB(t) // migrated SQLite file, closed automatically
 
     logger := helpers.NewSilentTestLogger()
-    userService := services.NewUserService(testDB.DB, testRedis.Client, logger)
+    userService := services.NewUserService(db, logger)
 
     t.Run("register new user", func(t *testing.T) {
         ctx := context.Background()
@@ -200,7 +203,7 @@ func TestIntegration_UserServiceRegisterUser(t *testing.T) {
 
         // Verify user in database
         var user models.User
-        err = testDB.DB.Where("telegram_id = ?", userID).First(&user).Error
+        err = db.Where("telegram_id = ?", userID).First(&user).Error
         assert.NoError(t, err)
         assert.Equal(t, "testuser", user.Username)
     })
@@ -209,9 +212,9 @@ func TestIntegration_UserServiceRegisterUser(t *testing.T) {
 
 **Characteristics**:
 
-- Uses testcontainers for PostgreSQL and Redis
+- Uses a real, migrated SQLite database per test (`helpers.NewSQLiteDB`)
 - Tests real database transactions
-- Tests Redis caching behavior
+- Caching is in-process, so no external service is involved
 - Slower execution (seconds)
 - Skipped in short mode (`go test -short`)
 
@@ -401,7 +404,7 @@ internal/
 │   └── ...
 tests/
 ├── integration/
-│   ├── user_service_test.go          # Integration tests with real DB/Redis
+│   ├── user_service_test.go          # Integration tests with a real SQLite DB
 │   ├── weather_service_test.go
 │   └── ...
 ├── helpers/
@@ -476,8 +479,7 @@ t.Run("success case", func(t *testing.T) {
 4. **Clean up resources** with defer
 
 ```go
-testDB, testRedis, cleanup := helpers.SetupTestEnvironment(t)
-defer cleanup()
+db := helpers.NewSQLiteDB(t)
 ```
 
 5. **Skip integration tests in short mode**
@@ -588,13 +590,11 @@ Creates a zerolog logger that discards all output (for clean test output).
 ### Test Environment Setup
 
 ```go
-testDB, testRedis, cleanup := helpers.SetupTestEnvironment(t)
-defer cleanup()
-
-// Use testDB.DB and testRedis.Client in tests
+db := helpers.NewSQLiteDB(t)
+// Use db (*gorm.DB) in tests
 ```
 
-Sets up PostgreSQL and Redis containers using testcontainers.
+Opens a real, migrated SQLite database in a per-test temp dir and closes it when the test ends. No Docker or external services are needed.
 
 ### Mock Factories
 
@@ -613,11 +613,11 @@ mockCtx := helpers.NewMockContextWithCallback(userID, cbID, data)
 
 ### Common Issues
 
-**Issue**: Tests fail with "database connection refused"
+**Issue**: Integration tests fail with "unable to open database file"
 
 ```bash
-# Solution: Start test containers
-docker-compose up -d postgres redis
+# Solution: the temp dir must be writable (check TMPDIR and disk space)
+go test -tags=integration -v ./tests/integration/...
 ```
 
 **Issue**: Coverage report shows 0%
@@ -657,7 +657,6 @@ mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
 
 - [Go Testing Documentation](https://golang.org/pkg/testing/)
 - [Testify Documentation](https://github.com/stretchr/testify)
-- [Testcontainers Go](https://golang.testcontainers.org/)
 - [Go Coverage Tool](https://go.dev/blog/cover)
 
 ---

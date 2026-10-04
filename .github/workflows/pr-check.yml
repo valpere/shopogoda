@@ -14,31 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_USER: testuser
-          POSTGRES_DB: testdb
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
@@ -102,14 +77,6 @@ jobs:
 
     - name: Run tests
       env:
-        WB_DATABASE_HOST: localhost
-        WB_DATABASE_PORT: 5432
-        WB_DATABASE_USER: testuser
-        WB_DATABASE_PASSWORD: testpass
-        WB_DATABASE_NAME: testdb
-        WB_DATABASE_SSLMODE: disable
-        WB_REDIS_ADDR: localhost:6379
-        WB_REDIS_PASSWORD: ""
         WB_BOT_TOKEN: "test_token"
         WB_WEATHER_API_KEY: "test_api_key"
       run: |

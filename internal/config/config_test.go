@@ -126,7 +126,7 @@ bot:
 		err := os.WriteFile("shopogoda.yaml", []byte(invalidYAML), 0644)
 		require.NoError(t, err)
 
-		// YAML loading is disabled for Railway compatibility,
+		// YAML loading is disabled (environment variables only),
 		// so invalid YAML files are ignored and config loads from env vars/defaults
 		cfg, err := Load()
 		assert.NoError(t, err)

@@ -128,7 +128,7 @@ pull_latest_images() {
         return 1
     fi
 
-    docker-compose -f "${COMPOSE_FILE}" pull postgres redis prometheus grafana jaeger || true
+    docker-compose -f "${COMPOSE_FILE}" pull prometheus grafana jaeger || true
 
     log_success "Images pulled successfully"
 }
@@ -173,12 +173,6 @@ wait_for_health() {
 
 verify_deployment() {
     log_info "Verifying deployment..."
-
-    # Wait for database
-    wait_for_health "postgres" 30 || return 1
-
-    # Wait for redis
-    wait_for_health "redis" 30 || return 1
 
     # Wait for bot
     wait_for_health "bot" 60 || return 1

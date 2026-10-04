@@ -6,7 +6,10 @@ metadata:
   labels:
     app: shopogoda
 spec:
-  replicas: 2
+  # SQLite allows a single writer: exactly one replica, recreated (not rolled) on update
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: shopogoda
@@ -38,6 +41,9 @@ spec:
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
         resources:
           requests:
             memory: "128Mi"
@@ -45,3 +51,7 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: shopogoda-data
