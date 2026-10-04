@@ -86,3 +86,8 @@ locales/bak/
 *.tmp
 *.bak
 *.backup
+
+# Local tooling state
+.cursor
+.vercel/
+.claude/settings.local.json
