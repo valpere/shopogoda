@@ -191,9 +191,8 @@ kubectl -n shopogoda rollout status deployment/shopogoda
 
 The Service (`shopogoda-service`, ClusterIP) exposes port 8080; expose it through
 your Ingress for webhook mode. Liveness and readiness probes use `GET /health`.
-The container runs as the non-root `shopogoda` user; if your storage class
-mounts volumes root-owned, add `securityContext.fsGroup` to the pod spec so the
-user can write to `/app/data`.
+The container runs as the non-root `shopogoda` user (uid/gid 10001); the pod spec
+sets `runAsUser`/`runAsGroup`/`fsGroup` to 10001 so the PVC is writable for SQLite.
 
 ## Webhook vs Polling, Reverse Proxy and HTTPS
 
@@ -239,11 +238,10 @@ sidecar files. Always keep the three together in one directory.
 The container runs as the non-root user `shopogoda`, which owns `/app/data`
 inside the image. Named Docker volumes are initialised from that directory and
 work as-is. **Bind mounts do not**: the host directory must be writable by the
-container user's uid. Find it and fix ownership:
+container user's uid (fixed at 10001:10001 in the Dockerfile). Fix ownership:
 
 ```bash
-docker run --rm --entrypoint id ghcr.io/valpere/shopogoda:latest shopogoda
-sudo chown -R <uid>:<gid> /srv/shopogoda/data
+sudo chown -R 10001:10001 /srv/shopogoda/data
 ```
 
 Locate a named volume on the host with `docker volume inspect shopogoda_data_prod`.
@@ -288,7 +286,7 @@ docker compose -f docker/docker-compose.prod.yml stop bot
 docker run --rm -v shopogoda_data_prod:/data -v "$PWD/backups":/backup alpine \
   sh -c 'rm -f /data/shopogoda.db-wal /data/shopogoda.db-shm && \
          cp /backup/shopogoda-2026-01-01.db /data/shopogoda.db && \
-         chown <uid>:<gid> /data/shopogoda.db'
+         chown 10001:10001 /data/shopogoda.db'
 docker compose -f docker/docker-compose.prod.yml start bot
 ```
 
@@ -331,8 +329,7 @@ restart, which is expected.
 - **Metrics:** Prometheus metrics are served at `GET /metrics` on the HTTP
   server (port 8080) of the bot; the bundled `deployments/prometheus.yml`
   scrapes `host.docker.internal:8080`. `PROMETHEUS_PORT` (2112) is read into
-  configuration but nothing binds it, and the Kubernetes Service/containerPort
-  entries for 2112 are unused leftovers.
+  configuration but nothing binds it.
 - **Observability stack (optional):** Prometheus `:9090`, Grafana `:3000`,
   Jaeger `:16686`. For local development `make docker-up` starts only this
   stack.

@@ -6,6 +6,5 @@ metadata:
 data:
   DB_PATH: "/app/data/shopogoda.db"
   BOT_WEBHOOK_PORT: "8080"
-  PROMETHEUS_PORT: "2112"
   LOG_LEVEL: "info"
   LOG_FORMAT: "json"

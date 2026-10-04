@@ -32,7 +32,8 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates tzdata
 
 # Create non-root user
-RUN adduser -D -s /bin/sh shopogoda
+# Fixed uid/gid so volume ownership (k8s fsGroup, bind mounts) is predictable
+RUN addgroup -g 10001 shopogoda && adduser -D -u 10001 -G shopogoda -s /bin/sh shopogoda
 
 # Set working directory
 WORKDIR /app

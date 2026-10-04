@@ -18,12 +18,16 @@ spec:
       labels:
         app: shopogoda
     spec:
+      # Image runs as uid/gid 10001 (docker/Dockerfile); fsGroup makes the PVC writable for SQLite
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
       containers:
       - name: shopogoda
         image: shopogoda:latest
         ports:
         - containerPort: 8080
-        - containerPort: 2112
         envFrom:
         - configMapRef:
             name: shopogoda-config
