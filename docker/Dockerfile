@@ -40,14 +40,18 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/shopogoda .
 
-# Create configs directory (COPY can't use shell operators)
-RUN mkdir -p ./configs
+# Create configs directory (COPY can't use shell operators) and the SQLite data directory
+RUN mkdir -p ./configs ./data
 
 # Change ownership to non-root user
 RUN chown -R shopogoda:shopogoda /app
 
 # Switch to non-root user
 USER shopogoda
+
+# SQLite database lives here; mount a volume to persist it
+ENV DB_PATH=/app/data/shopogoda.db
+VOLUME /app/data
 
 # Expose port
 EXPOSE 8080

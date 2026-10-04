@@ -31,9 +31,7 @@ func TestLoad(t *testing.T) {
 		// Verify defaults are applied
 		assert.Equal(t, false, cfg.Bot.Debug)
 		assert.Equal(t, 8080, cfg.Bot.WebhookPort)
-		assert.Equal(t, "localhost", cfg.Database.Host)
-		assert.Equal(t, 5432, cfg.Database.Port)
-		assert.Equal(t, "disable", cfg.Database.SSLMode)
+		assert.Equal(t, "./data/shopogoda.db", cfg.Database.Path)
 		assert.Equal(t, "localhost", cfg.Redis.Host)
 		assert.Equal(t, 6379, cfg.Redis.Port)
 		assert.Equal(t, 0, cfg.Redis.DB)
@@ -48,8 +46,7 @@ func TestLoad(t *testing.T) {
 		// Set environment variables
 		require.NoError(t, os.Setenv("TELEGRAM_BOT_TOKEN", "test_token_123"))
 		require.NoError(t, os.Setenv("BOT_DEBUG", "true"))
-		require.NoError(t, os.Setenv("DB_HOST", "postgres.example.com"))
-		require.NoError(t, os.Setenv("DB_PORT", "5433"))
+		require.NoError(t, os.Setenv("DB_PATH", "/var/lib/shopogoda/test.db"))
 		require.NoError(t, os.Setenv("REDIS_HOST", "redis.example.com"))
 		require.NoError(t, os.Setenv("REDIS_PORT", "6380"))
 		require.NoError(t, os.Setenv("OPENWEATHER_API_KEY", "weather_key_123"))
@@ -58,8 +55,7 @@ func TestLoad(t *testing.T) {
 		defer func() {
 			_ = os.Unsetenv("TELEGRAM_BOT_TOKEN")
 			_ = os.Unsetenv("BOT_DEBUG")
-			_ = os.Unsetenv("DB_HOST")
-			_ = os.Unsetenv("DB_PORT")
+			_ = os.Unsetenv("DB_PATH")
 			_ = os.Unsetenv("REDIS_HOST")
 			_ = os.Unsetenv("REDIS_PORT")
 			_ = os.Unsetenv("OPENWEATHER_API_KEY")
@@ -80,8 +76,7 @@ func TestLoad(t *testing.T) {
 		// Verify environment variables are loaded
 		assert.Equal(t, "test_token_123", cfg.Bot.Token)
 		assert.Equal(t, true, cfg.Bot.Debug)
-		assert.Equal(t, "postgres.example.com", cfg.Database.Host)
-		assert.Equal(t, 5433, cfg.Database.Port)
+		assert.Equal(t, "/var/lib/shopogoda/test.db", cfg.Database.Path)
 		assert.Equal(t, "redis.example.com", cfg.Redis.Host)
 		assert.Equal(t, 6380, cfg.Redis.Port)
 		assert.Equal(t, "weather_key_123", cfg.Weather.OpenWeatherAPIKey)
@@ -161,9 +156,7 @@ func TestSetDefaults(t *testing.T) {
 	})
 
 	t.Run("database defaults", func(t *testing.T) {
-		assert.Equal(t, "localhost", viper.GetString("database.host"))
-		assert.Equal(t, 5432, viper.GetInt("database.port"))
-		assert.Equal(t, "disable", viper.GetString("database.ssl_mode"))
+		assert.Equal(t, "./data/shopogoda.db", viper.GetString("database.path"))
 	})
 
 	t.Run("redis defaults", func(t *testing.T) {
@@ -213,32 +206,8 @@ func TestBotConfig(t *testing.T) {
 }
 
 func TestDatabaseConfig(t *testing.T) {
-	t.Run("all fields", func(t *testing.T) {
-		cfg := DatabaseConfig{
-			Host:     "db.example.com",
-			Port:     5432,
-			User:     "admin",
-			Password: "secret",
-			Name:     "shopogoda",
-			SSLMode:  "require",
-		}
-
-		assert.Equal(t, "db.example.com", cfg.Host)
-		assert.Equal(t, 5432, cfg.Port)
-		assert.Equal(t, "admin", cfg.User)
-		assert.Equal(t, "secret", cfg.Password)
-		assert.Equal(t, "shopogoda", cfg.Name)
-		assert.Equal(t, "require", cfg.SSLMode)
-	})
-
-	t.Run("SSL modes", func(t *testing.T) {
-		modes := []string{"disable", "require", "verify-ca", "verify-full"}
-
-		for _, mode := range modes {
-			cfg := DatabaseConfig{SSLMode: mode}
-			assert.Equal(t, mode, cfg.SSLMode)
-		}
-	})
+	cfg := DatabaseConfig{Path: "/data/shopogoda.db"}
+	assert.Equal(t, "/data/shopogoda.db", cfg.Path)
 }
 
 func TestRedisConfig(t *testing.T) {
@@ -381,8 +350,7 @@ func TestConfig(t *testing.T) {
 				Debug: true,
 			},
 			Database: DatabaseConfig{
-				Host: "localhost",
-				Port: 5432,
+				Path: "./data/shopogoda.db",
 			},
 			Redis: RedisConfig{
 				Host: "localhost",
@@ -412,7 +380,7 @@ func TestConfig(t *testing.T) {
 		assert.NotNil(t, cfg.Integrations)
 
 		assert.Equal(t, "token", cfg.Bot.Token)
-		assert.Equal(t, "localhost", cfg.Database.Host)
+		assert.Equal(t, "./data/shopogoda.db", cfg.Database.Path)
 		assert.Equal(t, "localhost", cfg.Redis.Host)
 		assert.Equal(t, "key", cfg.Weather.OpenWeatherAPIKey)
 		assert.Equal(t, "info", cfg.Logging.Level)
@@ -431,12 +399,7 @@ func TestEnvironmentVariableMapping(t *testing.T) {
 			"BOT_DEBUG":           "true",
 			"BOT_WEBHOOK_URL":     "https://example.com",
 			"BOT_WEBHOOK_PORT":    "8443",
-			"DB_HOST":             "db.example.com",
-			"DB_PORT":             "5433",
-			"DB_USER":             "admin",
-			"DB_PASSWORD":         "secret",
-			"DB_NAME":             "shopogoda",
-			"DB_SSL_MODE":         "require",
+			"DB_PATH":             "/data/shopogoda.db",
 			"REDIS_HOST":          "redis.example.com",
 			"REDIS_PORT":          "6380",
 			"REDIS_PASSWORD":      "redis_pass",
@@ -476,12 +439,7 @@ func TestEnvironmentVariableMapping(t *testing.T) {
 		assert.Equal(t, true, cfg.Bot.Debug)
 		assert.Equal(t, "https://example.com", cfg.Bot.WebhookURL)
 		assert.Equal(t, 8443, cfg.Bot.WebhookPort)
-		assert.Equal(t, "db.example.com", cfg.Database.Host)
-		assert.Equal(t, 5433, cfg.Database.Port)
-		assert.Equal(t, "admin", cfg.Database.User)
-		assert.Equal(t, "secret", cfg.Database.Password)
-		assert.Equal(t, "shopogoda", cfg.Database.Name)
-		assert.Equal(t, "require", cfg.Database.SSLMode)
+		assert.Equal(t, "/data/shopogoda.db", cfg.Database.Path)
 		assert.Equal(t, "redis.example.com", cfg.Redis.Host)
 		assert.Equal(t, 6380, cfg.Redis.Port)
 		assert.Equal(t, "redis_pass", cfg.Redis.Password)

@@ -7,9 +7,7 @@ bot:
   webhook_port: 8080
 
 database:
-  host: localhost
-  port: 5432
-  ssl_mode: disable
+  path: ./data/shopogoda.db
 
 redis:
   host: localhost
