@@ -107,6 +107,7 @@ func New(db *gorm.DB, redis *redis.Client, cfg *config.Config, logger *zerolog.L
 //	ctx := context.Background()
 //	svcs.StartScheduler(ctx)
 func (s *Services) StartScheduler(ctx context.Context) {
+	s.Notification.StartDelivery(ctx)
 	s.Scheduler.Start(ctx)
 }
 
@@ -118,4 +119,5 @@ func (s *Services) StartScheduler(ctx context.Context) {
 //	defer svcs.Stop()
 func (s *Services) Stop() {
 	s.Scheduler.Stop()
+	s.Notification.StopDelivery()
 }

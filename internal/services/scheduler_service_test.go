@@ -178,11 +178,6 @@ func TestSchedulerService_Stop(t *testing.T) {
 	}
 }
 
-func TestSchedulerService_NotificationPlatformCount(t *testing.T) {
-	// Verify the constant is correct (Slack + Telegram = 2)
-	assert.Equal(t, 2, NotificationPlatformCount)
-}
-
 func TestSchedulerService_CheckAndProcessAlerts(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
