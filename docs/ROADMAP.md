@@ -65,8 +65,8 @@
 
 #### Quality & Testing
 
-- [x] Increase test coverage from 30.5% to 40% ✅ **ACHIEVED** (40.5% on testable packages)
-  - Current: 33.7% overall (74.5% services, 5.9% handlers)
+- [x] Increase test coverage from 30.5% to 40% ✅ **ACHIEVED** at the time (now 39.4% on testable packages, statement-weighted)
+  - Current: 34.2% overall (74.1% services, 10.9% handlers)
   - Latest: Added 35 new tests for alert threshold generation (PR #103)
   - Focus: Command handlers, callback handlers, integration tests
   - See [TODO.md](../TODO.md) for detailed testing roadmap
@@ -325,7 +325,7 @@ We welcome contributions! Here's how you can help:
 
 ### Current Metrics (v0.1.1 Production)
 
-- **Test Coverage**: 33.7% overall (74.5% services, 5.9% handlers) → ✅ 40.5% on testable packages (target achieved!)
+- **Test Coverage**: 34.2% overall (74.1% services, 10.9% handlers); 39.4% on testable packages
 - **Response Time**: <500ms (production avg 200-400ms warm) → Target: <200ms
 - **Languages**: 5 (en, uk, de, fr, es) with complete localization
 - **Commands**: 20+ user-facing commands

@@ -11,7 +11,7 @@ ShoPogoda (Що Погода - "What Weather" in Ukrainian) is a production-read
 - Database: Supabase PostgreSQL (free tier, 500MB)
 - Cache: Upstash Redis (free tier, 10K commands/day)
 - Cost: $0/month on free tiers
-- Version: 0.1.1 (bugfixes after deploy)
+- Version: 0.1.2-dev (production runs 0.1.1)
 
 ## Core Development Commands
 
@@ -322,10 +322,10 @@ const (
 - **E2E Tests**: `tests/e2e/` with real bot instance (planned)
 
 ### Test Coverage
-- **Current**: 33.7% overall (✅ 40.5% for testable packages - target met!)
-- **Services**: 74.5% (core business logic)
-- **Handlers**: 5.9% (bot command handlers)
-- **Target**: 40% short-term ✅, 80% long-term
+- **Current**: 34.2% overall (39.4% excluding infrastructure packages with 0% coverage)
+- **Services**: 74.1% (core business logic)
+- **Handlers**: 10.9% (bot command handlers)
+- **Target**: 40% short-term (39.4% on testable code, overall 34.2%), 80% long-term
 
 ### Bot Mocking Infrastructure
 
