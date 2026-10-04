@@ -352,7 +352,7 @@ OK
 
 ```bash
 # Navigate to project
-cd /home/val/wrk/projects/telegram_bot/shopogoda
+cd /home/val/wrk/projects/shopogoda/shopogoda
 
 # Make sure you're on main branch with latest code
 git checkout main
