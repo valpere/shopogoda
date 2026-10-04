@@ -54,6 +54,7 @@ AGENTS="opencode,kilo,kiro-cli,agy"
 TIMEOUT="${COUNCIL_TIMEOUT:-600}"
 OUTDIR=""
 MAX_BYTES=200000
+MAX_TOTAL=600000 # cap for one attached directory
 USE_WORKTREE=0
 
 usage() { sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -90,13 +91,14 @@ done
 
 [[ "$TIMEOUT" =~ ^[0-9]+$ ]] || die "timeout must be a number of seconds"
 [[ "$MAX_BYTES" =~ ^[0-9]+$ ]] || die "max-bytes must be a number"
+case "$GIT_RANGE" in -*) die "git range must not start with -" ;; esac
 [ -f "$PRESET_DIR/$PRESET.md" ] || die "unknown preset '$PRESET' (see --list)"
 
 if [ -n "$TASK_FILE" ]; then
 	[ -r "$TASK_FILE" ] || die "cannot read $TASK_FILE"
 	TASK="${TASK:+$TASK$'\n\n'}$(cat "$TASK_FILE")"
 fi
-if [ -z "$TASK" ] && [ ! -t 0 ]; then
+if [ -z "$TASK" ] && { [ -p /dev/stdin ] || [ -f /dev/stdin ]; }; then
 	TASK="$(cat)"
 fi
 [ -n "$TASK" ] || die "no task given (use -p, -f, positional text or stdin)"
@@ -147,7 +149,21 @@ PROMPT_FILE="$OUTDIR/prompt.md"
 	for p in "${CONTEXTS[@]}"; do
 		echo
 		if [ -d "$p" ]; then
-			while IFS= read -r f; do attach_file "$f"; done < <(find "$p" -type f -not -path '*/.git/*' | LC_ALL=C sort)
+			# Skip VCS/dependency dirs and anything that looks like a secret; cap the total.
+			total=0
+			while IFS= read -r f; do
+				sz="$(wc -c <"$f")"
+				if [ $((total + sz)) -gt "$MAX_TOTAL" ]; then
+					echo "=== (directory $p: remaining files skipped, total cap $MAX_TOTAL bytes reached) ==="
+					break
+				fi
+				total=$((total + sz))
+				attach_file "$f"
+			done < <(find "$p" -type f \
+				-not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/vendor/*' -not -path '*/tmp/council/*' \
+				-not -name '.env' -not -name '.env.*' -not -name '*.pem' -not -name '*.key' -not -name 'id_rsa*' \
+				-not -name 'id_ed25519*' -not -name '*.p12' -not -name 'credentials*' -not -name '*.kdbx' \
+				| LC_ALL=C sort)
 		elif [ -f "$p" ]; then
 			attach_file "$p"
 		else
@@ -202,8 +218,12 @@ agent_omp() { omp --print --model auto "$GO"; }
 # agy in headless mode cannot approve file reads: it gets the prompt inline.
 # Linux caps a single argv string at 128 KiB, so inline at most 100000 bytes.
 agent_agy() {
-	local inline
+	local inline size
+	size="$(wc -c <"$PROMPT_FILE")"
 	inline="$(head -c 100000 "$PROMPT_FILE")"
+	if [ "$size" -gt 100000 ]; then
+		inline+=$'\n\n[NOTE: this prompt was truncated to its first 100000 of '"$size"$' bytes for this agent; your review covers only part of the material. Say so in your report.]'
+	fi
 	agy --mode plan -p "$inline"
 }
 # Self-test: proves the plumbing (cwd, prompt, timeout, summary) without any model.
@@ -218,7 +238,11 @@ status_snapshot() {
 	local top rel
 	top="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
 	rel="${OUTDIR#"$top"/}"
-	git status --porcelain 2>/dev/null | grep -v -F -- "$rel" || true
+	if [ -z "$rel" ] || [ "$rel" = "$OUTDIR" ]; then
+		git status --porcelain 2>/dev/null || true # OUTDIR outside the repo or equal to it: nothing to exclude
+	else
+		git status --porcelain 2>/dev/null | awk -v r="$rel" 'index(substr($0, 4), r) != 1' || true
+	fi
 }
 BEFORE="$(status_snapshot)"
 
@@ -239,7 +263,7 @@ for name in "${LIST[@]}"; do
 		set +e
 		cd "$AGENT_CWD"
 		start=$(date +%s)
-		timeout "$TIMEOUT" bash -c "$fn" </dev/null \
+		timeout -k 10 "$TIMEOUT" bash -c "$fn" </dev/null \
 			>"$OUTDIR/$name.md" 2>"$OUTDIR/$name.stderr.log"
 		echo $? >"$OUTDIR/$name.exit"
 		echo $(($(date +%s) - start)) >"$OUTDIR/$name.secs"
