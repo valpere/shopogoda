@@ -88,7 +88,7 @@ func (s *DemoService) createDemoUser(ctx context.Context) error {
 
 // createDemoWeatherData generates sample weather records
 func (s *DemoService) createDemoWeatherData(ctx context.Context) error {
-	now := time.Now()
+	now := time.Now().UTC()
 	baseTime := now.Add(-24 * time.Hour) // Start from 24 hours ago
 
 	// Generate hourly weather data for the last 24 hours

@@ -28,6 +28,8 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	dsn := cfg.Path + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
+		// SQLite compares timestamps as text; keep every stored value in UTC.
+		NowFunc: func() time.Time { return time.Now().UTC() },
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)

@@ -335,3 +335,13 @@ func TestRedisConfig(t *testing.T) {
 func buildRedisAddr(cfg *config.RedisConfig) string {
 	return fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 }
+
+func TestConnect_TimestampsStoredInUTC(t *testing.T) {
+	db, _ := newTestDB(t)
+	t.Setenv("TZ", "America/New_York")
+	require.NoError(t, db.Create(&models.User{ID: 9, FirstName: "TZ"}).Error)
+
+	var stored string
+	require.NoError(t, db.Raw("SELECT created_at FROM users WHERE id = 9").Scan(&stored).Error)
+	assert.Regexp(t, `(Z|\+00:00)$`, stored, "SQLite compares timestamps as text, so every writer must use UTC")
+}
