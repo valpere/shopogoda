@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"time"
 
 	"gorm.io/gorm"
@@ -236,10 +237,16 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (s *Subscription) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New() // SQLite has no gen_random_uuid()
+	}
 	return s.Validate()
 }
 
 func (a *AlertConfig) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New() // SQLite has no gen_random_uuid()
+	}
 	return a.Validate()
 }
 

@@ -52,7 +52,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// Create context with only command (no args)
@@ -89,7 +89,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(userID, 1).
+			WithArgs(userID).
 			WillReturnRows(userRows)
 
 		mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
@@ -129,7 +129,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// Mock Redis cache HIT for admin user (permission check reuses cached value from previous call)
@@ -150,7 +150,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(targetUserID, 1).
+			WithArgs(targetUserID).
 			WillReturnRows(targetRows)
 
 		mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
@@ -188,7 +188,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
@@ -228,7 +228,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// Mock Redis cache HIT for admin user (permission check reuses cached value)
@@ -247,7 +247,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(targetUserID, 1).
+			WithArgs(targetUserID).
 			WillReturnRows(targetRows)
 
 		mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
@@ -287,7 +287,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// Create context with only command (no args)
@@ -324,7 +324,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(userID, 1).
+			WithArgs(userID).
 			WillReturnRows(userRows)
 
 		mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
@@ -364,7 +364,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// Mock Redis cache HIT for admin user (permission check reuses cached value)
@@ -383,7 +383,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(targetAdminID, 1).
+			WithArgs(targetAdminID).
 			WillReturnRows(targetRows)
 
 		mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
@@ -423,7 +423,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// Mock Redis cache HIT for admin user (permission check reuses cached value)
@@ -442,7 +442,7 @@ func TestCommandHandler_Demote(t *testing.T) {
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(targetUserID, 1).
+			WithArgs(targetUserID).
 			WillReturnRows(targetRows)
 
 		mockCtx := helpers.NewMockContext(helpers.MockContextOptions{
@@ -484,7 +484,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(targetUserID, 1).
+			WithArgs(targetUserID).
 			WillReturnRows(targetRows)
 
 		// ChangeUserRole calls GetUser for admin first
@@ -501,7 +501,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// ChangeUserRole calls GetUser for target user again
@@ -605,7 +605,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 			true, models.RoleUser, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(targetUserID, 1).
+			WithArgs(targetUserID).
 			WillReturnRows(targetRows)
 
 		// ChangeUserRole calls GetUser for admin first
@@ -622,7 +622,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 			true, models.RoleAdmin, time.Now(), time.Now(),
 		)
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users"`).
-			WithArgs(adminID, 1).
+			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
 		// ChangeUserRole calls GetUser for target user again

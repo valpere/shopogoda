@@ -44,7 +44,7 @@ const (
 
 // WeatherData stores weather information (timezone-aware, stored in UTC)
 type WeatherData struct {
-	ID          uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ID          uuid.UUID `gorm:"type:text;primaryKey" json:"id"`
 	UserID      int64     `gorm:"index" json:"user_id"`
 	Temperature float64   `json:"temperature"`
 	Humidity    int       `json:"humidity"`
@@ -70,7 +70,7 @@ type WeatherData struct {
 
 // Subscription represents user notification preferences
 type Subscription struct {
-	ID               uuid.UUID        `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ID               uuid.UUID        `gorm:"type:text;primaryKey" json:"id"`
 	UserID           int64            `gorm:"index" json:"user_id"`
 	SubscriptionType SubscriptionType `json:"subscription_type"`
 	Frequency        Frequency        `json:"frequency"`
@@ -104,7 +104,7 @@ const (
 
 // AlertConfig represents alert configuration
 type AlertConfig struct {
-	ID            uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ID            uuid.UUID  `gorm:"type:text;primaryKey" json:"id"`
 	UserID        int64      `gorm:"index" json:"user_id"`
 	AlertType     AlertType  `json:"alert_type"`
 	Condition     string     `json:"condition"` // JSON condition
@@ -134,7 +134,7 @@ const (
 
 // EnvironmentalAlert represents triggered alerts
 type EnvironmentalAlert struct {
-	ID          uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ID          uuid.UUID  `gorm:"type:text;primaryKey" json:"id"`
 	UserID      int64      `gorm:"index" json:"user_id"`
 	AlertType   AlertType  `json:"alert_type"`
 	Severity    Severity   `json:"severity"`
@@ -180,4 +180,20 @@ func Migrate(db *gorm.DB) error {
 		&EnvironmentalAlert{},
 		&UserSession{},
 	)
+}
+
+// BeforeCreate assigns an ID when none was set (SQLite has no gen_random_uuid()).
+func (m *WeatherData) BeforeCreate(_ *gorm.DB) error {
+	if m.ID == uuid.Nil {
+		m.ID = uuid.New()
+	}
+	return nil
+}
+
+// BeforeCreate assigns an ID when none was set (SQLite has no gen_random_uuid()).
+func (m *EnvironmentalAlert) BeforeCreate(_ *gorm.DB) error {
+	if m.ID == uuid.Nil {
+		m.ID = uuid.New()
+	}
+	return nil
 }

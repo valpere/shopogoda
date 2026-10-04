@@ -30,9 +30,10 @@ func TestAlertService_CreateAlert(t *testing.T) {
 
 		// Mock database expectations - CREATE operation
 		mockDB.Mock.ExpectBegin()
-		mockDB.Mock.ExpectQuery(`INSERT INTO "alert_configs"`).
-			WithArgs(userID, alertType, `{"operator":"gt","value":25}`, 25.0, true, nil, helpers.AnyTime{}, helpers.AnyTime{}).
-			WillReturnRows(mockDB.Mock.NewRows([]string{"id"}).AddRow(uuid.New()))
+		// ID is assigned client-side (BeforeCreate), so it is an argument and no RETURNING row comes back.
+		mockDB.Mock.ExpectExec(`INSERT INTO "alert_configs"`).
+			WithArgs(helpers.AnyUUID{}, userID, alertType, `{"operator":"gt","value":25}`, 25.0, true, nil, helpers.AnyTime{}, helpers.AnyTime{}).
+			WillReturnResult(helpers.NewResult(1, 1))
 		mockDB.Mock.ExpectCommit()
 
 		alertConfig, err := service.CreateAlert(context.Background(), userID, alertType, condition)
@@ -54,7 +55,7 @@ func TestAlertService_CreateAlert(t *testing.T) {
 		}
 
 		mockDB.Mock.ExpectBegin()
-		mockDB.Mock.ExpectQuery(`INSERT INTO "alert_configs"`).
+		mockDB.Mock.ExpectExec(`INSERT INTO "alert_configs"`).
 			WillReturnError(errors.New("database error"))
 		mockDB.Mock.ExpectRollback()
 
@@ -89,8 +90,8 @@ func TestAlertService_GetAlert(t *testing.T) {
 			expectedAlert.CreatedAt, expectedAlert.UpdatedAt,
 		)
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs" WHERE id = \$1 AND user_id = \$2 ORDER BY "alert_configs"\."id" LIMIT \$3`).
-			WithArgs(alertID, userID, 1).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs" WHERE id = \$1 AND user_id = \$2 ORDER BY "alert_configs"\."id" LIMIT 1`).
+			WithArgs(alertID, userID).
 			WillReturnRows(rows)
 
 		alert, err := service.GetAlert(context.Background(), userID, alertID)
@@ -107,8 +108,8 @@ func TestAlertService_GetAlert(t *testing.T) {
 		userID := int64(123)
 		alertID := uuid.New()
 
-		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs" WHERE id = \$1 AND user_id = \$2 ORDER BY "alert_configs"\."id" LIMIT \$3`).
-			WithArgs(alertID, userID, 1).
+		mockDB.Mock.ExpectQuery(`SELECT \* FROM "alert_configs" WHERE id = \$1 AND user_id = \$2 ORDER BY "alert_configs"\."id" LIMIT 1`).
+			WithArgs(alertID, userID).
 			WillReturnError(errors.New("record not found"))
 
 		alert, err := service.GetAlert(context.Background(), userID, alertID)
@@ -209,9 +210,9 @@ func TestAlertService_CheckAlerts(t *testing.T) {
 
 		// Mock the INSERT for EnvironmentalAlert creation
 		mockDB.Mock.ExpectBegin()
-		mockDB.Mock.ExpectQuery(`INSERT INTO "environmental_alerts"`).
-			WithArgs(userID, models.AlertTemperature, helpers.AnyValue{}, "Temperature Alert", "Temperature is 26.5°C", 26.5, 25.0, false, nil, helpers.AnyTime{}, helpers.AnyTime{}).
-			WillReturnRows(mockDB.Mock.NewRows([]string{"id"}).AddRow(uuid.New()))
+		mockDB.Mock.ExpectExec(`INSERT INTO "environmental_alerts"`).
+			WithArgs(helpers.AnyUUID{}, userID, models.AlertTemperature, helpers.AnyValue{}, "Temperature Alert", "Temperature is 26.5°C", 26.5, 25.0, false, nil, helpers.AnyTime{}, helpers.AnyTime{}).
+			WillReturnResult(helpers.NewResult(1, 1))
 		mockDB.Mock.ExpectCommit()
 
 		// Mock the UPDATE for last_triggered time

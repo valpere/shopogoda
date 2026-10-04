@@ -12,45 +12,28 @@ import (
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/pkg/metrics"
+	"github.com/valpere/shopogoda/tests/helpers"
 )
 
 type UserServiceTestSuite struct {
 	db             *gorm.DB
 	redisClient    *redis.Client
-	pgContainer    testcontainers.Container
 	redisContainer testcontainers.Container
 	userService    *services.UserService
 }
 
 func setupUserServiceTest(t *testing.T) *UserServiceTestSuite {
 	ctx := context.Background()
-
-	// Start PostgreSQL container
-	pgReq := testcontainers.ContainerRequest{
-		Image:        "postgres:15-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_DB":       "testdb",
-			"POSTGRES_USER":     "testuser",
-			"POSTGRES_PASSWORD": "testpass",
-		},
-		WaitingFor: wait.ForListeningPort("5432/tcp"),
-	}
-
-	pgContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: pgReq,
-		Started:          true,
-	})
-	require.NoError(t, err)
 
 	// Start Redis container
 	redisReq := testcontainers.ContainerRequest{
@@ -66,22 +49,14 @@ func setupUserServiceTest(t *testing.T) *UserServiceTestSuite {
 	require.NoError(t, err)
 
 	// Get container ports
-	pgHost, err := pgContainer.Host(ctx)
-	require.NoError(t, err)
-
-	pgPort, err := pgContainer.MappedPort(ctx, "5432")
-	require.NoError(t, err)
-
 	redisHost, err := redisContainer.Host(ctx)
 	require.NoError(t, err)
 
 	redisPort, err := redisContainer.MappedPort(ctx, "6379")
 	require.NoError(t, err)
 
-	// Connect to PostgreSQL
-	dsn := "host=" + pgHost + " user=testuser password=testpass dbname=testdb port=" + pgPort.Port() + " sslmode=disable"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	require.NoError(t, err)
+	// Open SQLite database
+	db := helpers.NewSQLiteDB(t)
 
 	// Connect to Redis
 	redisClient := redis.NewClient(&redis.Options{
@@ -89,24 +64,17 @@ func setupUserServiceTest(t *testing.T) *UserServiceTestSuite {
 	})
 
 	// Test connections
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	require.NoError(t, sqlDB.Ping())
-
 	pong, err := redisClient.Ping(ctx).Result()
 	require.NoError(t, err)
 	require.Equal(t, "PONG", pong)
 
-	// Run migrations
-	require.NoError(t, models.Migrate(db))
-
 	// Create user service
-	userService := services.NewUserService(db, redisClient)
+	logger := zerolog.Nop()
+	userService := services.NewUserService(db, redisClient, metrics.New(), &logger, time.Now())
 
 	return &UserServiceTestSuite{
 		db:             db,
 		redisClient:    redisClient,
-		pgContainer:    pgContainer,
 		redisContainer: redisContainer,
 		userService:    userService,
 	}
@@ -117,17 +85,6 @@ func (suite *UserServiceTestSuite) teardown(t *testing.T) {
 
 	if suite.redisClient != nil {
 		suite.redisClient.Close()
-	}
-
-	if suite.db != nil {
-		sqlDB, _ := suite.db.DB()
-		if sqlDB != nil {
-			sqlDB.Close()
-		}
-	}
-
-	if suite.pgContainer != nil {
-		require.NoError(t, suite.pgContainer.Terminate(ctx))
 	}
 
 	if suite.redisContainer != nil {
@@ -161,7 +118,7 @@ func TestIntegration_UserServiceRegisterUser(t *testing.T) {
 		assert.Equal(t, tgUser.Username, user.Username)
 		assert.Equal(t, tgUser.FirstName, user.FirstName)
 		assert.Equal(t, tgUser.LastName, user.LastName)
-		assert.Equal(t, tgUser.LanguageCode, user.Language)
+		assert.Equal(t, "en-US", user.Language) // service normalizes "en" to the full IETF tag
 		assert.True(t, user.IsActive)
 	})
 

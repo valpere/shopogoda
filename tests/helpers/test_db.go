@@ -2,18 +2,43 @@ package helpers
 
 import (
 	"database/sql/driver"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	"github.com/valpere/shopogoda/internal/models"
 )
+
+// mockDialector renders SQL the way the unit-test expectations are written
+// (double-quoted identifiers, $n placeholders). Only the SQL text differs from
+// the real SQLite dialector; real behaviour is covered by tests that use a
+// SQLite file.
+type mockDialector struct{ sqlite.Dialector }
+
+func (mockDialector) QuoteTo(w clause.Writer, str string) {
+	for i, part := range strings.Split(str, ".") {
+		if i > 0 {
+			_ = w.WriteByte('.')
+		}
+		_ = w.WriteByte('"')
+		_, _ = w.WriteString(part)
+		_ = w.WriteByte('"')
+	}
+}
+
+func (mockDialector) BindVarTo(w clause.Writer, stmt *gorm.Statement, _ any) {
+	_ = w.WriteByte('$')
+	_, _ = w.WriteString(strconv.Itoa(len(stmt.Vars)))
+}
 
 // MockDB represents a mocked database connection for testing
 type MockDB struct {
@@ -26,10 +51,11 @@ func NewMockDB(t *testing.T) *MockDB {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn:                 db,
-		PreferSimpleProtocol: true, // Disable prepared statement cache for mocking
-	}), &gorm.Config{
+	// The SQLite dialector probes the engine version on open.
+	mock.ExpectQuery("select sqlite_version()").
+		WillReturnRows(sqlmock.NewRows([]string{"sqlite_version()"}).AddRow("3.45.0"))
+
+	gormDB, err := gorm.Open(mockDialector{Dialector: sqlite.Dialector{Conn: db}}, &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 		NowFunc: func() time.Time {
 			return time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)

@@ -28,12 +28,7 @@ type BotConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"` // #nosec G117
-	Name     string `mapstructure:"name"`
-	SSLMode  string `mapstructure:"ssl_mode"`
+	Path string `mapstructure:"path"` // SQLite database file
 }
 
 type RedisConfig struct {
@@ -84,12 +79,7 @@ func Load() (*Config, error) {
 	_ = viper.BindEnv("bot.webhook_port", "BOT_WEBHOOK_PORT")
 	_ = viper.BindEnv("bot.demo_mode", "DEMO_MODE")
 
-	_ = viper.BindEnv("database.host", "DB_HOST")
-	_ = viper.BindEnv("database.port", "DB_PORT")
-	_ = viper.BindEnv("database.user", "DB_USER")
-	_ = viper.BindEnv("database.password", "DB_PASSWORD")
-	_ = viper.BindEnv("database.name", "DB_NAME")
-	_ = viper.BindEnv("database.ssl_mode", "DB_SSL_MODE")
+	_ = viper.BindEnv("database.path", "DB_PATH")
 
 	_ = viper.BindEnv("redis.host", "REDIS_HOST")
 	_ = viper.BindEnv("redis.port", "REDIS_PORT")
@@ -131,9 +121,7 @@ func setDefaults() {
 	viper.SetDefault("bot.webhook_port", 8080)
 
 	// Database defaults
-	viper.SetDefault("database.host", "localhost")
-	viper.SetDefault("database.port", 5432)
-	viper.SetDefault("database.ssl_mode", "disable")
+	viper.SetDefault("database.path", "./data/shopogoda.db")
 
 	// Redis defaults
 	viper.SetDefault("redis.host", "localhost")

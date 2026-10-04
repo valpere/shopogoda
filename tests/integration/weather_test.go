@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -40,10 +41,13 @@ func TestWeatherServiceIntegration(t *testing.T) {
 	redisPort, err := redisContainer.MappedPort(ctx, "6379")
 	require.NoError(t, err)
 
+	redisPortNum, err := strconv.Atoi(redisPort.Port())
+	require.NoError(t, err)
+
 	// Setup Redis client
 	redisConfig := &config.RedisConfig{
 		Host: redisHost,
-		Port: redisPort.Int(),
+		Port: redisPortNum,
 		DB:   0,
 	}
 

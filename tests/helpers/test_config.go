@@ -14,12 +14,7 @@ func GetTestConfig() *config.Config {
 			Debug: true,
 		},
 		Database: config.DatabaseConfig{
-			Host:     "localhost",
-			Port:     5432,
-			User:     "test_user",
-			Password: "test_password",
-			Name:     "test_db",
-			SSLMode:  "disable",
+			Path: ":memory:",
 		},
 		Redis: config.RedisConfig{
 			Host: "localhost",
@@ -57,8 +52,8 @@ func GetTestConfigFromEnv() *config.Config {
 		cfg.Weather.OpenWeatherAPIKey = apiKey
 	}
 
-	if dbHost := os.Getenv("TEST_DB_HOST"); dbHost != "" {
-		cfg.Database.Host = dbHost
+	if dbPath := os.Getenv("TEST_DB_PATH"); dbPath != "" {
+		cfg.Database.Path = dbPath
 	}
 
 	if redisHost := os.Getenv("TEST_REDIS_HOST"); redisHost != "" {

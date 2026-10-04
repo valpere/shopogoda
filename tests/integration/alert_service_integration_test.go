@@ -14,17 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/internal/services"
+	"github.com/valpere/shopogoda/tests/helpers"
 )
 
 type AlertServiceTestSuite struct {
 	db             *gorm.DB
 	redisClient    *redis.Client
-	pgContainer    testcontainers.Container
 	redisContainer testcontainers.Container
 	alertService   *services.AlertService
 	testUserID     int64
@@ -32,24 +31,6 @@ type AlertServiceTestSuite struct {
 
 func setupAlertServiceTest(t *testing.T) *AlertServiceTestSuite {
 	ctx := context.Background()
-
-	// Start PostgreSQL container
-	pgReq := testcontainers.ContainerRequest{
-		Image:        "postgres:15-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_DB":       "testdb",
-			"POSTGRES_USER":     "testuser",
-			"POSTGRES_PASSWORD": "testpass",
-		},
-		WaitingFor: wait.ForListeningPort("5432/tcp"),
-	}
-
-	pgContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: pgReq,
-		Started:          true,
-	})
-	require.NoError(t, err)
 
 	// Start Redis container
 	redisReq := testcontainers.ContainerRequest{
@@ -65,22 +46,14 @@ func setupAlertServiceTest(t *testing.T) *AlertServiceTestSuite {
 	require.NoError(t, err)
 
 	// Get container ports
-	pgHost, err := pgContainer.Host(ctx)
-	require.NoError(t, err)
-
-	pgPort, err := pgContainer.MappedPort(ctx, "5432")
-	require.NoError(t, err)
-
 	redisHost, err := redisContainer.Host(ctx)
 	require.NoError(t, err)
 
 	redisPort, err := redisContainer.MappedPort(ctx, "6379")
 	require.NoError(t, err)
 
-	// Connect to PostgreSQL
-	dsn := "host=" + pgHost + " user=testuser password=testpass dbname=testdb port=" + pgPort.Port() + " sslmode=disable"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	require.NoError(t, err)
+	// Open SQLite database
+	db := helpers.NewSQLiteDB(t)
 
 	// Connect to Redis
 	redisClient := redis.NewClient(&redis.Options{
@@ -88,16 +61,9 @@ func setupAlertServiceTest(t *testing.T) *AlertServiceTestSuite {
 	})
 
 	// Test connections
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	require.NoError(t, sqlDB.Ping())
-
 	pong, err := redisClient.Ping(ctx).Result()
 	require.NoError(t, err)
 	require.Equal(t, "PONG", pong)
-
-	// Run migrations
-	require.NoError(t, models.Migrate(db))
 
 	// Create test user
 	testUserID := int64(12345678)
@@ -122,7 +88,6 @@ func setupAlertServiceTest(t *testing.T) *AlertServiceTestSuite {
 	return &AlertServiceTestSuite{
 		db:             db,
 		redisClient:    redisClient,
-		pgContainer:    pgContainer,
 		redisContainer: redisContainer,
 		alertService:   alertService,
 		testUserID:     testUserID,
@@ -134,17 +99,6 @@ func (suite *AlertServiceTestSuite) teardown(t *testing.T) {
 
 	if suite.redisClient != nil {
 		suite.redisClient.Close()
-	}
-
-	if suite.db != nil {
-		sqlDB, _ := suite.db.DB()
-		if sqlDB != nil {
-			sqlDB.Close()
-		}
-	}
-
-	if suite.pgContainer != nil {
-		require.NoError(t, suite.pgContainer.Terminate(ctx))
 	}
 
 	if suite.redisContainer != nil {

@@ -38,9 +38,10 @@ func TestSubscriptionService_CreateSubscription(t *testing.T) {
 		timeOfDay := "08:00"
 
 		mockDB.Mock.ExpectBegin()
-		mockDB.Mock.ExpectQuery(`INSERT INTO "subscriptions"`).
-			WithArgs(userID, subType, frequency, timeOfDay, true, helpers.AnyTime{}, helpers.AnyTime{}).
-			WillReturnRows(mockDB.Mock.NewRows([]string{"id"}).AddRow(uuid.New()))
+		// ID is assigned client-side (BeforeCreate), so it is an argument and no RETURNING row comes back.
+		mockDB.Mock.ExpectExec(`INSERT INTO "subscriptions"`).
+			WithArgs(helpers.AnyUUID{}, userID, subType, frequency, timeOfDay, true, helpers.AnyTime{}, helpers.AnyTime{}).
+			WillReturnResult(helpers.NewResult(1, 1))
 		mockDB.Mock.ExpectCommit()
 
 		subscription, err := service.CreateSubscription(context.Background(), userID, subType, frequency, timeOfDay)
@@ -59,7 +60,7 @@ func TestSubscriptionService_CreateSubscription(t *testing.T) {
 		userID := int64(123)
 
 		mockDB.Mock.ExpectBegin()
-		mockDB.Mock.ExpectQuery(`INSERT INTO "subscriptions"`).
+		mockDB.Mock.ExpectExec(`INSERT INTO "subscriptions"`).
 			WillReturnError(errors.New("database error"))
 		mockDB.Mock.ExpectRollback()
 
