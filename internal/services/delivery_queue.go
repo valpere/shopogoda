@@ -42,7 +42,8 @@ type queuedJob struct {
 }
 
 // DeliveryQueue delivers jobs on background workers and retries transient
-// failures with exponential backoff. It is in-memory: jobs still queued or
+// failures with exponential backoff. Delivery is at-least-once: a timeout
+// after the server accepted a message is retried and may duplicate it. It is in-memory: jobs still queued or
 // waiting for a retry are lost on shutdown.
 type DeliveryQueue struct {
 	logger  *zerolog.Logger
@@ -85,6 +86,13 @@ func (q *DeliveryQueue) Start(ctx context.Context) {
 		q.wg.Add(1)
 		go q.worker(ctx)
 	}
+
+	// If the parent context dies the workers exit; mark the queue stopped so
+	// Enqueue rejects and callers fall back instead of buffering into the void.
+	go func() {
+		<-ctx.Done()
+		q.Stop()
+	}()
 }
 
 // Stop halts the workers and drops anything not yet delivered.
@@ -160,7 +168,10 @@ func (q *DeliveryQueue) process(j queuedJob) {
 	delay := q.retryDelay(j.attempt, err)
 	q.logger.Warn().Err(err).Str("job", j.Label).Int("attempt", j.attempt).Dur("retry_in", delay).Msg("Notification delivery failed, will retry")
 	q.afterFunc(delay, func() {
-		if err := q.push(j); err != nil {
+		switch err := q.push(j); {
+		case errors.Is(err, ErrDeliveryQueueStopped):
+			q.logger.Debug().Str("job", j.Label).Msg("Queue stopped, dropping pending retry")
+		case err != nil:
 			q.logger.Error().Err(err).Str("job", j.Label).Msg("Dropping notification retry")
 		}
 	})

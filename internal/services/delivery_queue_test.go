@@ -172,3 +172,14 @@ func TestNotificationService_DeliverWithoutQueueRunsOnce(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, 1, calls)
 }
+
+func TestDeliveryQueue_ParentContextCancelStopsQueue(t *testing.T) {
+	q, _ := newTestQueue(t, RetryPolicy{MaxAttempts: 1}, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	q.Start(ctx)
+	cancel()
+
+	require.Eventually(t, func() bool {
+		return errors.Is(q.Enqueue(DeliveryJob{Label: "x", Send: func() error { return nil }}), ErrDeliveryQueueStopped)
+	}, 2*time.Second, 5*time.Millisecond, "Enqueue must reject once workers are gone so Deliver can fall back to sync")
+}
