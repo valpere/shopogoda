@@ -16,11 +16,6 @@ func GetTestConfig() *config.Config {
 		Database: config.DatabaseConfig{
 			Path: ":memory:",
 		},
-		Redis: config.RedisConfig{
-			Host: "localhost",
-			Port: 6379,
-			DB:   1, // Use different DB for tests
-		},
 		Weather: config.WeatherConfig{
 			OpenWeatherAPIKey: "test_weather_api_key",
 			UserAgent:         "ShoPogoda-Weather-Bot/1.0 (test@shopogoda.bot)",
@@ -54,10 +49,6 @@ func GetTestConfigFromEnv() *config.Config {
 
 	if dbPath := os.Getenv("TEST_DB_PATH"); dbPath != "" {
 		cfg.Database.Path = dbPath
-	}
-
-	if redisHost := os.Getenv("TEST_REDIS_HOST"); redisHost != "" {
-		cfg.Redis.Host = redisHost
 	}
 
 	return cfg

@@ -54,14 +54,8 @@ func New(cfg *config.Config) (*Bot, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Initialize Redis
-	rdb, err := database.ConnectRedis(&cfg.Redis)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
-	}
-
 	// Initialize services with metrics
-	services := services.New(db, rdb, cfg, &logger, metricsCollector)
+	services := services.New(db, cfg, &logger, metricsCollector)
 
 	// Load translations
 	if err := services.Localization.LoadTranslations(locales.LocalesFS); err != nil {

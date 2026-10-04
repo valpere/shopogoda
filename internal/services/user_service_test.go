@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,16 +23,14 @@ import (
 func TestNewUserService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	logger := zerolog.Nop()
 	startTime := time.Now()
 
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.db)
-	assert.NotNil(t, service.redis)
 	assert.NotNil(t, service.metrics)
 	assert.NotNil(t, service.logger)
 	assert.False(t, service.startTime.IsZero())
@@ -40,11 +40,10 @@ func TestUserService_RegisterUser(t *testing.T) {
 	t.Run("successful registration", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		tgUser := &gotgbot.User{
 			Id:           123,
@@ -86,11 +85,10 @@ func TestUserService_RegisterUser(t *testing.T) {
 	t.Run("upsert on conflict", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		tgUser := &gotgbot.User{
 			Id:           456,
@@ -132,11 +130,10 @@ func TestUserService_RegisterUser(t *testing.T) {
 	t.Run("database error", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		tgUser := &gotgbot.User{
 			Id:           789,
@@ -181,35 +178,33 @@ func TestUserService_GetUser(t *testing.T) {
 	t.Run("get from cache", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		userID := int64(123)
 		user := helpers.MockUser(userID)
 		userJSON, _ := json.Marshal(user)
 
-		// Expect cache hit
-		mockRedis.Mock.ExpectGet("user:123").SetVal(string(userJSON))
+		// Pre-populated cache: no database query is expected
+		service.cache.Set(fmt.Sprintf("user:%d", userID), string(userJSON), time.Hour)
 
 		retrievedUser, err := service.GetUser(context.Background(), userID)
 
 		require.NoError(t, err)
 		assert.Equal(t, userID, retrievedUser.ID)
 		assert.Equal(t, user.FirstName, retrievedUser.FirstName)
-		mockRedis.ExpectationsWereMet(t)
+		mockDB.ExpectationsWereMet(t)
 	})
 
 	t.Run("get from database and cache", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		userID := int64(456)
 		user := helpers.MockUser(userID)
@@ -224,12 +219,9 @@ func TestUserService_GetUser(t *testing.T) {
 		)
 
 		// Expect cache miss, then database query
-		mockRedis.Mock.ExpectGet("user:456").RedisNil()
 		mockDB.Mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"\."id" = \$1 ORDER BY "users"\."id" LIMIT 1`).
 			WithArgs(userID).
 			WillReturnRows(rows)
-		// Note: We don't verify the cache Set operation as it's not critical to this test
-		// and redis mock has issues with Set expectations
 
 		retrievedUser, err := service.GetUser(context.Background(), userID)
 
@@ -238,17 +230,21 @@ func TestUserService_GetUser(t *testing.T) {
 		assert.Equal(t, user.FirstName, retrievedUser.FirstName)
 
 		mockDB.ExpectationsWereMet(t)
-		// Skip Redis expectations check for cache Set - it's tested implicitly
+
+		// Second read is served from the in-process cache: no further DB expectation is set
+		cachedUser, err := service.GetUser(context.Background(), userID)
+		require.NoError(t, err)
+		assert.Equal(t, user.FirstName, cachedUser.FirstName)
+		mockDB.ExpectationsWereMet(t)
 	})
 
 	t.Run("user not found", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		userID := int64(999)
 
@@ -267,11 +263,10 @@ func TestUserService_GetUser(t *testing.T) {
 func TestUserService_UpdateUserSettings(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("successful update", func(t *testing.T) {
 		userID := int64(123)
@@ -286,14 +281,15 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 			WillReturnResult(helpers.NewResult(1, 1))
 		mockDB.Mock.ExpectCommit()
 
-		// Expect cache invalidation
-		mockRedis.Mock.ExpectDel("user:123").SetVal(1)
+		cacheKey := fmt.Sprintf("user:%d", userID)
+		service.cache.Set(cacheKey, `{"id":123,"language":"en-US"}`, time.Hour)
 
 		err := service.UpdateUserSettings(context.Background(), userID, settings)
 
 		assert.NoError(t, err)
+		_, stillCached := service.cache.Get(cacheKey)
+		assert.False(t, stillCached, "cached profile must be invalidated so the next read is fresh")
 		mockDB.ExpectationsWereMet(t)
-		mockRedis.ExpectationsWereMet(t)
 	})
 
 	t.Run("update error", func(t *testing.T) {
@@ -316,11 +312,10 @@ func TestUserService_UpdateUserSettings(t *testing.T) {
 func TestUserService_GetSystemStats(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("successful stats retrieval", func(t *testing.T) {
 		// Total users
@@ -365,6 +360,9 @@ func TestUserService_GetSystemStats(t *testing.T) {
 		assert.Equal(t, 150, stats.AvgResponseTime)
 		// Uptime is calculated dynamically, just ensure it's reasonable
 		assert.Greater(t, stats.Uptime, 0.0)
+		// Activity counters are in-memory and start at zero
+		assert.EqualValues(t, 0, stats.MessagesSentSinceStart)
+		assert.EqualValues(t, 0, stats.WeatherRequestsSinceStart)
 
 		mockDB.ExpectationsWereMet(t)
 	})
@@ -373,11 +371,10 @@ func TestUserService_GetSystemStats(t *testing.T) {
 func TestUserService_GetActiveUsers(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		user1 := helpers.MockUser(int64(123))
@@ -423,16 +420,18 @@ func TestUserService_GetActiveUsers(t *testing.T) {
 func TestUserService_GetUserStatistics(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
-	t.Run("successful stats with Redis data", func(t *testing.T) {
-		// Expect Redis stats
-		mockRedis.Mock.ExpectGet("stats:messages_24h").SetVal("150")
-		mockRedis.Mock.ExpectGet("stats:weather_requests_24h").SetVal("200")
+	t.Run("successful stats with in-memory counters", func(t *testing.T) {
+		for i := 0; i < 150; i++ {
+			service.IncrementMessageCounter()
+		}
+		for i := 0; i < 200; i++ {
+			service.IncrementWeatherRequestCounter()
+		}
 
 		// Mock database queries
 		mockDB.Mock.ExpectQuery(`SELECT count\(\*\) FROM "users"`).
@@ -465,22 +464,20 @@ func TestUserService_GetUserStatistics(t *testing.T) {
 		assert.Equal(t, int64(5), stats.ModeratorCount)
 		assert.Equal(t, int64(60), stats.LocationsSaved)
 		assert.Equal(t, int64(25), stats.ActiveAlerts)
-		assert.Equal(t, int64(150), stats.Messages24h)
-		assert.Equal(t, int64(200), stats.WeatherRequests24h)
+		assert.Equal(t, int64(150), stats.MessagesSinceStart)
+		assert.Equal(t, int64(200), stats.WeatherRequestsSinceStart)
 
 		mockDB.ExpectationsWereMet(t)
-		mockRedis.ExpectationsWereMet(t)
 	})
 }
 
 func TestUserService_SetUserLocation(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("successful location set", func(t *testing.T) {
 		userID := int64(123)
@@ -492,13 +489,11 @@ func TestUserService_SetUserLocation(t *testing.T) {
 		mockDB.Mock.ExpectCommit()
 
 		// Expect cache invalidation
-		mockRedis.Mock.ExpectDel("user:123").SetVal(1)
 
 		err := service.SetUserLocation(context.Background(), userID, "London", "UK", "London", 51.5074, -0.1278)
 
 		assert.NoError(t, err)
 		mockDB.ExpectationsWereMet(t)
-		mockRedis.ExpectationsWereMet(t)
 	})
 
 	t.Run("database error", func(t *testing.T) {
@@ -520,11 +515,10 @@ func TestUserService_ClearUserLocation(t *testing.T) {
 	t.Run("successful location clear", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		userID := int64(123)
 
@@ -535,24 +529,21 @@ func TestUserService_ClearUserLocation(t *testing.T) {
 		mockDB.Mock.ExpectCommit()
 
 		// Expect cache invalidation
-		mockRedis.Mock.ExpectDel("user:123").SetVal(1)
 
 		err := service.ClearUserLocation(context.Background(), userID)
 
 		assert.NoError(t, err)
 		mockDB.ExpectationsWereMet(t)
-		mockRedis.ExpectationsWereMet(t)
 	})
 }
 
 func TestUserService_GetUserLocation(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("successful location retrieval", func(t *testing.T) {
 		userID := int64(123)
@@ -617,11 +608,10 @@ func TestUserService_GetUserLocation(t *testing.T) {
 func TestUserService_GetUserTimezone(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("user with timezone", func(t *testing.T) {
 		userID := int64(123)
@@ -688,11 +678,10 @@ func TestUserService_GetUserTimezone(t *testing.T) {
 func TestUserService_ConvertToUserTime(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("convert UTC to user timezone", func(t *testing.T) {
 		userID := int64(123)
@@ -753,11 +742,10 @@ func TestUserService_ConvertToUserTime(t *testing.T) {
 func TestUserService_ConvertToUTC(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("convert user timezone to UTC", func(t *testing.T) {
 		userID := int64(123)
@@ -790,11 +778,10 @@ func TestUserService_ConvertToUTC(t *testing.T) {
 func TestUserService_UpdateUserLanguage(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	t.Run("successful language update", func(t *testing.T) {
 		userID := int64(123)
@@ -812,216 +799,63 @@ func TestUserService_UpdateUserLanguage(t *testing.T) {
 	})
 }
 
-func TestUserService_IncrementMessageCounter(t *testing.T) {
-	t.Run("successful increment - new key", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
-
-		key := "stats:messages_24h"
-
-		// Expect increment operation
-		mockRedis.Mock.ExpectIncr(key).SetVal(1)
-
-		// Expect TTL check - returns -1 (no expiry set)
-		mockRedis.Mock.ExpectTTL(key).SetVal(-1 * time.Second)
-
-		// Expect expiry set to 24 hours
-		mockRedis.Mock.ExpectExpire(key, 24*time.Hour).SetVal(true)
-
-		err := service.IncrementMessageCounter(context.Background())
-
-		assert.NoError(t, err)
-		// Skip Redis expectations check - Expire has known issues with mock library
-	})
-
-	t.Run("successful increment - existing key with TTL", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
-
-		key := "stats:messages_24h"
-
-		// Expect increment operation
-		mockRedis.Mock.ExpectIncr(key).SetVal(42)
-
-		// Expect TTL check - returns 12 hours (has expiry)
-		mockRedis.Mock.ExpectTTL(key).SetVal(12 * time.Hour)
-
-		// No Expire call expected since TTL is already set
-
-		err := service.IncrementMessageCounter(context.Background())
-
-		assert.NoError(t, err)
-		mockRedis.ExpectationsWereMet(t)
-	})
-
-	t.Run("increment error", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
-
-		key := "stats:messages_24h"
-
-		// Expect increment operation to fail
-		mockRedis.Mock.ExpectIncr(key).SetErr(errors.New("redis connection error"))
-
-		err := service.IncrementMessageCounter(context.Background())
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to increment message counter")
-		mockRedis.ExpectationsWereMet(t)
-	})
-
-	t.Run("TTL check error", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
-
-		key := "stats:messages_24h"
-
-		// Expect increment operation
-		mockRedis.Mock.ExpectIncr(key).SetVal(1)
-
-		// Expect TTL check to fail
-		mockRedis.Mock.ExpectTTL(key).SetErr(errors.New("redis TTL error"))
-
-		err := service.IncrementMessageCounter(context.Background())
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get TTL")
-		mockRedis.ExpectationsWereMet(t)
-	})
-
-	// Note: Expire error test case is skipped due to limitations in redismock library
-	// The Expire().SetErr() doesn't properly propagate errors in the mock
+func newCounterTestService(t *testing.T) *UserService {
+	t.Helper()
+	mockDB := helpers.NewMockDB(t)
+	t.Cleanup(func() { _ = mockDB.Close() })
+	logger := zerolog.Nop()
+	return NewUserService(mockDB.DB, metrics.New(), &logger, time.Now())
 }
 
-func TestUserService_IncrementWeatherRequestCounter(t *testing.T) {
-	t.Run("successful increment - new key", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+func TestUserService_ActivityCounters(t *testing.T) {
+	t.Run("start at zero", func(t *testing.T) {
+		service := newCounterTestService(t)
 
-		key := "stats:weather_requests_24h"
-
-		// Expect increment operation
-		mockRedis.Mock.ExpectIncr(key).SetVal(1)
-
-		// Expect TTL check - returns -1 (no expiry set)
-		mockRedis.Mock.ExpectTTL(key).SetVal(-1 * time.Second)
-
-		// Expect expiry set to 24 hours
-		mockRedis.Mock.ExpectExpire(key, 24*time.Hour).SetVal(true)
-
-		err := service.IncrementWeatherRequestCounter(context.Background())
-
-		assert.NoError(t, err)
-		// Skip Redis expectations check - Expire has known issues with mock library
+		assert.EqualValues(t, 0, service.messageCount.Load())
+		assert.EqualValues(t, 0, service.weatherRequestCount.Load())
 	})
 
-	t.Run("successful increment - existing key with TTL", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	t.Run("message and weather counters are independent", func(t *testing.T) {
+		service := newCounterTestService(t)
 
-		key := "stats:weather_requests_24h"
+		service.IncrementMessageCounter()
+		service.IncrementMessageCounter()
+		service.IncrementWeatherRequestCounter()
 
-		// Expect increment operation
-		mockRedis.Mock.ExpectIncr(key).SetVal(150)
-
-		// Expect TTL check - returns 8 hours (has expiry)
-		mockRedis.Mock.ExpectTTL(key).SetVal(8 * time.Hour)
-
-		// No Expire call expected since TTL is already set
-
-		err := service.IncrementWeatherRequestCounter(context.Background())
-
-		assert.NoError(t, err)
-		mockRedis.ExpectationsWereMet(t)
+		assert.EqualValues(t, 2, service.messageCount.Load())
+		assert.EqualValues(t, 1, service.weatherRequestCount.Load())
 	})
 
-	t.Run("increment error", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	t.Run("concurrent increments sum correctly", func(t *testing.T) {
+		service := newCounterTestService(t)
 
-		key := "stats:weather_requests_24h"
+		const goroutines, perGoroutine = 20, 500
+		var wg sync.WaitGroup
+		for g := 0; g < goroutines; g++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for i := 0; i < perGoroutine; i++ {
+					service.IncrementMessageCounter()
+					service.IncrementWeatherRequestCounter()
+				}
+			}()
+		}
+		wg.Wait()
 
-		// Expect increment operation to fail
-		mockRedis.Mock.ExpectIncr(key).SetErr(errors.New("redis connection error"))
-
-		err := service.IncrementWeatherRequestCounter(context.Background())
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to increment weather request counter")
-		mockRedis.ExpectationsWereMet(t)
+		assert.EqualValues(t, goroutines*perGoroutine, service.messageCount.Load())
+		assert.EqualValues(t, goroutines*perGoroutine, service.weatherRequestCount.Load())
 	})
-
-	t.Run("TTL check error", func(t *testing.T) {
-		mockDB := helpers.NewMockDB(t)
-		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
-		metricsCollector := metrics.New()
-		startTime := time.Now()
-		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
-
-		key := "stats:weather_requests_24h"
-
-		// Expect increment operation
-		mockRedis.Mock.ExpectIncr(key).SetVal(1)
-
-		// Expect TTL check to fail
-		mockRedis.Mock.ExpectTTL(key).SetErr(errors.New("redis TTL error"))
-
-		err := service.IncrementWeatherRequestCounter(context.Background())
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get TTL")
-		mockRedis.ExpectationsWereMet(t)
-	})
-
-	// Note: Expire error test case is skipped due to limitations in redismock library
-	// The Expire().SetErr() doesn't properly propagate errors in the mock
 }
+
 func TestUserService_ChangeUserRole(t *testing.T) {
 	t.Run("successful role change", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		adminID := int64(100)
 		targetUserID := int64(200)
@@ -1055,7 +889,6 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 			WillReturnRows(targetRows)
 
 		// Expect cache invalidation
-		mockRedis.Mock.ExpectDel("user:200").SetVal(1)
 
 		// Mock role update
 		mockDB.Mock.ExpectBegin()
@@ -1068,17 +901,15 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 
 		assert.NoError(t, err)
 		mockDB.ExpectationsWereMet(t)
-		mockRedis.ExpectationsWereMet(t)
 	})
 
 	t.Run("non-admin cannot change role", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		nonAdminID := int64(100)
 		targetUserID := int64(200)
@@ -1107,11 +938,10 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 	t.Run("cannot change own role", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		adminID := int64(100)
 
@@ -1139,11 +969,10 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 	t.Run("invalid role value", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		adminID := int64(100)
 		targetUserID := int64(200)
@@ -1172,11 +1001,10 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 	t.Run("cannot demote last admin", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		adminID := int64(100)
 		targetAdminID := int64(200)
@@ -1224,11 +1052,10 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 	t.Run("target user not found", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		metricsCollector := metrics.New()
 		startTime := time.Now()
 		logger := zerolog.Nop()
-		service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+		service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 		adminID := int64(100)
 		targetUserID := int64(999)
@@ -1263,11 +1090,10 @@ func TestUserService_ChangeUserRole(t *testing.T) {
 func TestUserService_GetRoleName(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	tests := []struct {
 		name     string
@@ -1307,11 +1133,10 @@ func TestUserService_GetRoleName(t *testing.T) {
 func TestUserService_NormalizeLanguageCode(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 	logger := zerolog.Nop()
-	service := NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	service := NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 
 	tests := []struct {
 		name     string

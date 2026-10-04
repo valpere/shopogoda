@@ -16,20 +16,17 @@ import (
 func TestNewSubscriptionService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 
-	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
+	service := NewSubscriptionService(mockDB.DB)
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.db)
-	assert.NotNil(t, service.redis)
 }
 
 func TestSubscriptionService_CreateSubscription(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
+	service := NewSubscriptionService(mockDB.DB)
 
 	t.Run("successful creation", func(t *testing.T) {
 		userID := int64(123)
@@ -76,8 +73,7 @@ func TestSubscriptionService_CreateSubscription(t *testing.T) {
 func TestSubscriptionService_GetUserSubscriptions(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
+	service := NewSubscriptionService(mockDB.DB)
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		userID := int64(123)
@@ -119,8 +115,7 @@ func TestSubscriptionService_GetUserSubscriptions(t *testing.T) {
 func TestSubscriptionService_UpdateSubscription(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
+	service := NewSubscriptionService(mockDB.DB)
 
 	t.Run("successful update", func(t *testing.T) {
 		userID := int64(123)
@@ -162,8 +157,7 @@ func TestSubscriptionService_UpdateSubscription(t *testing.T) {
 func TestSubscriptionService_DeleteSubscription(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
+	service := NewSubscriptionService(mockDB.DB)
 
 	t.Run("successful deletion", func(t *testing.T) {
 		userID := int64(123)
@@ -200,8 +194,7 @@ func TestSubscriptionService_DeleteSubscription(t *testing.T) {
 func TestSubscriptionService_GetActiveSubscriptions(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
+	service := NewSubscriptionService(mockDB.DB)
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		sub1 := helpers.MockSubscription(int64(123))
@@ -237,8 +230,7 @@ func TestSubscriptionService_GetActiveSubscriptions(t *testing.T) {
 func TestSubscriptionService_GetSubscriptionsByType(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
-	service := NewSubscriptionService(mockDB.DB, mockRedis.Client)
+	service := NewSubscriptionService(mockDB.DB)
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		subType := models.SubscriptionDaily

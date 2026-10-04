@@ -333,8 +333,8 @@ func (h *CommandHandler) AdminListUsers(bot *gotgbot.Bot, ctx *ext.Context) erro
 	moderators := h.services.Localization.T(context.Background(), userLang, "admin_users_moderators", stats.ModeratorCount)
 
 	activitySection := h.services.Localization.T(context.Background(), userLang, "admin_users_activity_section")
-	messages := h.services.Localization.T(context.Background(), userLang, "admin_users_messages", stats.Messages24h)
-	weatherRequests := h.services.Localization.T(context.Background(), userLang, "admin_users_weather_requests", stats.WeatherRequests24h)
+	messages := h.services.Localization.T(context.Background(), userLang, "admin_users_messages", stats.MessagesSinceStart)
+	weatherRequests := h.services.Localization.T(context.Background(), userLang, "admin_users_weather_requests", stats.WeatherRequestsSinceStart)
 	locationsSaved := h.services.Localization.T(context.Background(), userLang, "admin_users_locations_saved", stats.LocationsSaved)
 	activeAlerts := h.services.Localization.T(context.Background(), userLang, "admin_users_active_alerts", stats.ActiveAlerts)
 

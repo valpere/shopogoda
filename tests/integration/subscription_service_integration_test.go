@@ -8,11 +8,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
@@ -22,47 +19,13 @@ import (
 
 type SubscriptionServiceTestSuite struct {
 	db                  *gorm.DB
-	redisClient         *redis.Client
-	redisContainer      testcontainers.Container
 	subscriptionService *services.SubscriptionService
 	testUserID          int64
 }
 
 func setupSubscriptionServiceTest(t *testing.T) *SubscriptionServiceTestSuite {
-	ctx := context.Background()
-
-	// Start Redis container
-	redisReq := testcontainers.ContainerRequest{
-		Image:        "redis:7-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForListeningPort("6379/tcp"),
-	}
-
-	redisContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: redisReq,
-		Started:          true,
-	})
-	require.NoError(t, err)
-
-	// Get container ports
-	redisHost, err := redisContainer.Host(ctx)
-	require.NoError(t, err)
-
-	redisPort, err := redisContainer.MappedPort(ctx, "6379")
-	require.NoError(t, err)
-
 	// Open SQLite database
 	db := helpers.NewSQLiteDB(t)
-
-	// Connect to Redis
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: redisHost + ":" + redisPort.Port(),
-	})
-
-	// Test connections
-	pong, err := redisClient.Ping(ctx).Result()
-	require.NoError(t, err)
-	require.Equal(t, "PONG", pong)
 
 	// Create test user
 	testUserID := int64(87654321)
@@ -82,32 +45,17 @@ func setupSubscriptionServiceTest(t *testing.T) *SubscriptionServiceTestSuite {
 	require.NoError(t, db.Create(testUser).Error)
 
 	// Create services
-	subscriptionService := services.NewSubscriptionService(db, redisClient)
+	subscriptionService := services.NewSubscriptionService(db)
 
 	return &SubscriptionServiceTestSuite{
 		db:                  db,
-		redisClient:         redisClient,
-		redisContainer:      redisContainer,
 		subscriptionService: subscriptionService,
 		testUserID:          testUserID,
 	}
 }
 
-func (suite *SubscriptionServiceTestSuite) teardown(t *testing.T) {
-	ctx := context.Background()
-
-	if suite.redisClient != nil {
-		suite.redisClient.Close()
-	}
-
-	if suite.redisContainer != nil {
-		require.NoError(t, suite.redisContainer.Terminate(ctx))
-	}
-}
-
 func TestIntegration_SubscriptionServiceCreateSubscription(t *testing.T) {
 	suite := setupSubscriptionServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -167,7 +115,6 @@ func TestIntegration_SubscriptionServiceCreateSubscription(t *testing.T) {
 
 func TestIntegration_SubscriptionServiceGetUserSubscriptions(t *testing.T) {
 	suite := setupSubscriptionServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -214,7 +161,6 @@ func TestIntegration_SubscriptionServiceGetUserSubscriptions(t *testing.T) {
 
 func TestIntegration_SubscriptionServiceUpdateSubscription(t *testing.T) {
 	suite := setupSubscriptionServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -257,7 +203,6 @@ func TestIntegration_SubscriptionServiceUpdateSubscription(t *testing.T) {
 
 func TestIntegration_SubscriptionServiceToggleSubscription(t *testing.T) {
 	suite := setupSubscriptionServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -312,7 +257,6 @@ func TestIntegration_SubscriptionServiceToggleSubscription(t *testing.T) {
 
 func TestIntegration_SubscriptionServiceDeleteSubscription(t *testing.T) {
 	suite := setupSubscriptionServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -347,7 +291,6 @@ func TestIntegration_SubscriptionServiceDeleteSubscription(t *testing.T) {
 
 func TestIntegration_SubscriptionServiceGetSubscriptionsByType(t *testing.T) {
 	suite := setupSubscriptionServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -438,7 +381,6 @@ func TestIntegration_SubscriptionServiceGetSubscriptionsByType(t *testing.T) {
 
 func TestIntegration_SubscriptionServiceCacheInvalidation(t *testing.T) {
 	suite := setupSubscriptionServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 
@@ -14,7 +13,6 @@ import (
 
 type SchedulerService struct {
 	db           *gorm.DB
-	redis        *redis.Client
 	weather      *WeatherService
 	alert        *AlertService
 	notification *NotificationService
@@ -24,7 +22,6 @@ type SchedulerService struct {
 
 func NewSchedulerService(
 	db *gorm.DB,
-	redis *redis.Client,
 	weather *WeatherService,
 	alert *AlertService,
 	notification *NotificationService,
@@ -32,7 +29,6 @@ func NewSchedulerService(
 ) *SchedulerService {
 	return &SchedulerService{
 		db:           db,
-		redis:        redis,
 		weather:      weather,
 		alert:        alert,
 		notification: notification,

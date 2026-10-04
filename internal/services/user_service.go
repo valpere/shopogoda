@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/valpere/shopogoda/internal/cache"
 	"github.com/valpere/shopogoda/internal/models"
 	"github.com/valpere/shopogoda/pkg/metrics"
 )
@@ -26,12 +26,19 @@ var userUpsertColumns = []string{
 	"updated_at",
 }
 
+// userCacheMaxEntries bounds the in-process user profile cache.
+const userCacheMaxEntries = 10000
+
 type UserService struct {
 	db        *gorm.DB
-	redis     *redis.Client
+	cache     *cache.Cache
 	metrics   *metrics.Metrics
 	logger    *zerolog.Logger
 	startTime time.Time
+
+	// Activity counters since process start (not persisted).
+	messageCount        atomic.Int64
+	weatherRequestCount atomic.Int64
 }
 
 // allowedUserSettingsFields defines the whitelist of fields that can be updated via UpdateUserSettings
@@ -47,23 +54,23 @@ var allowedUserSettingsFields = map[string]bool{
 }
 
 type SystemStats struct {
-	TotalUsers          int64   `json:"total_users"`
-	ActiveUsers         int64   `json:"active_users"`
-	NewUsers24h         int64   `json:"new_users_24h"`
-	UsersWithLocation   int64   `json:"users_with_location"`
-	ActiveSubscriptions int64   `json:"active_subscriptions"`
-	AlertsConfigured    int64   `json:"alerts_configured"`
-	MessagesSent24h     int64   `json:"messages_sent_24h"`
-	WeatherRequests24h  int64   `json:"weather_requests_24h"`
-	CacheHitRate        float64 `json:"cache_hit_rate"`
-	AvgResponseTime     int     `json:"avg_response_time"`
-	Uptime              float64 `json:"uptime"`
+	TotalUsers                int64   `json:"total_users"`
+	ActiveUsers               int64   `json:"active_users"`
+	NewUsers24h               int64   `json:"new_users_24h"`
+	UsersWithLocation         int64   `json:"users_with_location"`
+	ActiveSubscriptions       int64   `json:"active_subscriptions"`
+	AlertsConfigured          int64   `json:"alerts_configured"`
+	MessagesSentSinceStart    int64   `json:"messages_sent_since_start"`
+	WeatherRequestsSinceStart int64   `json:"weather_requests_since_start"`
+	CacheHitRate              float64 `json:"cache_hit_rate"`
+	AvgResponseTime           int     `json:"avg_response_time"`
+	Uptime                    float64 `json:"uptime"`
 }
 
-func NewUserService(db *gorm.DB, redis *redis.Client, metricsCollector *metrics.Metrics, logger *zerolog.Logger, startTime time.Time) *UserService {
+func NewUserService(db *gorm.DB, metricsCollector *metrics.Metrics, logger *zerolog.Logger, startTime time.Time) *UserService {
 	return &UserService{
 		db:        db,
-		redis:     redis,
+		cache:     cache.New(userCacheMaxEntries),
 		metrics:   metricsCollector,
 		logger:    logger,
 		startTime: startTime,
@@ -148,8 +155,7 @@ func (s *UserService) RegisterUser(ctx context.Context, tgUser *gotgbot.User) er
 func (s *UserService) GetUser(ctx context.Context, userID int64) (*models.User, error) {
 	// Try cache first
 	cacheKey := fmt.Sprintf("user:%d", userID)
-	cached, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
+	if cached, ok := s.cache.Get(cacheKey); ok {
 		var user models.User
 		if err := json.Unmarshal([]byte(cached), &user); err == nil {
 			return &user, nil
@@ -169,10 +175,7 @@ func (s *UserService) GetUser(ctx context.Context, userID int64) (*models.User, 
 		return &user, nil
 	}
 
-	if err := s.redis.Set(ctx, cacheKey, userJSON, time.Hour).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to cache user data")
-		return &user, nil
-	}
+	s.cache.Set(cacheKey, string(userJSON), time.Hour)
 
 	return &user, nil
 }
@@ -194,9 +197,7 @@ func (s *UserService) UpdateUserSettings(ctx context.Context, userID int64, sett
 
 	// Invalidate cache BEFORE update to prevent stale data
 	cacheKey := fmt.Sprintf("user:%d", userID)
-	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before update")
-	}
+	s.cache.Delete(cacheKey)
 
 	err := s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Updates(safeSettings).Error
 	if err != nil {
@@ -245,18 +246,8 @@ func (s *UserService) GetSystemStats(ctx context.Context) (*SystemStats, error) 
 	}
 	stats.Uptime = uptimePercentage
 
-	// Get activity statistics from Redis
-	if val, err := s.redis.Get(ctx, "stats:messages_24h").Result(); err == nil {
-		if count, err := strconv.ParseInt(val, 10, 64); err == nil {
-			stats.MessagesSent24h = count
-		}
-	}
-
-	if val, err := s.redis.Get(ctx, "stats:weather_requests_24h").Result(); err == nil {
-		if count, err := strconv.ParseInt(val, 10, 64); err == nil {
-			stats.WeatherRequests24h = count
-		}
-	}
+	stats.MessagesSentSinceStart = s.messageCount.Load()
+	stats.WeatherRequestsSinceStart = s.weatherRequestCount.Load()
 
 	return stats, nil
 }
@@ -271,15 +262,15 @@ func (s *UserService) GetActiveUsers(ctx context.Context) ([]models.User, error)
 }
 
 type UserStatistics struct {
-	TotalUsers         int64 `json:"total_users"`
-	ActiveUsers        int64 `json:"active_users"`
-	NewUsers24h        int64 `json:"new_users_24h"`
-	AdminCount         int64 `json:"admin_count"`
-	ModeratorCount     int64 `json:"moderator_count"`
-	Messages24h        int64 `json:"messages_24h"`
-	WeatherRequests24h int64 `json:"weather_requests_24h"`
-	LocationsSaved     int64 `json:"locations_saved"`
-	ActiveAlerts       int64 `json:"active_alerts"`
+	TotalUsers                int64 `json:"total_users"`
+	ActiveUsers               int64 `json:"active_users"`
+	NewUsers24h               int64 `json:"new_users_24h"`
+	AdminCount                int64 `json:"admin_count"`
+	ModeratorCount            int64 `json:"moderator_count"`
+	MessagesSinceStart        int64 `json:"messages_since_start"`
+	WeatherRequestsSinceStart int64 `json:"weather_requests_since_start"`
+	LocationsSaved            int64 `json:"locations_saved"`
+	ActiveAlerts              int64 `json:"active_alerts"`
 }
 
 func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, error) {
@@ -300,18 +291,8 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
 	s.db.WithContext(ctx).Model(&models.User{}).Where("location_name != '' AND location_name IS NOT NULL").Count(&stats.LocationsSaved)
 	s.db.WithContext(ctx).Model(&models.AlertConfig{}).Where("is_active = ?", true).Count(&stats.ActiveAlerts)
 
-	// Get Redis stats
-	if val, err := s.redis.Get(ctx, "stats:messages_24h").Result(); err == nil {
-		if count, err := strconv.ParseInt(val, 10, 64); err == nil {
-			stats.Messages24h = count
-		}
-	}
-
-	if val, err := s.redis.Get(ctx, "stats:weather_requests_24h").Result(); err == nil {
-		if count, err := strconv.ParseInt(val, 10, 64); err == nil {
-			stats.WeatherRequests24h = count
-		}
-	}
+	stats.MessagesSinceStart = s.messageCount.Load()
+	stats.WeatherRequestsSinceStart = s.weatherRequestCount.Load()
 
 	return stats, nil
 }
@@ -320,9 +301,7 @@ func (s *UserService) GetUserStatistics(ctx context.Context) (*UserStatistics, e
 func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locationName, country, city string, lat, lon float64) error {
 	// Invalidate cache BEFORE update
 	cacheKey := fmt.Sprintf("user:%d", userID)
-	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before location update")
-	}
+	s.cache.Delete(cacheKey)
 
 	updates := map[string]interface{}{
 		"location_name": locationName,
@@ -346,9 +325,7 @@ func (s *UserService) SetUserLocation(ctx context.Context, userID int64, locatio
 func (s *UserService) ClearUserLocation(ctx context.Context, userID int64) error {
 	// Invalidate cache BEFORE update
 	cacheKey := fmt.Sprintf("user:%d", userID)
-	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before clearing location")
-	}
+	s.cache.Delete(cacheKey)
 
 	updates := map[string]interface{}{
 		"location_name": "",
@@ -469,9 +446,7 @@ func (s *UserService) ChangeUserRole(ctx context.Context, adminID, targetUserID 
 
 	// Invalidate cache BEFORE update
 	cacheKey := fmt.Sprintf("user:%d", targetUserID)
-	if err := s.redis.Del(ctx, cacheKey).Err(); err != nil {
-		s.logger.Warn().Err(err).Str("cache_key", cacheKey).Msg("Failed to invalidate user cache before role change")
-	}
+	s.cache.Delete(cacheKey)
 
 	// Update the role in database
 	err = s.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", targetUserID).Update("role", newRole).Error
@@ -506,50 +481,13 @@ func (s *UserService) GetRoleName(role models.UserRole) string {
 	}
 }
 
-// IncrementMessageCounter increments the 24-hour message counter in Redis
-func (s *UserService) IncrementMessageCounter(ctx context.Context) error {
-	key := "stats:messages_24h"
-
-	// Increment counter
-	if err := s.redis.Incr(ctx, key).Err(); err != nil {
-		return fmt.Errorf("failed to increment message counter: %w", err)
-	}
-
-	// Set 24-hour expiry if key was just created
-	ttl, err := s.redis.TTL(ctx, key).Result()
-	if err != nil {
-		return fmt.Errorf("failed to get TTL: %w", err)
-	}
-
-	if ttl == -1 { // Key has no expiry set
-		if err := s.redis.Expire(ctx, key, 24*time.Hour).Err(); err != nil {
-			return fmt.Errorf("failed to set expiry: %w", err)
-		}
-	}
-
-	return nil
+// IncrementMessageCounter counts a handled message. Counters are in-memory and
+// reset on restart, so they report activity since the bot started.
+func (s *UserService) IncrementMessageCounter() {
+	s.messageCount.Add(1)
 }
 
-// IncrementWeatherRequestCounter increments the 24-hour weather request counter in Redis
-func (s *UserService) IncrementWeatherRequestCounter(ctx context.Context) error {
-	key := "stats:weather_requests_24h"
-
-	// Increment counter
-	if err := s.redis.Incr(ctx, key).Err(); err != nil {
-		return fmt.Errorf("failed to increment weather request counter: %w", err)
-	}
-
-	// Set 24-hour expiry if key was just created
-	ttl, err := s.redis.TTL(ctx, key).Result()
-	if err != nil {
-		return fmt.Errorf("failed to get TTL: %w", err)
-	}
-
-	if ttl == -1 { // Key has no expiry set
-		if err := s.redis.Expire(ctx, key, 24*time.Hour).Err(); err != nil {
-			return fmt.Errorf("failed to set expiry: %w", err)
-		}
-	}
-
-	return nil
+// IncrementWeatherRequestCounter counts a weather request (since start, in-memory).
+func (s *UserService) IncrementWeatherRequestCounter() {
+	s.weatherRequestCount.Add(1)
 }

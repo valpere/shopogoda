@@ -130,10 +130,8 @@ func (h *CommandHandler) ensureUserRegistered(ctx context.Context, user *gotgbot
 func (h *CommandHandler) Start(bot *gotgbot.Bot, ctx *ext.Context) error {
 	user := ctx.EffectiveUser
 
-	// Track message in Redis
-	if err := h.services.User.IncrementMessageCounter(context.Background()); err != nil {
-		h.logger.Warn().Err(err).Msg("Failed to increment message counter")
-	}
+	// Track message (in-memory, since start)
+	h.services.User.IncrementMessageCounter()
 
 	// Debug logging for start command
 	h.logger.Debug().
@@ -365,10 +363,8 @@ func (h *CommandHandler) CurrentWeather(bot *gotgbot.Bot, ctx *ext.Context) erro
 		Str("location", location).
 		Msg("Successfully got weather data")
 
-	// Track weather request in Redis
-	if err := h.services.User.IncrementWeatherRequestCounter(context.Background()); err != nil {
-		h.logger.Warn().Err(err).Msg("Failed to increment weather request counter")
-	}
+	// Track weather request (in-memory, since start)
+	h.services.User.IncrementWeatherRequestCounter()
 
 	// Format weather message
 	userLang := h.getUserLanguage(context.Background(), userID)
@@ -444,10 +440,8 @@ func (h *CommandHandler) Forecast(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
-	// Track weather request in Redis
-	if err := h.services.User.IncrementWeatherRequestCounter(context.Background()); err != nil {
-		h.logger.Warn().Err(err).Msg("Failed to increment weather request counter")
-	}
+	// Track weather request (in-memory, since start)
+	h.services.User.IncrementWeatherRequestCounter()
 
 	userLang := h.getUserLanguage(context.Background(), userID)
 	forecastText := h.formatForecastMessage(forecast, userLang)
@@ -493,10 +487,8 @@ func (h *CommandHandler) AirQuality(bot *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
-	// Track weather request in Redis
-	if err := h.services.User.IncrementWeatherRequestCounter(context.Background()); err != nil {
-		h.logger.Warn().Err(err).Msg("Failed to increment weather request counter")
-	}
+	// Track weather request (in-memory, since start)
+	h.services.User.IncrementWeatherRequestCounter()
 
 	airText := h.formatAirQualityMessage(airData, userLang)
 
@@ -1377,10 +1369,10 @@ func (h *CommandHandler) AdminStats(bot *gotgbot.Bot, ctx *ext.Context) error {
 	notificationsSection := h.services.Localization.T(context.Background(), userLang, "admin_stats_notifications_section")
 	activeSubscriptions := h.services.Localization.T(context.Background(), userLang, "admin_stats_active_subscriptions", stats.ActiveSubscriptions)
 	alertsConfigured := h.services.Localization.T(context.Background(), userLang, "admin_stats_alerts_configured", stats.AlertsConfigured)
-	messagesSent := h.services.Localization.T(context.Background(), userLang, "admin_stats_messages_sent", stats.MessagesSent24h)
+	messagesSent := h.services.Localization.T(context.Background(), userLang, "admin_stats_messages_sent", stats.MessagesSentSinceStart)
 
 	apiSection := h.services.Localization.T(context.Background(), userLang, "admin_stats_api_section")
-	weatherRequests := h.services.Localization.T(context.Background(), userLang, "admin_stats_weather_requests", stats.WeatherRequests24h)
+	weatherRequests := h.services.Localization.T(context.Background(), userLang, "admin_stats_weather_requests", stats.WeatherRequestsSinceStart)
 	cacheHitRate := h.services.Localization.T(context.Background(), userLang, "admin_stats_cache_hit_rate", stats.CacheHitRate)
 
 	performanceSection := h.services.Localization.T(context.Background(), userLang, "admin_stats_performance_section")
@@ -2418,8 +2410,8 @@ func (h *CommandHandler) showRecentUsers(bot *gotgbot.Bot, ctx *ext.Context) err
 	totalUsers := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_total_users", stats.TotalUsers)
 	locations := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_locations", stats.LocationsSaved)
 	alerts := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_alerts", stats.ActiveAlerts)
-	messages := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_messages", stats.Messages24h)
-	weatherReq := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_weather_requests", stats.WeatherRequests24h)
+	messages := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_messages", stats.MessagesSinceStart)
+	weatherReq := h.services.Localization.T(context.Background(), userLang, "admin_recent_activity_weather_requests", stats.WeatherRequestsSinceStart)
 
 	text := fmt.Sprintf("%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s",
 		title, newUsers, totalActive, totalUsers, locations, alerts, messages, weatherReq)
@@ -2489,8 +2481,8 @@ func (h *CommandHandler) showDetailedStats(bot *gotgbot.Bot, ctx *ext.Context) e
 	subsActive := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_subscriptions_active", systemStats.ActiveSubscriptions)
 	alertsConfigured := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_alerts_configured", systemStats.AlertsConfigured)
 	perfSection := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_performance_section")
-	messagesSent := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_messages_sent", systemStats.MessagesSent24h)
-	weatherReqs := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_weather_requests", systemStats.WeatherRequests24h)
+	messagesSent := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_messages_sent", systemStats.MessagesSentSinceStart)
+	weatherReqs := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_weather_requests", systemStats.WeatherRequestsSinceStart)
 	cacheHitRate := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_cache_hit_rate", systemStats.CacheHitRate)
 	avgRespTime := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_avg_response_time", systemStats.AvgResponseTime)
 	uptime := h.services.Localization.T(context.Background(), userLang, "admin_detailed_stats_uptime", systemStats.Uptime)

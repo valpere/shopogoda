@@ -5,6 +5,7 @@ package e2e
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -31,17 +32,7 @@ func TestBotEndToEnd(t *testing.T) {
 			WebhookPort: 8081,
 		},
 		Database: config.DatabaseConfig{
-			Host:     "localhost",
-			Port:     5432,
-			User:     "weather_user",
-			Password: "weather_pass",
-			Name:     "weather_bot_test",
-			SSLMode:  "disable",
-		},
-		Redis: config.RedisConfig{
-			Host: "localhost",
-			Port: 6379,
-			DB:   1, // Use different DB for tests
+			Path: filepath.Join(t.TempDir(), "e2e.db"),
 		},
 		Weather: config.WeatherConfig{
 			OpenWeatherAPIKey: os.Getenv("TEST_OPENWEATHER_API_KEY"),
@@ -70,7 +61,7 @@ func TestBotEndToEnd(t *testing.T) {
 	botAPI, err := gotgbot.NewBot(botToken, nil)
 	require.NoError(t, err)
 
-	me, err := botAPI.GetMe()
+	me, err := botAPI.GetMe(nil)
 	require.NoError(t, err)
 	assert.NotEmpty(t, me.Username)
 	assert.True(t, me.IsBot)

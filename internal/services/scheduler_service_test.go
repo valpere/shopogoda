@@ -15,7 +15,6 @@ import (
 func TestNewSchedulerService(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
 	// Create mock services
@@ -25,7 +24,6 @@ func TestNewSchedulerService(t *testing.T) {
 
 	service := NewSchedulerService(
 		mockDB.DB,
-		mockRedis.Client,
 		weatherService,
 		alertService,
 		notificationService,
@@ -34,7 +32,6 @@ func TestNewSchedulerService(t *testing.T) {
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.db)
-	assert.NotNil(t, service.redis)
 	assert.NotNil(t, service.weather)
 	assert.NotNil(t, service.alert)
 	assert.NotNil(t, service.notification)
@@ -46,11 +43,9 @@ func TestSchedulerService_ShouldSendNotification(t *testing.T) {
 	logger := helpers.NewSilentTestLogger()
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 
 	service := NewSchedulerService(
 		mockDB.DB,
-		mockRedis.Client,
 		&WeatherService{},
 		&AlertService{},
 		&NotificationService{},
@@ -155,11 +150,9 @@ func TestSchedulerService_Stop(t *testing.T) {
 	logger := helpers.NewSilentTestLogger()
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 
 	service := NewSchedulerService(
 		mockDB.DB,
-		mockRedis.Client,
 		&WeatherService{},
 		&AlertService{},
 		&NotificationService{},
@@ -181,7 +174,6 @@ func TestSchedulerService_Stop(t *testing.T) {
 func TestSchedulerService_CheckAndProcessAlerts(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
 	// Create mock services
@@ -191,7 +183,6 @@ func TestSchedulerService_CheckAndProcessAlerts(t *testing.T) {
 
 	service := NewSchedulerService(
 		mockDB.DB,
-		mockRedis.Client,
 		weatherService,
 		alertService,
 		notificationService,
@@ -230,7 +221,6 @@ func TestSchedulerService_CheckAndProcessAlerts(t *testing.T) {
 func TestSchedulerService_ProcessDailyNotifications(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
 	// Create mock services
@@ -240,7 +230,6 @@ func TestSchedulerService_ProcessDailyNotifications(t *testing.T) {
 
 	service := NewSchedulerService(
 		mockDB.DB,
-		mockRedis.Client,
 		weatherService,
 		alertService,
 		notificationService,
@@ -322,7 +311,6 @@ func TestSchedulerService_ProcessDailyNotifications(t *testing.T) {
 func TestSchedulerService_SendScheduledNotification(t *testing.T) {
 	mockDB := helpers.NewMockDB(t)
 	defer func() { _ = mockDB.Close() }()
-	mockRedis := helpers.NewMockRedis()
 	logger := helpers.NewSilentTestLogger()
 
 	// Create config for weather service
@@ -332,13 +320,12 @@ func TestSchedulerService_SendScheduledNotification(t *testing.T) {
 	}
 
 	// Create properly initialized weather service
-	weatherService := NewWeatherService(cfg, mockRedis.Client, logger)
+	weatherService := NewWeatherService(cfg, logger)
 	alertService := &AlertService{}
 	notificationService := &NotificationService{}
 
 	service := NewSchedulerService(
 		mockDB.DB,
-		mockRedis.Client,
 		weatherService,
 		alertService,
 		notificationService,

@@ -4,7 +4,7 @@
 // so gomock/mockgen is not currently used.
 //
 // For testing, the project uses:
-// - testcontainers for integration tests with real PostgreSQL/Redis
+// - a real SQLite file in t.TempDir() for integration tests (no Docker needed)
 // - sqlmock for database mocking in unit tests
 // - Custom bot mocks in tests/helpers/bot_mock.go
 //

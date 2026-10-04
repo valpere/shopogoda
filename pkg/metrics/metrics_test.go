@@ -118,7 +118,7 @@ func TestMetrics_AllGauges(t *testing.T) {
 
 	// Test all defined gauges don't panic
 	m.SetGauge("active_users", 100.0)
-	m.SetGauge("cache_hit_rate", 85.5, "redis")
+	m.SetGauge("cache_hit_rate", 85.5, "geocode")
 
 	assert.True(t, true)
 }
@@ -142,13 +142,13 @@ func TestMetrics_GetCacheHitRate(t *testing.T) {
 	})
 
 	t.Run("returns correct value for different cache types", func(t *testing.T) {
-		m.SetGauge("cache_hit_rate", 88.0, "redis")
+		m.SetGauge("cache_hit_rate", 88.0, "geocode")
 		m.SetGauge("cache_hit_rate", 95.5, "memory")
 
-		redisRate := m.GetCacheHitRate("redis")
+		geocodeRate := m.GetCacheHitRate("geocode")
 		memoryRate := m.GetCacheHitRate("memory")
 
-		assert.Equal(t, 88.0, redisRate)
+		assert.Equal(t, 88.0, geocodeRate)
 		assert.Equal(t, 95.5, memoryRate)
 	})
 }

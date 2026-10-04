@@ -5,18 +5,13 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
@@ -26,75 +21,26 @@ import (
 )
 
 type UserServiceTestSuite struct {
-	db             *gorm.DB
-	redisClient    *redis.Client
-	redisContainer testcontainers.Container
-	userService    *services.UserService
+	db          *gorm.DB
+	userService *services.UserService
 }
 
 func setupUserServiceTest(t *testing.T) *UserServiceTestSuite {
-	ctx := context.Background()
-
-	// Start Redis container
-	redisReq := testcontainers.ContainerRequest{
-		Image:        "redis:7-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForListeningPort("6379/tcp"),
-	}
-
-	redisContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: redisReq,
-		Started:          true,
-	})
-	require.NoError(t, err)
-
-	// Get container ports
-	redisHost, err := redisContainer.Host(ctx)
-	require.NoError(t, err)
-
-	redisPort, err := redisContainer.MappedPort(ctx, "6379")
-	require.NoError(t, err)
-
 	// Open SQLite database
 	db := helpers.NewSQLiteDB(t)
 
-	// Connect to Redis
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: redisHost + ":" + redisPort.Port(),
-	})
-
-	// Test connections
-	pong, err := redisClient.Ping(ctx).Result()
-	require.NoError(t, err)
-	require.Equal(t, "PONG", pong)
-
 	// Create user service
 	logger := zerolog.Nop()
-	userService := services.NewUserService(db, redisClient, metrics.New(), &logger, time.Now())
+	userService := services.NewUserService(db, metrics.New(), &logger, time.Now())
 
 	return &UserServiceTestSuite{
-		db:             db,
-		redisClient:    redisClient,
-		redisContainer: redisContainer,
-		userService:    userService,
-	}
-}
-
-func (suite *UserServiceTestSuite) teardown(t *testing.T) {
-	ctx := context.Background()
-
-	if suite.redisClient != nil {
-		suite.redisClient.Close()
-	}
-
-	if suite.redisContainer != nil {
-		require.NoError(t, suite.redisContainer.Terminate(ctx))
+		db:          db,
+		userService: userService,
 	}
 }
 
 func TestIntegration_UserServiceRegisterUser(t *testing.T) {
 	suite := setupUserServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -161,7 +107,6 @@ func TestIntegration_UserServiceRegisterUser(t *testing.T) {
 
 func TestIntegration_UserServiceGetUser(t *testing.T) {
 	suite := setupUserServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -184,13 +129,7 @@ func TestIntegration_UserServiceGetUser(t *testing.T) {
 		assert.Equal(t, userID, retrieved.ID)
 		assert.Equal(t, "cachetest", retrieved.Username)
 
-		// Verify cached in Redis
-		cacheKey := fmt.Sprintf("user:%d", userID)
-		cached, err := suite.redisClient.Get(ctx, cacheKey).Result()
-		require.NoError(t, err)
-		assert.NotEmpty(t, cached)
-
-		// Second call - should get from cache
+		// Second call - served from the in-process cache
 		retrieved2, err := suite.userService.GetUser(ctx, userID)
 		require.NoError(t, err)
 		assert.Equal(t, userID, retrieved2.ID)
@@ -205,7 +144,6 @@ func TestIntegration_UserServiceGetUser(t *testing.T) {
 
 func TestIntegration_UserServiceUpdateUserSettings(t *testing.T) {
 	suite := setupUserServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -243,7 +181,6 @@ func TestIntegration_UserServiceUpdateUserSettings(t *testing.T) {
 
 func TestIntegration_UserServiceLocationManagement(t *testing.T) {
 	suite := setupUserServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -330,7 +267,6 @@ func TestIntegration_UserServiceLocationManagement(t *testing.T) {
 
 func TestIntegration_UserServiceTimezoneManagement(t *testing.T) {
 	suite := setupUserServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -415,7 +351,6 @@ func TestIntegration_UserServiceTimezoneManagement(t *testing.T) {
 
 func TestIntegration_UserServiceGetActiveUsers(t *testing.T) {
 	suite := setupUserServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -454,7 +389,6 @@ func TestIntegration_UserServiceGetActiveUsers(t *testing.T) {
 
 func TestIntegration_UserServiceCacheInvalidation(t *testing.T) {
 	suite := setupUserServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -482,15 +416,9 @@ func TestIntegration_UserServiceCacheInvalidation(t *testing.T) {
 		err = suite.userService.UpdateUserSettings(ctx, userID, settings)
 		require.NoError(t, err)
 
-		// Verify cache was invalidated by checking Redis directly
-		cacheKey := fmt.Sprintf("user:%d", userID)
-		cached, err := suite.redisClient.Get(ctx, cacheKey).Result()
-		if err == nil {
-			// If cached, verify it has updated data
-			var cachedUser models.User
-			err = json.Unmarshal([]byte(cached), &cachedUser)
-			require.NoError(t, err)
-			assert.Equal(t, "uk-UA", cachedUser.Language)
-		}
+		// Cache must not serve stale data
+		fresh, err := suite.userService.GetUser(ctx, userID)
+		require.NoError(t, err)
+		assert.Equal(t, "uk-UA", fresh.Language)
 	})
 }

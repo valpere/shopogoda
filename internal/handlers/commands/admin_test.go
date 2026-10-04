@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -16,12 +15,12 @@ import (
 )
 
 // Helper function to create services for testing
-func newTestServices(mockDB *helpers.MockDB, mockRedis *helpers.MockRedis) *services.Services {
+func newTestServices(mockDB *helpers.MockDB) *services.Services {
 	logger := zerolog.Nop()
 	metricsCollector := metrics.New()
 	startTime := time.Now()
 
-	userService := services.NewUserService(mockDB.DB, mockRedis.Client, metricsCollector, &logger, startTime)
+	userService := services.NewUserService(mockDB.DB, metricsCollector, &logger, startTime)
 	localizationService := services.NewLocalizationService(&logger)
 
 	return &services.Services{
@@ -34,9 +33,8 @@ func TestCommandHandler_Promote(t *testing.T) {
 	t.Run("successful promotion with usage help", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -71,9 +69,8 @@ func TestCommandHandler_Promote(t *testing.T) {
 	t.Run("non-admin cannot promote", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -107,17 +104,15 @@ func TestCommandHandler_Promote(t *testing.T) {
 	t.Run("promote user to moderator with confirmation", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
 		adminID := int64(100)
 		targetUserID := int64(200)
 
-		// Mock Redis cache miss for admin user (getUserLanguage call)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).RedisNil()
+		// User cache miss for admin user (getUserLanguage call)
 
 		// Mock admin user query
 		adminRows := mockDB.Mock.NewRows([]string{
@@ -132,13 +127,11 @@ func TestCommandHandler_Promote(t *testing.T) {
 			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
-		// Mock Redis cache HIT for admin user (permission check reuses cached value from previous call)
+		// User cache HIT for admin user (permission check reuses cached value from previous call)
 		// Note: In real execution, SetEx would cache after the first GetUser, but we skip mocking SetEx
 		// and directly mock the cache hit since we're testing command logic, not caching behavior
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
 
-		// Mock Redis cache miss for target user
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
+		// User cache miss for target user
 
 		// Mock target user query
 		targetRows := mockDB.Mock.NewRows([]string{
@@ -163,16 +156,15 @@ func TestCommandHandler_Promote(t *testing.T) {
 		// Should send confirmation dialog
 		assert.NoError(t, err)
 		mockDB.ExpectationsWereMet(t)
-		// Note: We don't verify Redis expectations here because we're not fully mocking
+		// Note: We don't verify cache state here because we're not fully mocking
 		// the caching behavior (SetEx calls). The test focuses on command logic.
 	})
 
 	t.Run("invalid user ID format", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -206,17 +198,15 @@ func TestCommandHandler_Promote(t *testing.T) {
 	t.Run("invalid role argument", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
 		adminID := int64(100)
 		targetUserID := int64(200)
 
-		// Mock Redis cache miss for admin user (getUserLanguage call)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).RedisNil()
+		// User cache miss for admin user (getUserLanguage call)
 
 		// Mock admin user query
 		adminRows := mockDB.Mock.NewRows([]string{
@@ -231,11 +221,9 @@ func TestCommandHandler_Promote(t *testing.T) {
 			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
-		// Mock Redis cache HIT for admin user (permission check reuses cached value)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
+		// User cache HIT for admin user (permission check reuses cached value)
 
-		// Mock Redis cache miss for target user
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
+		// User cache miss for target user
 
 		// Mock target user query
 		targetRows := mockDB.Mock.NewRows([]string{
@@ -260,7 +248,7 @@ func TestCommandHandler_Promote(t *testing.T) {
 		// Should send invalid role error
 		assert.NoError(t, err)
 		mockDB.ExpectationsWereMet(t)
-		// Note: We don't verify Redis expectations here because we're not fully mocking
+		// Note: We don't verify cache state here because we're not fully mocking
 		// the caching behavior (SetEx calls). The test focuses on command logic.
 	})
 }
@@ -269,9 +257,8 @@ func TestCommandHandler_Demote(t *testing.T) {
 	t.Run("successful demotion with usage help", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -306,9 +293,8 @@ func TestCommandHandler_Demote(t *testing.T) {
 	t.Run("non-admin cannot demote", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -342,17 +328,15 @@ func TestCommandHandler_Demote(t *testing.T) {
 	t.Run("demote admin to moderator with warning", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
 		adminID := int64(100)
 		targetAdminID := int64(200)
 
-		// Mock Redis cache miss for admin user (getUserLanguage call)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).RedisNil()
+		// User cache miss for admin user (getUserLanguage call)
 
 		// Mock admin user query
 		adminRows := mockDB.Mock.NewRows([]string{
@@ -367,11 +351,9 @@ func TestCommandHandler_Demote(t *testing.T) {
 			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
-		// Mock Redis cache HIT for admin user (permission check reuses cached value)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
+		// User cache HIT for admin user (permission check reuses cached value)
 
-		// Mock Redis cache miss for target admin
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetAdminID)).RedisNil()
+		// User cache miss for target admin
 
 		// Mock target admin query
 		targetRows := mockDB.Mock.NewRows([]string{
@@ -401,17 +383,15 @@ func TestCommandHandler_Demote(t *testing.T) {
 	t.Run("cannot demote user role", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
 		adminID := int64(100)
 		targetUserID := int64(200)
 
-		// Mock Redis cache miss for admin user (getUserLanguage call)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).RedisNil()
+		// User cache miss for admin user (getUserLanguage call)
 
 		// Mock admin user query
 		adminRows := mockDB.Mock.NewRows([]string{
@@ -426,11 +406,9 @@ func TestCommandHandler_Demote(t *testing.T) {
 			WithArgs(adminID).
 			WillReturnRows(adminRows)
 
-		// Mock Redis cache HIT for admin user (permission check reuses cached value)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).SetVal(`{"id":100,"username":"admin","first_name":"Admin","last_name":"User","language":"en-US","is_active":true,"role":3}`)
+		// User cache HIT for admin user (permission check reuses cached value)
 
-		// Mock Redis cache miss for target user
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
+		// User cache miss for target user
 
 		// Mock target user query (already lowest role)
 		targetRows := mockDB.Mock.NewRows([]string{
@@ -462,17 +440,15 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 	t.Run("successful role change confirmation", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
 		adminID := int64(100)
 		targetUserID := int64(200)
 
-		// Mock Redis cache miss for target user (confirmRoleChange calls GetUser for target)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
+		// User cache miss for target user (confirmRoleChange calls GetUser for target)
 
 		// Mock target user query (before change)
 		targetRows := mockDB.Mock.NewRows([]string{
@@ -488,8 +464,7 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 			WillReturnRows(targetRows)
 
 		// ChangeUserRole calls GetUser for admin first
-		// Mock Redis cache miss for admin user
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).RedisNil()
+		// User cache miss for admin user
 
 		// Mock admin user query
 		adminRows := mockDB.Mock.NewRows([]string{
@@ -505,13 +480,11 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 			WillReturnRows(adminRows)
 
 		// ChangeUserRole calls GetUser for target user again
-		// Mock Redis cache HIT for target user (already cached from first GetUser)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).SetVal(`{"id":200,"username":"target","first_name":"Target","last_name":"User","language":"en-US","is_active":true,"role":1}`)
+		// User cache HIT for target user (already cached from first GetUser)
 
 		// Note: Admin count query is NOT needed here because we're promoting User→Moderator (not demoting an admin)
 
 		// Mock cache invalidation
-		mockRedis.Mock.ExpectDel(fmt.Sprintf("user:%d", targetUserID)).SetVal(1)
 
 		// Mock role update (GORM automatically wraps Update in a transaction)
 		mockDB.Mock.ExpectBegin()
@@ -533,16 +506,15 @@ func TestCommandHandler_confirmRoleChange(t *testing.T) {
 			t.Logf("Unmatched expectations: %v", err)
 		}
 		mockDB.ExpectationsWereMet(t)
-		// Note: We don't verify Redis expectations here because we're not fully mocking
+		// Note: We don't verify cache state here because we're not fully mocking
 		// the caching behavior (SetEx calls). The test focuses on command logic.
 	})
 
 	t.Run("invalid callback params", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -562,9 +534,8 @@ func TestCommandHandler_cancelRoleChange(t *testing.T) {
 	t.Run("successful role change cancellation", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -583,17 +554,15 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 	t.Run("route to confirm action", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
 		adminID := int64(100)
 		targetUserID := int64(200)
 
-		// Mock Redis cache miss for target user (confirmRoleChange calls GetUser for target)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).RedisNil()
+		// User cache miss for target user (confirmRoleChange calls GetUser for target)
 
 		// Mock target user query
 		targetRows := mockDB.Mock.NewRows([]string{
@@ -609,8 +578,7 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 			WillReturnRows(targetRows)
 
 		// ChangeUserRole calls GetUser for admin first
-		// Mock Redis cache miss for admin user
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", adminID)).RedisNil()
+		// User cache miss for admin user
 
 		// Mock admin user query
 		adminRows := mockDB.Mock.NewRows([]string{
@@ -626,13 +594,11 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 			WillReturnRows(adminRows)
 
 		// ChangeUserRole calls GetUser for target user again
-		// Mock Redis cache HIT for target user (already cached from first GetUser)
-		mockRedis.Mock.ExpectGet(fmt.Sprintf("user:%d", targetUserID)).SetVal(`{"id":200,"username":"target","first_name":"Target","last_name":"User","language":"en-US","is_active":true,"role":1}`)
+		// User cache HIT for target user (already cached from first GetUser)
 
 		// Note: Admin count query is NOT needed here because we're promoting User→Moderator (not demoting an admin)
 
 		// Mock cache invalidation
-		mockRedis.Mock.ExpectDel(fmt.Sprintf("user:%d", targetUserID)).SetVal(1)
 
 		// Mock role update (GORM automatically wraps Update in a transaction)
 		mockDB.Mock.ExpectBegin()
@@ -648,16 +614,15 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 
 		assert.NoError(t, err)
 		mockDB.ExpectationsWereMet(t)
-		// Note: We don't verify Redis expectations here because we're not fully mocking
+		// Note: We don't verify cache state here because we're not fully mocking
 		// the caching behavior (SetEx calls). The test focuses on command logic.
 	})
 
 	t.Run("route to cancel action", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot
@@ -674,9 +639,8 @@ func TestCommandHandler_handleRoleCallback(t *testing.T) {
 	t.Run("unknown action", func(t *testing.T) {
 		mockDB := helpers.NewMockDB(t)
 		defer func() { _ = mockDB.Close() }()
-		mockRedis := helpers.NewMockRedis()
 		logger := zerolog.Nop()
-		testServices := newTestServices(mockDB, mockRedis)
+		testServices := newTestServices(mockDB)
 		handler := New(testServices, &logger)
 
 		mockBot := helpers.NewMockBot().Bot

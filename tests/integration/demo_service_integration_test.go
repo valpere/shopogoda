@@ -8,11 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/gorm"
 
 	"github.com/valpere/shopogoda/internal/models"
@@ -21,75 +18,26 @@ import (
 )
 
 type DemoServiceTestSuite struct {
-	db             *gorm.DB
-	redisClient    *redis.Client
-	redisContainer testcontainers.Container
-	demoService    *services.DemoService
+	db          *gorm.DB
+	demoService *services.DemoService
 }
 
 func setupDemoServiceTest(t *testing.T) *DemoServiceTestSuite {
-	ctx := context.Background()
-
-	// Start Redis container
-	redisReq := testcontainers.ContainerRequest{
-		Image:        "redis:7-alpine",
-		ExposedPorts: []string{"6379/tcp"},
-		WaitingFor:   wait.ForListeningPort("6379/tcp"),
-	}
-
-	redisContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: redisReq,
-		Started:          true,
-	})
-	require.NoError(t, err)
-
-	// Get container ports
-	redisHost, err := redisContainer.Host(ctx)
-	require.NoError(t, err)
-
-	redisPort, err := redisContainer.MappedPort(ctx, "6379")
-	require.NoError(t, err)
-
 	// Open SQLite database
 	db := helpers.NewSQLiteDB(t)
-
-	// Connect to Redis
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: redisHost + ":" + redisPort.Port(),
-	})
-
-	// Test connections
-	pong, err := redisClient.Ping(ctx).Result()
-	require.NoError(t, err)
-	require.Equal(t, "PONG", pong)
 
 	// Create demo service
 	logger := helpers.NewSilentTestLogger()
 	demoService := services.NewDemoService(db, logger)
 
 	return &DemoServiceTestSuite{
-		db:             db,
-		redisClient:    redisClient,
-		redisContainer: redisContainer,
-		demoService:    demoService,
-	}
-}
-
-func (suite *DemoServiceTestSuite) teardown(t *testing.T) {
-	ctx := context.Background()
-
-	if suite.redisClient != nil {
-		suite.redisClient.Close()
-	}
-
-	if suite.redisContainer != nil {
-		require.NoError(t, suite.redisContainer.Terminate(ctx))
+		db:          db,
+		demoService: demoService,
 	}
 }
 
 func TestIntegration_DemoServiceSeedData(t *testing.T) {
 	suite := setupDemoServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -152,7 +100,6 @@ func TestIntegration_DemoServiceSeedData(t *testing.T) {
 
 func TestIntegration_DemoServiceClearData(t *testing.T) {
 	suite := setupDemoServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -204,7 +151,6 @@ func TestIntegration_DemoServiceClearData(t *testing.T) {
 
 func TestIntegration_DemoServiceResetData(t *testing.T) {
 	suite := setupDemoServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -251,7 +197,6 @@ func TestIntegration_DemoServiceResetData(t *testing.T) {
 
 func TestIntegration_DemoServiceWeatherData(t *testing.T) {
 	suite := setupDemoServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -303,7 +248,6 @@ func TestIntegration_DemoServiceWeatherData(t *testing.T) {
 
 func TestIntegration_DemoServiceAlertConfigs(t *testing.T) {
 	suite := setupDemoServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
@@ -331,7 +275,6 @@ func TestIntegration_DemoServiceAlertConfigs(t *testing.T) {
 
 func TestIntegration_DemoServiceSubscriptions(t *testing.T) {
 	suite := setupDemoServiceTest(t)
-	defer suite.teardown(t)
 
 	ctx := context.Background()
 
