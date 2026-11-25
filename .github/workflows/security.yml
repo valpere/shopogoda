@@ -1,9 +1,6 @@
 name: Security Scan
 
 on:
-  schedule:
-    # Run security scans daily at 2 AM UTC
-    - cron: '0 2 * * *'
   workflow_dispatch:
   push:
     branches: [ main ]
