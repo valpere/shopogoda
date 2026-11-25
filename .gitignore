@@ -92,6 +92,9 @@ locales/bak/
 .claude/settings.local.json
 .claude/sessions.db*
 .claude/session-log.md
+.claude/session-checkpoint.json
+.claude/session-checkpoint.json.lock
+.claude/session-state.md
 
 # Self-learn pattern data (per-session, local)
 _patterns/*.jsonl
