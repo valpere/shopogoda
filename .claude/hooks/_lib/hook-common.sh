@@ -20,3 +20,27 @@ hook_setup_logging() {
   exec 2> >(tee -a "$LOG_FILE" >&2)
   echo "[$(date -Iseconds)] $script_name invoked" >> "$LOG_FILE"
 }
+
+# WHITELIST of project roots that may be indexed (session-recall) or run by weekly —
+# user rule 2026-10-25 (supersedes the earlier blacklist): only projects under
+# ~/wrk/projects, ~/wrk/demo and this tooling repo ~/wrk/common_claude.
+# Everything else (~/wrk/projects_fh, ~/wrk/freelance, ~/wrk/oblabz, ...) is NEVER processed.
+# ALLOWED_PROJECT_ROOTS (colon-separated) overrides the default (used by tests).
+# hook_project_allowed <project-root>: exit 0 if the root IS or lies under an allowed root.
+hook_allowed_roots() { printf '%s\n' "${ALLOWED_PROJECT_ROOTS:-$HOME/wrk/projects:$HOME/wrk/demo:$HOME/wrk/common_claude}" | tr ':' '\n'; }
+
+hook_project_allowed() {
+  local root r real
+  local -a roots
+  root=$(realpath -m -- "$1" 2>/dev/null) || return 1
+  mapfile -t roots < <(hook_allowed_roots)
+  for r in "${roots[@]}"; do
+    real=$(realpath -m -- "$r" 2>/dev/null) || continue
+    [[ "$root" == "$real" ]] && return 0
+    case "$root/" in "$real"/?*) return 0 ;; esac
+  done
+  return 1
+}
+
+# Inverse, used by the hooks' guards: exit 0 = skip this project.
+hook_project_excluded() { ! hook_project_allowed "$1"; }
