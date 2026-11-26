@@ -4,7 +4,7 @@
 # even when the summary step exits early (e.g. /session-end already ran).
 
 set -uo pipefail
-[[ "${CLAUDE_NON_INTERACTIVE:-}" == "1" ]] && exit 0
+[[ "${CLAUDE_NON_INTERACTIVE:-}" == "1" ]] && { cat >/dev/null || true; exit 0; }
 export PATH="$HOME/go/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 # shellcheck source=_lib/hook-common.sh
@@ -37,5 +37,6 @@ echo "[$(date -Iseconds)] session-index: mining $(basename "$TRANSCRIPT") → $D
 if session-indexer mine "$TRANSCRIPT" --db "$DB" >> "$LOG_FILE" 2>&1; then
     echo "[$(date -Iseconds)] session-index: done" >> "$LOG_FILE"
 else
-    echo "[$(date -Iseconds)] session-index: session-indexer exited $?" >> "$LOG_FILE"
+    MINE_EXIT=$?   # capture first: $(date) below resets $?
+    echo "[$(date -Iseconds)] session-index: session-indexer exited $MINE_EXIT" >> "$LOG_FILE"
 fi
